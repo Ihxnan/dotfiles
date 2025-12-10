@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+echo "Start ..."
+
+set -euo pipefail
+
+mkdir -p ~/WorkSpace/Algorithm
+mkdir -p ~/.mpd/playlists
+
+sudo pacman -Syyu --noconfirm
+
+sudo pacman -S \
+    base-devel \
+    sudo \
+    git \
+    curl \
+    wget \
+    openssh \
+    unzip \
+    neovim \
+    vim \
+    gcc \
+    gdb \
+    clang \
+    nodejs \
+    npm \
+    yarn \
+    lua51 \
+    fzf \
+    paru \
+    ttf-jetbrains-mono \
+    ttf-jetbrains-mono-nerd \
+    fcitx5-im \
+    fcitx5-chinese-addons \
+    mpv \
+    mpd \
+    mpc \
+    ncmpcpp \
+    ffmpeg \
+    i3-wm \
+    i3blocks \
+    picom \
+    rofi \
+    dunst \
+    polybar \
+    variety \
+    feh \
+    xorg-xinit \
+    xorg-xrandr \
+    alacritty \
+    fish \
+    zsh \
+    ranger \
+    lolcat \
+    chromium \
+    --noconfirm 
+
+bash ./scripts/setup
+
+echo "Done"
