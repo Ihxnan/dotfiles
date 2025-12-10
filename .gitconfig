@@ -1,0 +1,10 @@
+[user]
+	email = 1377537238@qq.com
+	name = Ihxnan
+[http]
+	sslVerify = false
+[init]
+	defaultBranch = main
+[alias]
+	p = log --oneline --graph --decorate --all
+	s = status

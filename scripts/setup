@@ -27,11 +27,13 @@ targets_config=(
 )
 
 sources_home=(
+    ".gitconfig"
     ".p10k.zsh"
     ".vimrc"
     ".zshrc"
 )
 targets_home=(
+    "$HOME/.gitconfig"
     "$HOME/.p10k.zsh"
     "$HOME/.vimrc"
     "$HOME/.zshrc"

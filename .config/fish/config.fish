@@ -34,6 +34,8 @@ function f
    end
 
 set -x PATH $CUDA_HOME/bin $PATH ~/bin
+set -gx LANG en_US.UTF-8
+set -gx LC_ALL en_US.UTF-8
 
 bind \cy forward-char
 
