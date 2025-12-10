@@ -31,6 +31,68 @@
 - 美观的配色方案和图标
 - 强大的代码补全和导航功能
 
+<<<<<<< HEAD
+=======
+## 🚀 快速开始
+
+### 1. 克隆仓库
+
+```bash
+git clone git@github.com:Ihxnan/dotfiles.git ~/Github/dev
+cd ~/Github/dev
+```
+
+### 2. 安装依赖
+
+#### Arch Linux
+```bash
+# 运行安装脚本
+./scripts/arch/install.sh
+
+# 或手动安装主要组件
+sudo pacman -S zsh fish neovim alacritty kitty
+paru -S oh-my-zsh-git powerlevel10k
+```
+
+#### 其他系统
+参考 `scripts/` 目录下的对应安装脚本
+
+### 3. 配置环境
+
+```bash
+# 创建符号链接
+./scripts/setup/symlinks.sh
+
+# 配置Zsh
+chsh -s $(which zsh)
+```
+
+### 4. 安装插件
+
+```bash
+# Neovim插件 (首次启动时自动安装)
+nvim
+
+# Vim插件
+vim +PlugInstall +qall
+```
+
+## 📁 目录结构
+
+```
+dotfiles/
+├── .config/          # 应用程序配置
+│   ├── alacritty/    # Alacritty终端配置
+│   ├── fish/         # Fish Shell配置
+│   ├── nvim/         # Neovim配置
+│   └── ...           # 其他应用配置
+├── scripts/          # 安装和设置脚本
+├── vscode/           # VSCode配置
+├── .zshrc           # Zsh配置
+├── .vimrc           # Vim配置
+└── README.md        # 本文件
+```
+
 ## ⚙️ 主要组件
 
 ### 终端和Shell
