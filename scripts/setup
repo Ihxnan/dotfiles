@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail  
+
+sources_config=(
+    ".config/alacritty"
+    ".config/fish"
+    ".config/ghostty"
+    ".config/kitty"
+    ".config/nvim"                
+    ".config/ranger/rc.conf"
+    ".config/ranger/commands.py"
+    ".config/ranger/devicons.py"  
+    ".config/ranger/plugins"
+    ".config/ranger/scope.sh"
+)
+targets_config=(
+    "$HOME/.config/alacritty"
+    "$HOME/.config/fish"
+    "$HOME/.config/ghostty"
+    "$HOME/.config/kitty"
+    "$HOME/.config/nvim"
+    "$HOME/.config/ranger/rc.conf"
+    "$HOME/.config/ranger/commands.py"
+    "$HOME/.config/ranger/devicons.py"
+    "$HOME/.config/ranger/plugins"
+    "$HOME/.config/ranger/scope.sh"
+)
+
+sources_home=(
+    ".p10k.zsh"
+    ".vimrc"
+    ".zshrc"
+)
+targets_home=(
+    "$HOME/.p10k.zsh"
+    "$HOME/.vimrc"
+    "$HOME/.zshrc"
+)
+
+
+create_symlink() {
+    local src="$1"
+    local dest="$2"
+    local src_abs
+    local dest_dir
+
+    
+    if [ ! -e "$src" ]; then
+        echo -e "⚠️  源路径不存在，跳过：$src"
+        return 1
+    fi
+    src_abs=$(realpath "$src")
+
+    
+    dest_dir=$(dirname "$dest")
+    if [ ! -d "$dest_dir" ]; then
+        echo -e "📂 创建目标父目录：$dest_dir"
+        mkdir -p "$dest_dir"
+    fi
+
+    
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        [ -L "$dest" ] && echo -e "🔗 删除旧软链接：$dest" || echo -e "🗑️  删除旧文件/目录：$dest"
+        rm -rf "$dest"
+    fi
+
+    
+    ln -s "$src_abs" "$dest"
+    echo -e "✅ 软链接创建成功：\n  源：$src_abs\n  目标：$dest"
+
+    
+    if [[ "$src_abs" =~ \.(py|sh)$ ]]; then
+        
+        if [ ! -x "$src_abs" ]; then
+            chmod u+rx "$src_abs"
+            echo -e "🔧 自动修复脚本权限：$src_abs（添加 u+rx 权限）"
+        fi
+    fi
+}
+
+
+check_nvim_symlink_cycle() {
+    local nvim_src="${sources_config[3]}"  
+    local nvim_dest="${targets_config[3]}" 
+
+    
+    if [ -d "$nvim_src" ] && [ "$(basename "$nvim_src")" = "nvim" ]; then
+        echo -e "\n⚠️  检测到 Neovim 是目录级软链接，可能导致 VimWiki 循环错误！"
+        echo -e "   解决方案：将 Neovim 拆分为子目录/文件级软链接，参考命令："
+        echo -e "   1. rm $nvim_dest"
+        echo -e "   2. mkdir -p $nvim_dest"
+        echo -e "   3. ln -s ~/Github/Dotfiles/.config/nvim/init.lua $nvim_dest/init.lua"
+        echo -e "   4. ln -s ~/Github/Dotfiles/.config/nvim/lua $nvim_dest/lua"
+        read -p "是否继续当前配置？(y/n，默认 y)：" continue_choice
+        continue_choice=${continue_choice:-y}
+        if [ "$continue_choice" = "n" ]; then
+            echo -e "❌ 退出脚本，请先调整 Neovim 配置方式"
+            exit 1
+        fi
+    fi
+}
+
+check_nvim_symlink_cycle
+
+for i in "${!sources_config[@]}"; do
+    create_symlink "${sources_config[$i]}" "${targets_config[$i]}"
+    echo -e "------------------------"
+done
+
+for i in "${!sources_home[@]}"; do
+    create_symlink "${sources_home[$i]}" "${targets_home[$i]}"
+    echo -e "------------------------"
+done
+
+echo -e "\n🎉 所有软链接配置完成！"
