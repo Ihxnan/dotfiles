@@ -1,0 +1,62 @@
+{
+    "Starter Template": {
+        "prefix": "st",
+        "body": [
+            "#!/usr/bin/python3.13",
+            "",
+            "$0"
+        ]
+    },
+    "Algorithm": {
+        "prefix": "ihxnan",
+        "body": [
+            "import math",
+            "import sys",
+            "from collections import Counter, defaultdict, deque",
+            "from heapq import heapify, heappop, heappush",
+            "from typing import Iterator",
+            "",
+            "INF = math.inf",
+            "mod = 998244353",
+            "MOD = 1000000007",
+            "",
+            "ls = lambda x: x << 1",
+            "rs = lambda x: x << 1 | 1",
+            "lowbit = lambda x: x & -x",
+            "",
+            "",
+            "def I() -> str:",
+            "    return sys.stdin.readline().strip()",
+            "",
+            "",
+            "def II() -> int:",
+            "    return int(I())",
+            "",
+            "",
+            "def SI() -> list[str]:",
+            "    return I().split()",
+            "",
+            "",
+            "def MII() -> Iterator[int]:",
+            "    return map(int, SI())",
+            "",
+            "",
+            "def LII() -> list[int]:",
+            "    return list(MII())",
+            "",
+            "",
+            "def GMI() -> Iterator[int]:",
+            "    return map(lambda x: x - 1, MII())",
+            "",
+            "",
+            "def LGMI() -> list[int]:",
+            "    return list(GMI())",
+            "",
+            "",
+            "sys.setrecursionlimit(10**6)",
+            "",
+            "",
+            "$0"
+        ]
+    }
+}
