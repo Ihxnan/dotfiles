@@ -72,9 +72,7 @@ local preview_code = function()
 
 	local filetype = vim.bo.filetype
 
-	if filetype == "md" or filetype == "markdown" or filetype == "vimwiki" then
-		vim.cmd("MarkdownPreview")
-	elseif filetype == "html" then
+	if filetype == "html" then
 		vim.cmd("LivePreview start")
 	else
 		print("不支持的文件类型: " .. filetype)
@@ -84,9 +82,7 @@ end
 local close_code = function()
 	local filetype = vim.bo.filetype
 
-	if filetype == "md" or filetype == "markdown" or filetype == "vimwiki" then
-		vim.cmd("MarkdownPreviewStop")
-	elseif filetype == "html" then
+	if filetype == "html" then
 		vim.cmd("LivePreview close")
 	else
 		print("不支持的文件类型: " .. filetype)
@@ -99,13 +95,17 @@ keymap.set("i", "jk", "<ESC>")
 keymap.set("i", "<C-s>", "<ESC>:w<CR>")
 
 -- 插入模式的移动
-keymap.set("i", "<C-h>", "<ESC>ha", { desc = "go window left" })
-keymap.set("i", "<C-j>", "<ESC>ja", { desc = "go window down" })
-keymap.set("i", "<C-k>", "<ESC>ka", { desc = "go window up" })
-keymap.set("i", "<C-l>", "<ESC>la", { desc = "go window right" })
+keymap.set("i", "<C-h>", "<ESC><C-w>h", { desc = "go window left" })
+keymap.set("i", "<C-j>", "<ESC><C-w>j", { desc = "go window down" })
+keymap.set("i", "<C-k>", "<ESC><C-w>k", { desc = "go window up" })
+keymap.set("i", "<C-l>", "<ESC><C-w>l", { desc = "go window right" })
 
 -- ---------- 终端模式 ---------- ---
 keymap.set("t", "jk", "<C-\\><C-n>")
+keymap.set("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "go window left" })
+keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "go window down" })
+keymap.set("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "go window up" })
+keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "go window right" })
 
 -- ---------- 视觉模式 ---------- ---
 -- 单行或多行移动

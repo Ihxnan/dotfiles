@@ -6,5 +6,8 @@
 [init]
 	defaultBranch = main
 [alias]
+    c = checkout
+    b = branch
 	p = log --oneline --graph --decorate --all
-	s = status
+	s = switch
+    st = status
