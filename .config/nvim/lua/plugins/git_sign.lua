@@ -4,17 +4,17 @@ return {
 	config = function()
 		require("gitsigns").setup({
 			signs = {
-				-- add = { text = "▎" }, -- 新增行符号
-				-- change = { text = "▎" }, -- 修改行符号
-				-- delete = { text = "" }, -- 删除行符号
+				add = { text = "▎" }, -- 新增行符号
+				change = { text = "▎" }, -- 修改行符号
+				delete = { text = "" }, -- 删除行符号
 
-				add = { text = "" }, -- 经典新增行图标 (plus circle)
-				change = { text = "" }, -- 经典修改行图标 (pencil)
-				delete = { text = "" }, -- 经典删除行图标 (minus circle)
-				-- 可选补充：删除行首/修改行首的细分图标
-				topdelete = { text = "" },
-				changedelete = { text = "" },
-				untracked = { text = "" }, -- 未跟踪文件图标
+				-- add = { text = "" }, -- 经典新增行图标 (plus circle)
+				-- change = { text = "" }, -- 经典修改行图标 (pencil)
+				-- delete = { text = "" }, -- 经典删除行图标 (minus circle)
+				-- -- 可选补充：删除行首/修改行首的细分图标
+				-- topdelete = { text = "" },
+				-- changedelete = { text = "" },
+				-- untracked = { text = "" }, -- 未跟踪文件图标
 			},
 			-- 快捷键绑定（缓冲区局部）
 			on_attach = function(bufnr)
