@@ -175,22 +175,12 @@ export yun='ubuntu@106.53.202.12'
 # 替代默认 clear 命令，输入 c 即可清屏
 alias c=clear
 
-# 系统更新命令
-# 执行 Arch Linux 系统全面更新
-# sudo pacman -Syyu: 强制刷新软件源并升级所有包
-alias g='~/bin/g'
+alias g=git
+alias f=$HOME/.config/scripts/fastfetch-random-wife.sh
 
 # 终端文件管理器快速启动
 # 快速启动 ranger 终端文件管理器
 alias jk=ranger
-
-# Git 日志图形化展示
-# 以简洁图形化方式显示所有分支的提交历史
-# --oneline: 单行显示提交信息
-# --graph: 显示分支合并图形
-# --decorate: 显示分支标签信息
-# --all: 显示所有分支
-alias graph='git log --oneline --graph --decorate --all'
 
 # 详细列表显示
 # 显示当前目录所有文件（包括隐藏文件）的详细信息

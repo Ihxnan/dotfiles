@@ -5,10 +5,10 @@ return {
 	},
 	opts = {
 		formatters_by_ft = {
-			lua = { "stylua" },
+			-- lua = { "stylua" },
 			python = { "isort", "black" },
 			rust = { "rustfmt", lsp_format = "fallback" },
-			toml = { "taplo" },
+			-- toml = { "taplo" },
 			-- 这里将clang_format改为clang-format
 			cpp = { "clang-format" },
 			c = { "clang-format" },
