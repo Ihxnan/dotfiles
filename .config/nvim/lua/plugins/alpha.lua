@@ -36,6 +36,7 @@ return {
 				dashboard.button("tc", "  cpp", "<cmd> e ~/WorkSpace/Algorithm/cpp/test.cpp<cr>"),
 				dashboard.button("tp", "  python", "<cmd> e ~/WorkSpace/Algorithm/python/test.py<cr>"),
 				dashboard.button("tu", "  cuda", "<cmd> e ~/WorkSpace/Algorithm/cuda/test.cu<cr>"),
+				dashboard.button("ts", "  shell", "<cmd> e ~/WorkSpace/Algorithm/shell/test.sh<cr>"),
 				dashboard.button("b", "  Blog", "<cmd> e ~/Hexo-Blog/blog-demo/source/_posts/<cr>"),
 				dashboard.button("l", "󰒲  Lazy", "<cmd> Lazy <cr>"),
 				dashboard.button("h", "  Helath check", "<cmd> checkhealth <cr>"),

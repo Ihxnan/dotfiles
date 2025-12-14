@@ -9,5 +9,12 @@ return {
 		sign = { enabled = false },
 		heading = { position = "inline" },
 		latex = { position = "above" },
+		link = {
+			click = { enabled = true },
+			keymap = {
+				open = "gl",
+				open_browser = "gL",
+			},
+		},
 	},
 }
