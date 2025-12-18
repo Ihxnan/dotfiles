@@ -123,8 +123,8 @@ keymap.set("n", "<leader>i", ":w<CR><C-w>v:terminal<CR>iiflow<CR>", { desc = "op
 keymap.set("n", "rc", run_code, { desc = "run the code" })
 keymap.set("n", "ru", run_cuda, { desc = "run the cuda" })
 keymap.set("n", "rd", run_code_with_data, { desc = "run the code with the data" })
-keymap.set("n", "dp", "<C-w>s:terminal<CR>idp", { desc = "run the code with the data" })
--- keymap.set("n", "<F5>", run_code, { desc = "run the code" })
+keymap.set("n", "dp", ":w<CR><C-w>s:terminal<CR>idp -k", { desc = "run the code with the data" })
+keymap.set("n", "<F5>", ":w<CR>:silent !code . &<CR>", { desc = "debug in vscode" })
 
 -- go window focus {h, j, k, l}
 keymap.set("n", "<C-h>", "<C-w>h", { desc = "go window left" })

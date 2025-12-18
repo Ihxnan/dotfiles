@@ -122,14 +122,14 @@ source $ZSH/oh-my-zsh.sh
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/ihxnan/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+__conda_setup="$('/opt/anaconda/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
 else
-    if [ -f "/home/ihxnan/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/ihxnan/anaconda3/etc/profile.d/conda.sh"
+    if [ -f "/opt/anaconda/etc/profile.d/conda.sh" ]; then
+        . "/opt/anaconda/etc/profile.d/conda.sh"
     else
-        export PATH="/home/ihxnan/anaconda3/bin:$PATH"
+        export PATH="/opt/anaconda/bin:$PATH"
     fi
 fi
 unset __conda_setup
@@ -156,7 +156,7 @@ export LC_ALL=en_US.UTF-8
 
 # 将用户自定义二进制目录添加到系统路径
 # 使 ~/bin 目录下的可执行文件无需绝对路径即可运行
-export PATH=/opt/cuda/bin:$PATH:~/bin/:~/blender-git/build_linux/bin
+export PATH=/opt/cuda/bin:$PATH:~/Github/bin
 
 # 设置默认浏览器为 chromium
 export BROWSER=/usr/bin/chromium
@@ -176,6 +176,7 @@ export yun='ubuntu@106.53.202.12'
 alias c=clear
 
 alias g=git
+
 alias f=$HOME/.config/scripts/fastfetch-random-wife.sh
 
 # 终端文件管理器快速启动
@@ -211,3 +212,4 @@ alias push='hexo clean && hexo generate && hexo deploy && submit'
 # nvcc 指定算力
 alias nvcc='nvcc -arch=sm_89'
 
+alias mv='mv -i'
