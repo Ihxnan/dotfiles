@@ -49,6 +49,19 @@ nmap J 5j
 " shift + k 快速上移
 nmap K 5k
 
+" 单行移动
 nmap j gj
 nmap k gk
 
+" 插入模式下的光标移动
+inoremap <C-j> <Down>
+inoremap <C-k> <Up>
+inoremap <C-i> <Left>
+inoremap <C-l> <Right>
+
+" 设置插入模式下的光标格式
+let &t_SI = "\e[6 q"
+let &t_EI = "\e[2 q"
+autocmd InsertEnter * silent! execute "normal! \e[6 q"
+autocmd InsertLeave * silent! execute "normal! \e[2 q"
+autocmd VimLeave * silent! execute "normal! \e[0 q"
