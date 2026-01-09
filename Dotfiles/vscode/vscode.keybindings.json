@@ -1,0 +1,114 @@
+// 将键绑定放在此文件中以覆盖默认值
+[
+    {
+        "key": "ctrl+oem_7",
+        "command": "workbench.action.openSettings"
+    },
+    {
+        "key": "ctrl+oem_comma",
+        "command": "-workbench.action.openSettings"
+    },
+    {
+        "key": "ctrl+alt+n",
+        "command": "explorer.newFile"
+    },
+    {
+        "key": "ctrl+shift+oem_7",
+        "command": "C_Cpp.CreateDeclarationOrDefinition"
+    },
+    {
+        "key": "alt+j",
+        "command": "fittencode.editCompletion",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "alt+o",
+        "command": "-fittencode.editCompletion",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "ctrl+alt+e",
+        "command": "fittencode.documentCode"
+    },
+    {
+        "key": "ctrl+alt+e",
+        "command": "-fittencode.editCode",
+        "when": "true"
+    },
+    {
+        "key": "alt+l alt+o",
+        "command": "extension.openInDefaultBrowser"
+    },
+    {
+        "key": "alt+b",
+        "command": "-extension.openInDefaultBrowser"
+    },
+    {
+        "key": "alt+b",
+        "command": "extension.liveServer.goOnline",
+        "when": "editorTextFocus"
+    },
+    {
+        "key": "alt+l alt+o",
+        "command": "-extension.liveServer.goOnline",
+        "when": "editorTextFocus"
+    },
+    // vim
+    {
+        "key": "ctrl+d",
+        "command": "editor.action.peekDefinition"
+    },
+    {
+        "key": "ctrl+d",
+        "command": "editor.closeTestPeek",
+        "when": "testing.isInPeek && !config.editor.stablePeek || testing.isPeekVisible && !config.editor.stablePeek"
+    },
+    {
+        "key": "ctrl+n",
+        "command": "editor.action.rename"
+    },
+    {
+        "key": "ctrl+z",
+        "command": "workbench.action.terminal.focus"
+    },
+    {
+        "key": "ctrl+z",
+        "command": "workbench.action.focusActiveEditorGroup",
+        "when": "terminalFocus"
+    },
+    {
+        "key": "ctrl+m",
+        "command": "workbench.action.toggleEditorWidths"
+    },
+    {
+        "key": "ctrl+\\",
+        "command": "workbench.action.splitEditor"
+    },
+    {
+        "key": "ctrl+h",
+        "command": "workbench.action.navigateLeft"
+    },
+    {
+        "key": "ctrl+l",
+        "command": "workbench.action.navigateRight"
+    },
+    {
+        "key": "ctrl+w",
+        "command": "workbench.action.closeEditorsAndGroup"
+    },
+    {
+        "key": "shift+alt+f",
+        "command": "prettier.forceFormatDocument"
+    },
+    {
+        "key": "shift+alt+f",
+        "command": "-filesExplorer.findInFolder",
+        "when": "explorerResourceIsFolder && filesExplorerFocus && foldersViewVisible && !inputFocus"
+    },
+    {
+        "key": "shift+alt+f",
+        "command": "-search.action.restrictSearchToFolder",
+        "when": "folderMatchWithResourceFocus && searchViewletVisible"
+    }
+]
+

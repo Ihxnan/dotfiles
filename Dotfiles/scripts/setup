@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail  # 遇到错误立即退出，避免配置混乱
+
+# ========================= 1. 配置路径定义（保持核心逻辑，补充注释） =========================
+# 前提：脚本与源配置在同一目录（如 ~/Github/Dotfiles/）
+# 规则：sources_* 相对路径，targets_* 绝对路径（目录无 /），数组顺序一一对应
+
+# 1.1 ~/.config/ 下的配置（Ranger 拆分为核心文件，排除 __pycache__）
+sources_config=(
+    ".config/alacritty"
+    ".config/fish"
+    ".config/i3blocks"
+    ".config/nvim"                # Neovim 配置（若遇软链接循环，需拆分为子目录/文件）
+    ".config/ranger/rc.conf"
+    ".config/ranger/commands.py"
+    ".config/ranger/devicons.py"  # Ranger 图标脚本（需确保权限）
+    ".config/ranger/plugins"
+    ".config/ranger/scope.sh"
+    ".config/picom.conf"
+    ".config/mpd"
+    ".config/ncmpcpp"
+    ".config/dunst"
+    ".config/polybar"
+    ".config/rofi"
+    ".config/kitty"
+)
+targets_config=(
+    "$HOME/.config/alacritty"
+    "$HOME/.config/fish"
+    "$HOME/.config/i3blocks"
+    "$HOME/.config/nvim"
+    "$HOME/.config/ranger/rc.conf"
+    "$HOME/.config/ranger/commands.py"
+    "$HOME/.config/ranger/devicons.py"
+    "$HOME/.config/ranger/plugins"
+    "$HOME/.config/ranger/scope.sh"
+    "$HOME/.config/picom.conf"
+    "$HOME/.config/mpd"
+    "$HOME/.config/ncmpcpp"
+    "$HOME/.config/dunst"
+    "$HOME/.config/polybar"
+    "$HOME/.config/rofi"
+    "$HOME/.config/kitty"
+)
+
+# 1.2 ~/ 根目录下的配置（含 Zsh custom 目录）
+sources_home=(
+    ".vimrc"
+    ".i3"
+    ".zshrc"
+    ".p10k.zsh"
+    "custom"  # Zsh 插件/主题目录
+    ".Xresources"
+    ".profile"
+    ".scripts"
+)
+targets_home=(
+    "$HOME/.vimrc"
+    "$HOME/.i3"
+    "$HOME/.zshrc"
+    "$HOME/.p10k.zsh"
+    "$HOME/.oh-my-zsh/custom"
+    "$HOME/.Xresources"
+    "$HOME/.profile"
+    "$HOME/.scripts"
+)
+
+# ========================= 2. 工具函数 =========================
+# 函数1：创建软链接 + 自动修复脚本权限
+create_symlink() {
+    local src="$1"
+    local dest="$2"
+    local src_abs
+    local dest_dir
+
+    # 2.1 校验源路径
+    if [ ! -e "$src" ]; then
+        echo -e "⚠️  源路径不存在，跳过：$src"
+        return 1
+    fi
+    src_abs=$(realpath "$src")
+
+    # 2.2 确保目标父目录存在
+    dest_dir=$(dirname "$dest")
+    if [ ! -d "$dest_dir" ]; then
+        echo -e "📂 创建目标父目录：$dest_dir"
+        mkdir -p "$dest_dir"
+    fi
+
+    # 2.3 处理旧目标
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        [ -L "$dest" ] && echo -e "🔗 删除旧软链接：$dest" || echo -e "🗑️  删除旧文件/目录：$dest"
+        rm -rf "$dest"
+    fi
+
+    # 2.4 创建软链接
+    ln -s "$src_abs" "$dest"
+    echo -e "✅ 软链接创建成功：\n  源：$src_abs\n  目标：$dest"
+
+    # 对 .py/.sh 等可执行脚本，自动添加「所有者读+执行权限」
+    if [[ "$src_abs" =~ \.(py|sh)$ ]]; then
+        # 先检查当前权限，无执行权限时才修改
+        if [ ! -x "$src_abs" ]; then
+            chmod u+rx "$src_abs"
+            echo -e "🔧 自动修复脚本权限：$src_abs（添加 u+rx 权限）"
+        fi
+    fi
+}
+
+# 函数2：校验 Oh My Zsh 安装
+check_oh_my_zsh() {
+    local omz_dir="$HOME/.oh-my-zsh"
+    if [ ! -d "$omz_dir" ]; then
+        echo -e "\n⚠️  Oh My Zsh 未安装（$omz_dir 不存在）"
+        read -p "是否立即安装？(y/n，默认 n)：" install_choice
+        install_choice=${install_choice:-n}
+
+        if [ "$install_choice" = "y" ]; then
+            echo -e "🔧 安装 Oh My Zsh..."
+            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+            echo -e "✅ Oh My Zsh 安装完成"
+        else
+            echo -e "ℹ️  跳过 custom 目录配置"
+            sources_home=("${sources_home[@]::${#sources_home[@]}-1}")
+            targets_home=("${targets_home[@]::${#targets_home[@]}-1}")
+        fi
+    fi
+}
+
+# 函数3：检测 Neovim 软链接循环风险
+check_nvim_symlink_cycle() {
+    local nvim_src="${sources_config[3]}"  # sources_config 中第4个元素是 .config/nvim
+    local nvim_dest="${targets_config[3]}" # targets_config 中第4个元素是 ~/.config/nvim
+
+    # 若 Neovim 是目录级软链接，提示循环风险（针对 VimWiki 场景）
+    if [ -d "$nvim_src" ] && [ "$(basename "$nvim_src")" = "nvim" ]; then
+        echo -e "\n⚠️  检测到 Neovim 是目录级软链接，可能导致 VimWiki 循环错误！"
+        echo -e "   解决方案：将 Neovim 拆分为子目录/文件级软链接，参考命令："
+        echo -e "   1. rm $nvim_dest"
+        echo -e "   2. mkdir -p $nvim_dest"
+        echo -e "   3. ln -s ~/Github/Dotfiles/.config/nvim/init.lua $nvim_dest/init.lua"
+        echo -e "   4. ln -s ~/Github/Dotfiles/.config/nvim/lua $nvim_dest/lua"
+        read -p "是否继续当前配置？(y/n，默认 y)：" continue_choice
+        continue_choice=${continue_choice:-y}
+        if [ "$continue_choice" = "n" ]; then
+            echo -e "❌ 退出脚本，请先调整 Neovim 配置方式"
+            exit 1
+        fi
+    fi
+}
+
+# ========================= 3. 主执行流程 =========================
+# 步骤1：校验 Oh My Zsh
+echo -e "=== 第一步：校验 Oh My Zsh 环境 ==="
+if [[ " ${sources_home[@]} " =~ " custom " ]]; then
+    check_oh_my_zsh
+fi
+
+# 步骤2：检测 Neovim 软链接循环风险（新增）
+echo -e "\n=== 第二步：检测 Neovim 软链接循环风险 ==="
+check_nvim_symlink_cycle
+
+# 步骤3：配置 ~/.config/ 软链接
+echo -e "\n=== 第三步：配置 ~/.config/ 目录软链接 ==="
+for i in "${!sources_config[@]}"; do
+    create_symlink "${sources_config[$i]}" "${targets_config[$i]}"
+    echo -e "------------------------"
+done
+
+# 步骤4：配置 ~/ 根目录软链接
+echo -e "\n=== 第四步：配置 ~/ 根目录软链接 ==="
+for i in "${!sources_home[@]}"; do
+    create_symlink "${sources_home[$i]}" "${targets_home[$i]}"
+    echo -e "------------------------"
+done
+
+# ========================= 4. 配置完成提示 =========================
+echo -e "\n🎉 所有软链接配置完成！"
+echo -e "\n📌 生效指南："
+echo -e "  - 终端应用：重启终端；i3：Mod + Shift + R；Picom/Dunst：pkill 进程后重启；"
+echo -e "  - 修改配置：直接编辑 ~/Github/Dotfiles/ 下的源文件，目标路径自动同步。"
