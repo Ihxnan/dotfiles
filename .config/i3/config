@@ -62,7 +62,7 @@ bindsym $mod+Shift+q kill
 
 # start program launcher
 bindsym $mod+d exec --no-startup-id rofi -theme material -font "hack 20" -show drun -show-icons 
-bindsym $mod+s exec --no-startup-id ~/bin/rofi-search.sh
+bindsym $mod+s exec --no-startup-id ~/./scripts/rofi/rofi-search.sh
 bindsym $mod+z exec --no-startup-id rofi -theme material -font "hack 20" -show run -show-icons
 
 ################################################################################################
@@ -99,13 +99,13 @@ bindsym $mod+l focus right
 
 # 使用方向键控制
 # 上箭头：播放/暂停
-bindsym $mod+Up exec ~/bin/music_toggle
+bindsym $mod+Up exec ~/.scripts/mpd/music_toggle
 # 左箭头：上一曲
-bindsym $mod+Left exec ~/bin/music_prev
+bindsym $mod+Left exec ~/.scripts/mpd/music_prev
 # 右箭头：下一曲
-bindsym $mod+Right exec ~/bin/music_next
+bindsym $mod+Right exec ~/.scripts/mpd/music_next
 # 下箭头：cava + ncmpcpp
-bindsym $mod+Down exec --no-startup-id ~/bin/mpd_toggle
+bindsym $mod+Down exec ~/.scripts/mpd/mpd_toggle
 
 # move focused window
 bindsym $mod+Shift+h move left
@@ -235,7 +235,7 @@ for_window [class="^cava-float$"] border pixel 1
 bindsym $mod+Shift+r restart
 
 # exit i3 (logs you out of your X session)
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
+bindsym $mod+Shift+e exec i3-msg exit
 
 # 提前定义「关闭i3-nagbar」的快捷变量，一次定义，多处使用
 set $close_nagbar exec --no-startup-id pkill -f "i3-nagbar -m"

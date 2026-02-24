@@ -1,0 +1,166 @@
+
+{
+    // 工作台相关设置
+    "workbench.startupEditor": "none",
+    "workbench.colorTheme": "Dracula Theme",
+    "workbench.list.smoothScrolling": true,
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.sideBar.location": "right",
+    // 文件自动保存和编码相关设置
+    "files.autoSave": "afterDelay",
+    "files.autoGuessEncoding": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.autoSaveDelay": 500,
+    "files.associations": {
+        "ostream": "cpp"
+    },
+    // 编辑器相关设置
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.smoothScrolling": true,
+    "editor.tabCompletion": "onlySnippets",
+    "editor.fontSize": 18,
+    "editor.fontFamily": "'JetBrainsMono Nerd Font', Consolas, 'Courier New', monospace",
+    "editor.stickyScroll.enabled": false,
+    "editor.cursorBlinking": "smooth",
+    "editor.mouseWheelZoom": true,
+    "editor.accessibilitySupport": "off",
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    "editor.formatOnSave": true,
+    "editor.wordWrap": "on",
+    "editor.guides.bracketPairs": true,
+    "editor.fontLigatures": true,
+    "editor.defaultFormatter": null,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.acceptSuggestionOnEnter": "smart",
+    "editor.suggestSelection": "recentlyUsed",
+    "editor.minimap.enabled": false,
+    // "editor.defaultFormatter": "esbenp.prettier-vscode",
+    // 扩展相关设置 
+    "debug.showBreakpointsInOverviewRuler": true,
+    "debug.onTaskErrors": "abort",
+    // vim 插件相关设置
+    "vim.useCtrlKeys": true,
+    "vim.handleKeys": {
+        "<C-w>": false,
+        "<C-c>": false,
+        "<C-v>": false,
+        "<C-b>": false,
+        "<C-j>": false,
+        "<C-a>": false,
+        "<C-k>": false,
+        "<C-r>": false,
+        "<C-x>": false
+    },
+    "vim.useSystemClipboard": true,
+    "vim.insertModeKeyBindings": [
+        {
+            "before": [
+                "j",
+                "k"
+            ],
+            "after": [
+                "<Esc>"
+            ]
+        }
+    ],
+    "vim.visualModeKeyBindings": [
+        {
+            "before": [
+                "i",
+                "i"
+            ],
+            "after": [
+                "<Esc>"
+            ]
+        }
+    ],
+    "vim.normalModeKeyBindings": [
+        {
+            "before": [
+                "<leader>",
+                "t",
+                "n"
+            ],
+            "commands": [
+                ":tabnext"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "t",
+                "p"
+            ],
+            "commands": [
+                ":tabprev"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "t",
+                "f"
+            ],
+            "commands": [
+                ":tabfirst"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "t",
+                "l"
+            ],
+            "commands": [
+                ":tablast"
+            ]
+        }
+    ],
+    "vim.ignorecase": false,
+    "vim.leader": " ",
+    "vim.easymotion": true,
+    "vim.sneak": true,
+    "vim.surround": true,
+    "vim.statusBarColorControl": true,
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#005f5f",
+        "statusBar.noFolderBackground": "#005f5f",
+        "statusBar.debuggingBackground": "#005f5f",
+        "statusBar.foreground": "#ffffff",
+        "statusBar.debuggingForeground": "#ffffff"
+    },
+    // 其他设置 
+    "window.dialogStyle": "custom",
+    "window.restoreWindows": "none",
+    "zenMode.hideLineNumbers": false,
+    "prettier.printWidth": 120,
+    "prettier.tabWidth": 4,
+    "prettier.semi": false,
+    "prettier.endOfLine": "auto",
+    "prettier.bracketSpacing": true,
+    "cmake.pinnedCommands": [
+        "workbench.action.tasks.configureTaskRunner",
+        "workbench.action.tasks.runTask"
+    ],
+    "explorer.confirmDelete": false,
+    "breadcrumbs.enabled": false,
+    "security.workspace.trust.untrustedFiles": "open",
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "terminal.integrated.enableMultiLinePasteWarning": "never",
+    "explorer.confirmPasteNative": false,
+    "fiveServer.browser": [
+        "chromium"
+    ],
+    "fiveServer.highlight": true,
+    "fiveServer.injectBody": true,
+    "fiveServer.navigate": true,
+    "backgroundCover.imagePath": "/home/ihxnan/Pictures/background-gif/bg.gif",
+    "terminal.integrated.inheritEnv": false,
+    "task.verboseLogging": true,
+}
+

@@ -2,12 +2,19 @@
 
 set -e
 
+# Log file setup
+LOG_FILE="install.log"
+exec > >(tee -a "$LOG_FILE")
+exec 2>&1
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;36m'
 BOLD='\033[0;1m'
 NC='\033[0;0m'
+
+echo -e "${BLUE}=== Installation started at $(date) ===${NC}"
 
 if [[ ! -d /run/archiso ]]; then
     echo -e "${RED}Error: Please run this script in the Arch Linux ISO environment!${NC}"
@@ -127,7 +134,7 @@ mount --mkdir ${DISK}1 /mnt/efi
 
 echo -e "${GREEN}=== Installing base system ===${NC}"
 pacstrap -K /mnt base base-devel linux-zen linux-firmware btrfs-progs --noconfirm
-pacstrap /mnt grub efibootmgr networkmanager sudo vim nano intel-ucode zram-generator fastfetch --noconfirm
+pacstrap /mnt grub efibootmgr networkmanager sudo vim neovim nano intel-ucode zram-generator fastfetch --noconfirm
 
 echo -e "${GREEN}=== Generating fstab ===${NC}"
 genfstab -U /mnt >>/mnt/etc/fstab
@@ -189,8 +196,25 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}ZRAM configured.${NC}"
 
+echo -e "${YELLOW}Configuring pacman and AUR helper...${NC}"
+arch-chroot /mnt /bin/bash -c "
+    sed -i 's/^#Color$/Color/' /etc/pacman.conf
+    echo -e '[multilib]\nInclude = /etc/pacman.d/mirrorlist\n[archlinuxcn]\nSigLevel = Never\nServer = https://mirrors.ustc.edu.cn/archlinuxcn/\$arch' >> /etc/pacman.conf
+    pacman -Sy --noconfirm archlinux-keyring
+    pacman -S --noconfirm paru
+    sed -i 's/^#BottomUp/BottomUp/' /etc/paru.conf
+"
+echo -e "${GREEN}Pacman and AUR helper configured.${NC}"
+
+echo -e "${YELLOW}Installing LTS kernel...${NC}"
+arch-chroot /mnt /bin/bash -c "
+    pacman -S --noconfirm linux-lts
+"
+echo -e "${GREEN}LTS kernel installed.${NC}"
+
 echo -e "${YELLOW}Configuring GRUB parameters...${NC}"
 arch-chroot /mnt /bin/bash -c "
+    echo 'EDITOR=nvim' >> /etc/environment
     sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5\"/' /etc/default/grub
 "
 echo -e "${GREEN}GRUB parameters optimized.${NC}"

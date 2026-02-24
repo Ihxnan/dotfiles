@@ -2,7 +2,7 @@
 
 个人 Linux 桌面环境配置，基于 Arch Linux + i3wm 的平铺窗口管理器，支持动态主题切换、自动壁纸、音乐播放等功能。
 
-## 一键安装
+## ArchLinux一键安装脚本
 
 ```sh
 bash <(curl -L ihxnan.xyz/install.sh)

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+if pgrep -x "mpd" > /dev/null; then
+    mpc next
+fi
+
+if pgrep -x "spotify" > /dev/null; then
+    playerctl -p spotify next
+fi
+
