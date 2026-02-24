@@ -120,10 +120,10 @@ if [ "$NUM_FILES" -gt 0 ]; then
     background_job >/dev/null 2>&1 &
 
 else
-    # === 场景 B: 没库存 (用户选择等待) ===
-    echo "库存为空，正在获取新老婆..."
+    # === Scenario B: No cache (user waits) ===
+    echo "Cache empty, fetching new waifu..."
 
-    # ✅ 修复4: 循环重试下载，直到成功获取有效图片，解决单次下载失败问题
+    # ✅ Fix 4: Loop retry download until success, solving single download failure issue
     for ((i=1; i<=3; i++)); do
         download_one_image
         shopt -s nullglob
@@ -146,7 +146,7 @@ if [ -n "$SELECTED_IMG" ] && [ -f "$SELECTED_IMG" ]; then
     # 阅后即焚
     rm -f "$SELECTED_IMG"
 else
-    # 只有彻底断网且缓存为空时才会显示这个
-    echo "图片获取彻底失败（可能是网络问题），暂用默认 Logo"
+    # Only shown when completely offline and cache is empty
+    echo "Image fetch failed (network issue), using default logo"
     fastfetch "$@"
 fi

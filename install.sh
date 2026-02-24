@@ -29,13 +29,20 @@ echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 2: Install Base Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${YELLOW}Installing window manager and desktop environment...${NC}"
-sudo pacman -S --noconfirm i3-wm i3-gaps polybar rofi dunst picom feh
+sudo pacman -S --noconfirm xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm i3-gaps polybar rofi dunst picom feh
+sudo systemctl enable lightdm
+sudo systemctl set-default graphical.target
 
 echo -e "${YELLOW}Installing terminals...${NC}"
 sudo pacman -S --noconfirm alacritty kitty
 
 echo -e "${YELLOW}Installing music software...${NC}"
 sudo pacman -S --noconfirm mpd ncmpcpp cava playerctl
+mkdir ~/.mpd
+mkdir ~/.mpd/playlists
+mkdir ~/Music
+sudo mkdir /etc/timidity
+sudo touch /etc/timidity/timidity.cfg
 
 echo -e "${YELLOW}Installing system tools...${NC}"
 sudo pacman -S --noconfirm btop fastfetch nvidia-utils eza fzf
@@ -109,6 +116,9 @@ paru -S --noconfirm yazi
 
 echo -e "${YELLOW}Installing lazygit...${NC}"
 paru -S --noconfirm lazygit
+
+echo -e "${YELLOW}Installing jq...${NC}"
+paru -S --noconfirm jq
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 5: Install Other Dependencies${NC}"

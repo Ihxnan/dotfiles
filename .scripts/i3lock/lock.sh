@@ -44,4 +44,4 @@ i3lock \
 # --keylayout 1                \
 # --time-font="Monaco"        \
 
-xdotool mousemove_relative 1 1 # 该命令用于解决自动锁屏后未展示锁屏界面的问题(移动一下鼠标)
+xdotool mousemove_relative 1 1 # This command solves the issue where lock screen is not displayed after auto-lock (moves the mouse)
