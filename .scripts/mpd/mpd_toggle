@@ -1,0 +1,57 @@
+
+#!/usr/bin/env bash
+
+TERMINAL="alacritty"
+NCMPCPP_TERM_TITLE="ncmpcpp-term"
+MPD_CLIENT="ncmpcpp"
+NCMPCPP_TERM_CLASS="ncmpcpp-float"
+CAVA_TERM_TITLE="cava-term"
+CAVA_CLIENT="cava"
+CAVA_TERM_CLASS="cava-float"
+LAUNCH_DELAY=0.1
+
+check_running() {
+    local proc=$1
+    pgrep -x "$proc" >/dev/null && echo "true" || echo "false"
+}
+
+kill_proc_and_term() {
+    local proc=$1
+    if [[ $(check_running "$proc") == "true" ]]; then
+        local proc_pid=$(pgrep -x "$proc" -o)
+        local term_pid=$(ps -o ppid= -p "$proc_pid" | awk '{print $1}')
+        kill -9 "$term_pid" 2>/dev/null
+        sleep $LAUNCH_DELAY
+    fi
+}
+
+start_single_term() {
+    local client=$1
+    local term_class=$2
+    local term_title=$3
+    if [[ $(check_running "$client") == "false" ]]; then
+        $TERMINAL --class "$term_class" -t "$term_title" -e "$client" &
+        sleep $LAUNCH_DELAY
+    fi
+}
+
+mpd_running=$(check_running "mpd")
+if [[ "$mpd_running" == "false" ]]; then
+    if mpd 2>/dev/null; then
+        sleep 0.3
+    else
+        exit 1
+    fi
+fi
+
+ncmpcpp_running=$(check_running "$MPD_CLIENT")
+cava_running=$(check_running "$CAVA_CLIENT")
+
+if [[ "$ncmpcpp_running" == "true" && "$cava_running" == "true" ]]; then
+    kill_proc_and_term "$MPD_CLIENT"
+    kill_proc_and_term "$CAVA_CLIENT"
+else
+    start_single_term "$CAVA_CLIENT" "$CAVA_TERM_CLASS" "$CAVA_TERM_TITLE"
+    start_single_term "$MPD_CLIENT" "$NCMPCPP_TERM_CLASS" "$NCMPCPP_TERM_TITLE"
+fi
+

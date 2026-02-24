@@ -1,0 +1,44 @@
+[config.wallpaper]
+command = ""
+arguments = []
+set = false
+
+[templates.alacritty]
+input_path = './templates/alacritty.toml'
+output_path = '~/.config/alacritty/alacritty-colors.toml'
+
+[templates.btop]
+input_path = './templates/btop.theme'
+output_path = '~/.config/btop/themes/matugen.theme'
+post_hook = 'pkill -USR2 btop || true'
+
+[templates.cava]
+input_path = './templates/cava-colors.ini'
+output_path = '~/.config/cava/themes/cava-theme'
+post_hook = 'pkill -USR1 cava || true'
+
+[templates.dunst]
+input_path = './templates/dunstrc-colors'
+output_path = '~/.config/dunst/dunstrc'
+post_hook = 'dunstctl reload'
+
+[templates.fastfetch]
+input_path = './templates/fastfetch-config.jsonc'
+output_path = '~/.config/fastfetch/config.jsonc'
+
+[templates.fcitx5]
+input_path = './templates/fcitx5-theme.conf'
+output_path = '~/.local/share/fcitx5/themes/Matugen/theme.conf'
+
+[templates.gtk3]
+input_path ='./templates/gtk-colors.css'
+output_path = '~/.config/gtk-3.0/colors.css'
+
+[templates.kitty]
+input_path = './templates/kitty-colors.conf'
+output_path = '~/.config/kitty/kitty-colors.conf'
+post_hook = '$HOME/.scripts/kitty/reload.sh'
+
+[templates.yazi]
+input_path = './templates/yazi-theme.toml'
+output_path = '~/.config/yazi/theme.toml'

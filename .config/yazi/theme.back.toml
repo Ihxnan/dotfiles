@@ -1,0 +1,9 @@
+[icon]
+prepend_dirs = [
+    { name = "Github", text = "", fg = "#009688" },
+]
+prepend_conds = [
+	{ if = "hidden & dir",  text = "👻" },
+	{ if = "dir",           text = "📁" },
+	{ if = "!(dir | link)", text = "📄" },
+]
