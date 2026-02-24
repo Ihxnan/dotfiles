@@ -74,6 +74,8 @@ create_symlink "$DOTFILES_DIR/.config/nvim" "$HOME/.config/nvim"
 create_symlink "$DOTFILES_DIR/.config/polybar" "$HOME/.config/polybar"
 create_symlink "$DOTFILES_DIR/.config/rofi" "$HOME/.config/rofi"
 create_symlink "$DOTFILES_DIR/.config/yazi" "$HOME/.config/yazi"
+create_symlink "$DOTFILES_DIR/.config/xdg-desktop-portal" "$HOME/.config/xdg-desktop-portal"
+create_symlink "$DOTFILES_DIR/.config/xdg-desktop-portal-termfilechooser" "$HOME/.config/xdg-desktop-portal-termfilechooser"
 
 echo ""
 echo "========================================="

@@ -45,7 +45,7 @@ sudo mkdir /etc/timidity
 sudo touch /etc/timidity/timidity.cfg
 
 echo -e "${YELLOW}Installing system tools...${NC}"
-sudo pacman -S --noconfirm btop fastfetch nvidia-utils eza fzf
+sudo pacman -S --noconfirm btop eza fzf
 
 echo -e "${YELLOW}Installing editor...${NC}"
 sudo pacman -S --noconfirm neovim
@@ -131,6 +131,12 @@ paru -S --noconfirm i3lock-color
 
 echo -e "${YELLOW}Installing SSH file system...${NC}"
 sudo pacman -S --noconfirm sshfs
+
+echo -e "${YELLOW}Installing xdg-desktop-portal-termfilechooser"
+paru -S --noconfirm xdg-desktop-portal-termfilechooser-hunkyburrito-git
+
+echo -e "${YELLOW}Installing chromium"
+paru -S --noconfirm chromium
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 6: Create Required Directories${NC}"
