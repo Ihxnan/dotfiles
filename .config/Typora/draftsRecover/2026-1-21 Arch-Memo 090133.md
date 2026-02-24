@@ -1,5 +1,0 @@
-![fastfetch](../img/fastfetch1.png)
-![fastfetch](../img/fastfetch2.png)
-![fastfetch](../img/fastfetch3.png)
-![fastfetch](../img/fastfetch4.png)
-![fastfetch](../img/fastfetch5.png)

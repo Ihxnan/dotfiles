@@ -5,24 +5,20 @@ set -e
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Dotfiles 目录: $DOTFILES_DIR"
 
-# 颜色定义
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# 创建符号链接的函数
 create_symlink() {
     local src="$1"
     local dest="$2"
 
-    # 检查源文件是否存在
     if [[ ! -e "$src" ]]; then
         echo -e "${RED}✗ 源文件不存在: $src${NC}"
         return 1
     fi
 
-    # 如果目标已存在，先备份
     if [[ -e "$dest" || -L "$dest" ]]; then
         echo -e "${YELLOW}⚠ 目标已存在: $dest${NC}"
         read -p "是否删除并创建符号链接? (y/N) " -n 1 -r
@@ -36,17 +32,14 @@ create_symlink() {
         fi
     fi
 
-    # 确保目标目录存在
     local dest_dir
     dest_dir=$(dirname "$dest")
     mkdir -p "$dest_dir"
 
-    # 创建符号链接
     ln -s "$src" "$dest"
     echo -e "${GREEN}✓ 已创建符号链接: $dest -> $src${NC}"
 }
 
-# 主配置文件
 echo "========================================="
 echo "链接主配置文件..."
 echo "========================================="
@@ -60,7 +53,6 @@ create_symlink "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
 create_symlink "$DOTFILES_DIR/.keynavrc" "$HOME/.keynavrc"
 create_symlink "$DOTFILES_DIR/.wallpapers" "$HOME/.wallpapers"
 
-# .config 目录下的配置（直接链接整个文件夹）
 echo ""
 echo "========================================="
 echo "链接 .config 目录..."
@@ -83,7 +75,6 @@ create_symlink "$DOTFILES_DIR/.config/polybar" "$HOME/.config/polybar"
 create_symlink "$DOTFILES_DIR/.config/rofi" "$HOME/.config/rofi"
 create_symlink "$DOTFILES_DIR/.config/yazi" "$HOME/.config/yazi"
 
-# 脚本目录
 echo ""
 echo "========================================="
 echo "链接脚本目录..."
