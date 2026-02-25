@@ -160,8 +160,12 @@ install_paru lazygit
 
 install_paru jq
 
+install_paru jdtls
+
+install_paru xclip
+
 if install_paru miniconda3; then
-    conda config --set auto_activate_base false
+    zsh -c "conda config --set auto_activate_base false"
 fi
 
 echo -e "${BLUE}=========================================${NC}"
@@ -180,6 +184,8 @@ install_paru chromium
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 6: Create Required Directories${NC}"
 echo -e "${BLUE}=========================================${NC}"
+mkdir -p ~/WorkSpace/Algorithm/cpp
+mkdir -p ~/WorkSpace/Algorithm/python
 mkdir -p ~/.mpd/playlists
 mkdir ~/Music
 sudo mkdir /etc/timidity
