@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Dotfiles directory: $DOTFILES_DIR"
 
@@ -10,6 +8,51 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;36m'
 NC='\033[0m'
+
+FAILED_PACKAGES=()
+LOG_FILE="$DOTFILES_DIR/install_failed.log"
+
+log_failed() {
+    local package="$1"
+    local reason="$2"
+    FAILED_PACKAGES+=("$package: $reason")
+    echo -e "${RED}✗ Failed: $package - $reason${NC}"
+}
+
+install_pacman() {
+    local packages="$*"
+    echo -e "${YELLOW}Installing: $packages${NC}"
+    if ! sudo pacman -S --noconfirm $packages 2>&1; then
+        log_failed "$packages" "pacman installation failed"
+        return 1
+    fi
+    echo -e "${GREEN}✓ Installed: $packages${NC}"
+    return 0
+}
+
+install_paru() {
+    local package="$1"
+    echo -e "${YELLOW}Installing: $package${NC}"
+    if ! paru -S --noconfirm $package 2>&1; then
+        log_failed "$package" "paru installation failed"
+        return 1
+    fi
+    echo -e "${GREEN}✓ Installed: $package${NC}"
+    return 0
+}
+
+git_clone() {
+    local url="$1"
+    local dest="$2"
+    local name="${3:-$(basename $dest)}"
+    echo -e "${YELLOW}Cloning: $name${NC}"
+    if ! git clone --depth=1 $url $dest 2>&1; then
+        log_failed "$name" "git clone failed"
+        return 1
+    fi
+    echo -e "${GREEN}✓ Cloned: $name${NC}"
+    return 0
+}
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Dotfiles Dependency Installation Script${NC}"
@@ -23,57 +66,58 @@ fi
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 1: Update System${NC}"
 echo -e "${BLUE}=========================================${NC}"
-sudo pacman -Syu --noconfirm
+echo -e "${YELLOW}Updating system...${NC}"
+if ! sudo pacman -Syu --noconfirm 2>&1; then
+    log_failed "system update" "pacman update failed"
+fi
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 2: Install Base Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
-echo -e "${YELLOW}Installing noto-fonts and jetbrains-mono...${NC}"
-sudo pacman -S --noconfirm noto-fonts noto-fonts-emoji noto-fonts-cjk ttf-jetbrains-mono ttf-jetbrains-mono-nerd
+install_pacman noto-fonts noto-fonts-emoji noto-fonts-cjk ttf-jetbrains-mono ttf-jetbrains-mono-nerd
 
-echo -e "${YELLOW}Installing window manager and desktop environment...${NC}"
-sudo pacman -S --noconfirm xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm i3-gaps polybar rofi dunst picom feh
-sudo systemctl enable lightdm
-sudo systemctl set-default graphical.target
+install_pacman xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm i3-gaps polybar rofi dunst picom feh
+if [[ $? -eq 0 ]]; then
+    sudo systemctl enable lightdm
+    sudo systemctl set-default graphical.target
+fi
 
-echo -e "${YELLOW}Installing terminals...${NC}"
-sudo pacman -S --noconfirm alacritty kitty
+install_pacman alacritty kitty
 
-echo -e "${YELLOW}Installing music software...${NC}"
-sudo pacman -S --noconfirm mpd ncmpcpp cava playerctl pipewire-pulse
-systemctl --user enable --now pipewire-pulse
+install_pacman mpd ncmpcpp cava playerctl pipewire-pulse
+if [[ $? -eq 0 ]]; then
+    systemctl --user enable --now pipewire-pulse
+fi
 
-echo -e "${YELLOW}Installing system tools...${NC}"
-sudo pacman -S --noconfirm btop eza fzf
+install_pacman btop eza fzf
 
-echo -e "${YELLOW}Installing editor...${NC}"
-sudo pacman -S --noconfirm neovim
+install_pacman neovim
 
-echo -e "${YELLOW}Installing screenshot tool...${NC}"
-sudo pacman -S --noconfirm flameshot
+install_pacman flameshot
 
-echo -e "${YELLOW}Installing other tools...${NC}"
-sudo pacman -S --noconfirm lolcat ipython
+install_pacman lolcat ipython
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 3: Install Shell and Plugins${NC}"
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${YELLOW}Installing Zsh...${NC}"
-sudo pacman -S --noconfirm zsh
+install_pacman zsh
 
 echo -e "${YELLOW}Checking Oh My Zsh...${NC}"
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
     echo -e "${YELLOW}Installing Oh My Zsh...${NC}"
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    if ! sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended 2>&1; then
+        log_failed "oh-my-zsh" "curl or install script failed"
+    else
+        echo -e "${GREEN}✓ Installed: oh-my-zsh${NC}"
+    fi
 else
     echo -e "${GREEN}Oh My Zsh already installed${NC}"
 fi
 
 echo -e "${YELLOW}Checking Powerlevel10k...${NC}"
 if [[ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" ]]; then
-    echo -e "${YELLOW}Installing Powerlevel10k...${NC}"
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+    git_clone "https://github.com/romkatv/powerlevel10k.git" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" "powerlevel10k"
 else
     echo -e "${GREEN}Powerlevel10k already installed${NC}"
 fi
@@ -82,25 +126,25 @@ echo -e "${YELLOW}Installing Zsh plugins...${NC}"
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
-    git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
+    git_clone "https://github.com/zsh-users/zsh-autosuggestions" "$ZSH_CUSTOM/plugins/zsh-autosuggestions" "zsh-autosuggestions"
 else
     echo -e "${GREEN}zsh-autosuggestions already installed${NC}"
 fi
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
+    git_clone "https://github.com/zsh-users/zsh-syntax-highlighting.git" "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
 else
     echo -e "${GREEN}zsh-syntax-highlighting already installed${NC}"
 fi
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-completions" ]]; then
-    git clone https://github.com/zsh-users/zsh-completions $ZSH_CUSTOM/plugins/zsh-completions
+    git_clone "https://github.com/zsh-users/zsh-completions" "$ZSH_CUSTOM/plugins/zsh-completions" "zsh-completions"
 else
     echo -e "${GREEN}zsh-completions already installed${NC}"
 fi
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
-    git clone https://github.com/Aloxaf/fzf-tab $ZSH_CUSTOM/plugins/fzf-tab
+    git_clone "https://github.com/Aloxaf/fzf-tab" "$ZSH_CUSTOM/plugins/fzf-tab" "fzf-tab"
 else
     echo -e "${GREEN}fzf-tab already installed${NC}"
 fi
@@ -108,39 +152,30 @@ fi
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 4: Install AUR Packages${NC}"
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${YELLOW}Installing matugen...${NC}"
-paru -S --noconfirm matugen
+install_paru matugen
 
-echo -e "${YELLOW}Installing yazi...${NC}"
-paru -S --noconfirm yazi
+install_paru yazi
 
-echo -e "${YELLOW}Installing lazygit...${NC}"
-paru -S --noconfirm lazygit
+install_paru lazygit
 
-echo -e "${YELLOW}Installing jq...${NC}"
-paru -S --noconfirm jq
+install_paru jq
 
-echo -e "${YELLOW}Installing miniconda3...${NC}"
-paru -S --noconfirm miniconda3
-conda config --set auto_activate_base false
+if install_paru miniconda3; then
+    conda config --set auto_activate_base false
+fi
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 5: Install Other Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${YELLOW}Installing Neovim dependencies...${NC}"
-sudo pacman -S --noconfirm npm python tree-sitter-cli bat
+install_pacman npm python tree-sitter-cli bat
 
-echo -e "${YELLOW}Installing lock screen tool...${NC}"
-paru -S --noconfirm i3lock-color
+install_paru i3lock-color
 
-echo -e "${YELLOW}Installing SSH file system...${NC}"
-sudo pacman -S --noconfirm sshfs
+install_pacman sshfs
 
-echo -e "${YELLOW}Installing xdg-desktop-portal-termfilechooser...${NC}"
-paru -S --noconfirm xdg-desktop-portal-termfilechooser-hunkyburrito-git
+install_paru xdg-desktop-portal-termfilechooser-hunkyburrito-git
 
-echo -e "${YELLOW}Installing chromium"
-paru -S --noconfirm chromium
+install_paru chromium
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 6: Create Required Directories${NC}"
@@ -177,8 +212,37 @@ else
 fi
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${GREEN}✓ All dependencies installed!${NC}"
+echo -e "${GREEN}✓ Installation script completed!${NC}"
 echo -e "${BLUE}=========================================${NC}"
+
+if [[ ${#FAILED_PACKAGES[@]} -gt 0 ]]; then
+    echo -e "${RED}=========================================${NC}"
+    echo -e "${RED}✗ ${#FAILED_PACKAGES[@]} package(s) failed to install${NC}"
+    echo -e "${RED}=========================================${NC}"
+
+    {
+        echo "Failed Installation Log - $(date)"
+        echo "========================================"
+        echo ""
+        for failed in "${FAILED_PACKAGES[@]}"; do
+            echo "- $failed"
+        done
+        echo ""
+        echo "========================================"
+        echo "Total failed: ${#FAILED_PACKAGES[@]}"
+    } >"$LOG_FILE"
+
+    echo -e "${YELLOW}Failed packages:${NC}"
+    for failed in "${FAILED_PACKAGES[@]}"; do
+        echo -e "${RED}  - $failed${NC}"
+    done
+    echo ""
+    echo -e "${YELLOW}Failed packages list saved to: $LOG_FILE${NC}"
+    echo -e "${YELLOW}You can retry installing them manually later.${NC}"
+else
+    echo -e "${GREEN}✓ All packages installed successfully!${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}Tips:${NC}"
 echo "1. Please log out and log back in to apply Zsh configuration"
