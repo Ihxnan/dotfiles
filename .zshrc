@@ -166,6 +166,8 @@ export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#808080'
 
+export CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1
+
 # ==============================================
 # 命令别名配置 (Aliases)
 # ==============================================

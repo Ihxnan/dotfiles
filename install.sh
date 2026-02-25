@@ -28,6 +28,10 @@ sudo pacman -Syu --noconfirm
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 2: Install Base Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
+
+echo -e "${YELLOW}Installing noto-fonts and jetbrains-mono...${NC}"
+sudo pacman -S --noconfirm noto-fonts noto-fonts-emoji noto-fonts-cjk ttf-jetbrains-mono ttf-jetbrains-mono-nerd
+
 echo -e "${YELLOW}Installing window manager and desktop environment...${NC}"
 sudo pacman -S --noconfirm xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm i3-gaps polybar rofi dunst picom feh
 sudo systemctl enable lightdm
@@ -37,12 +41,8 @@ echo -e "${YELLOW}Installing terminals...${NC}"
 sudo pacman -S --noconfirm alacritty kitty
 
 echo -e "${YELLOW}Installing music software...${NC}"
-sudo pacman -S --noconfirm mpd ncmpcpp cava playerctl
-mkdir ~/.mpd
-mkdir ~/.mpd/playlists
-mkdir ~/Music
-sudo mkdir /etc/timidity
-sudo touch /etc/timidity/timidity.cfg
+sudo pacman -S --noconfirm mpd ncmpcpp cava playerctl pipewire-pulse
+systemctl --user enable --now pipewire-pulse
 
 echo -e "${YELLOW}Installing system tools...${NC}"
 sudo pacman -S --noconfirm btop eza fzf
@@ -122,12 +122,13 @@ paru -S --noconfirm jq
 
 echo -e "${YELLOW}Installing miniconda3...${NC}"
 paru -S --noconfirm miniconda3
+conda config --set auto_activate_base false
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 5: Install Other Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${YELLOW}Installing Neovim dependencies...${NC}"
-sudo pacman -S --noconfirm npm python-pip tree-sitter-cli bat
+sudo pacman -S --noconfirm npm python tree-sitter-cli bat
 
 echo -e "${YELLOW}Installing lock screen tool...${NC}"
 paru -S --noconfirm i3lock-color
@@ -135,7 +136,7 @@ paru -S --noconfirm i3lock-color
 echo -e "${YELLOW}Installing SSH file system...${NC}"
 sudo pacman -S --noconfirm sshfs
 
-echo -e "${YELLOW}Installing xdg-desktop-portal-termfilechooser"
+echo -e "${YELLOW}Installing xdg-desktop-portal-termfilechooser...${NC}"
 paru -S --noconfirm xdg-desktop-portal-termfilechooser-hunkyburrito-git
 
 echo -e "${YELLOW}Installing chromium"
@@ -144,6 +145,10 @@ paru -S --noconfirm chromium
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 6: Create Required Directories${NC}"
 echo -e "${BLUE}=========================================${NC}"
+mkdir -p ~/.mpd/playlists
+mkdir ~/Music
+sudo mkdir /etc/timidity
+sudo touch /etc/timidity/timidity.cfg
 mkdir -p ~/Pictures/Screenshots
 mkdir -p ~/.local/share/fcitx5/themes/Matugen
 echo -e "${GREEN}Directories created${NC}"
