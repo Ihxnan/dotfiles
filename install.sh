@@ -120,6 +120,9 @@ paru -S --noconfirm lazygit
 echo -e "${YELLOW}Installing jq...${NC}"
 paru -S --noconfirm jq
 
+echo -e "${YELLOW}Installing miniconda3...${NC}"
+paru -S --noconfirm miniconda3
+
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 5: Install Other Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
