@@ -31,13 +31,18 @@ input_path = './templates/fcitx5-theme.conf'
 output_path = '~/.local/share/fcitx5/themes/Matugen/theme.conf'
 
 [templates.gtk3]
-input_path ='./templates/gtk-colors.css'
+input_path = './templates/gtk-colors.css'
 output_path = '~/.config/gtk-3.0/colors.css'
 
 [templates.kitty]
 input_path = './templates/kitty-colors.conf'
 output_path = '~/.config/kitty/kitty-colors.conf'
 post_hook = '$HOME/.scripts/kitty/reload.sh'
+
+[templates.vscode_injection]
+input_path = './templates/vscode-inject.json'
+output_path = '~/.cache/matugen_vscode_inject.json'
+post_hook = '~/.config/matugen/scripts/inject_vscode.sh'
 
 [templates.yazi]
 input_path = './templates/yazi-theme.toml'

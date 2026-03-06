@@ -26,6 +26,10 @@ font xft:URWGothic-Book 11
 floating_modifier $mod
 
 # always start
+
+# 通知
+exec_always dunst
+
 # 挂载服务器
 exec_always --no-startup-id sshfs 'ihxnan.xyz:/home/ihxnan' /home/ihxnan/YUN
 
@@ -56,14 +60,20 @@ bindsym $mod+Shift+Return exec alacritty
 bindsym $mod+c exec --no-startup-id chromium
 bindsym $mod+Shift+c exec --no-startup-id prime-run chromium
 
+# start nmtui
+bindsym $mod+w exec kitty -e nmtui
+
 # kill focused window
 bindsym $mod+q kill
 bindsym $mod+Shift+q kill
 
 # start program launcher
 bindsym $mod+d exec --no-startup-id rofi -theme material -font "hack 20" -show drun -show-icons 
-bindsym $mod+s exec --no-startup-id ~/./scripts/rofi/rofi-search.sh
-bindsym $mod+z exec --no-startup-id rofi -theme material -font "hack 20" -show run -show-icons
+bindsym $mod+s exec --no-startup-id ~/.scripts/rofi/rofi-search.sh
+bindsym $mod+Shift+d exec --no-startup-id rofi -theme material -font "hack 20" -show run -show-icons
+
+# MONITOR
+bindsym $mod+Shift+p exec --no-startup-id ~/.scripts/xrandr/toggle-external-monitor.sh
 
 ################################################################################################
 ## sound-section - DO NOT EDIT if you wish to automatically upgrade Alsa -> Pulseaudio later! ##
@@ -126,7 +136,6 @@ bindsym $mod+v split v;exec notify-send 'tile vertically'
 bindsym $mod+f fullscreen toggle
 
 # change container layout (stacked, tabbed, toggle split)
-bindsym $mod+w layout tabbed
 bindsym $mod+e layout toggle split
 
 # toggle tiling / floating
@@ -322,7 +331,7 @@ title_align center
 
 # hide/unhide polybar
 # bindsym $mod+m bar mode toggle
-exec_always --no-startup-id ~/.config/polybar/launch.sh
+exec_always --no-startup-id ~/.scripts/polybar/launch.sh
 bindsym $mod+m exec --no-startup-id polybar-msg cmd toggle
 
 # Theme colors

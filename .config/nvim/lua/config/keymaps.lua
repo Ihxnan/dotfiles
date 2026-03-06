@@ -72,7 +72,8 @@ local run_code_with_data = function()
     -- 仅支持C/C++/Python，从指定路径读取输入数据（算法刷题常用）
     if filetype == "cpp" or filetype == "c" then
         -- 编译后，从~/WorkSpace/Algorithm/data读取输入数据
-        vim.cmd("split | terminal g++ -O3 % && ./a.out < ~/WorkSpace/Algorithm/data && rm -f a.out")
+        vim.cmd(
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[编译] 开始编译 C++ 文件...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[运行] 程序输出结果：\033[0m"; time ./a.out < ~/WorkSpace/Algorithm/data | lolcat; echo -e "\033[33m[清理] 删除临时文件 a.out\033[0m"; rm -f a.out; echo -e "\033[32m[完成] 所有操作执行完毕\033[0m"; else echo -e "\033[31m[错误] 编译失败！请修复代码后重试\033[0m"; fi']])
     elseif filetype == "python" then
         vim.cmd("split | terminal python3 % < ~/WorkSpace/Algorithm/data")
     else

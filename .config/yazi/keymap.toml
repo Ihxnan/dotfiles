@@ -136,6 +136,7 @@ keymap = [
 	{ on = [ "g", "d" ],       run = "cd ~/Downloads",              desc = "Go ~/Downloads" },
 	{ on = [ "g", "a" ],       run = "cd ~/Github/AlgorithmBlog",   desc = "Go ~/YUN/AlgorithmBlog" },
 	{ on = [ "g", "s" ],       run = "cd /share",                   desc = "Go /share" },
+	{ on = [ "g", "m" ],       run = "cd /mnt",                     desc = "Go /mnt" },
 	{ on = [ "g", "<Space>" ], run = "cd --interactive",            desc = "Jump interactively" },
 	{ on = [ "g", "f" ],       run = "follow",                      desc = "Follow hovered symlink" },
 

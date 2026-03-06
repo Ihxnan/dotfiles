@@ -182,7 +182,7 @@ alias f=$HOME/.scripts/fastfetch/fastfetch-random-wife.sh
 
 # 详细列表显示
 # 显示当前目录所有文件（包括隐藏文件）的详细信息
-alias l='eza -al'
+alias l='eza -al --icons=auto'
 
 # LeetCode
 alias lt='nvim leetcode.nvim'
@@ -212,7 +212,7 @@ alias push='hexo clean && hexo generate && hexo deploy && submit'
 # 相同文件提示
 alias mv='mv -i'
 
-alias ls="eza --icons"
+alias ls="eza --icons=auto"
 
 alias fff='sel=$(find ~ -type f | fzf --preview="[ -f {} ] && bat --color=always --style=numbers {} || eza -lha --color=always {}" --height=80%); [ -n "$sel" ] && echo "$sel"'
 
