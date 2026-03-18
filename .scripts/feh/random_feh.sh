@@ -16,6 +16,6 @@ CURRENT_WALLPAPER="${WALLPAPER_LIST[$RANDOM_INDEX]}"
 
 feh $FEH_MODE "$CURRENT_WALLPAPER"
 
-matugen image "$CURRENT_WALLPAPER"
+matugen image "$CURRENT_WALLPAPER" --source-color-index 0
 
 bash /home/ihxnan/.scripts/fcitx5/reload.sh

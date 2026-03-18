@@ -12,26 +12,6 @@
 vim.g.mapleader = " "     -- 设置<leader>键为空格（自定义快捷键的前缀）
 local keymap = vim.keymap -- 简化按键映射函数的调用（:help vim.keymap）
 
--- ======================== 自定义函数：运行CUDA/C/C++代码 ========================
-local run_cuda = function()
-    vim.cmd("w") -- 执行前先保存当前文件，避免运行旧代码
-
-    -- 获取当前缓冲区的文件类型（如cuda/c/cpp）
-    local filetype = vim.bo.filetype
-
-    -- 根据文件类型执行对应编译运行命令
-    if filetype == "cuda" or filetype == "c" or filetype == "cpp" then
-        -- 分割窗口并打开终端，执行：
-        -- 1. nvcc编译（指定架构sm_89，适配RTX 30/40系显卡）
-        -- 2. 运行生成的a.out
-        -- 3. 运行后删除a.out临时文件
-        vim.cmd("split | terminal nvcc -arch=sm_89 % && ./a.out && rm -f a.out")
-    else
-        -- 非支持类型给出提示
-        print("不支持的文件类型: " .. filetype)
-    end
-end
-
 -- ======================== 自定义函数：多语言代码通用运行 ========================
 local run_code = function()
     vim.cmd("w")                     -- 执行前保存文件
@@ -43,8 +23,9 @@ local run_code = function()
         vim.cmd(
             [[vsplit | terminal bash -c 'echo -e "\033[34m[编译] 开始编译 C++ 文件...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[运行] 程序输出结果：\033[0m"; time ./a.out | lolcat; echo -e "\033[33m[清理] 删除临时文件 a.out\033[0m"; rm -f a.out; echo -e "\033[32m[完成] 所有操作执行完毕\033[0m"; else echo -e "\033[31m[错误] 编译失败！请修复代码后重试\033[0m"; fi']])
     elseif filetype == "python" then
-        -- Python：直接用python3运行当前文件
-        vim.cmd("split | terminal python3 %")
+        -- Python：带彩色提示、计时、错误检测和lolcat输出
+        vim.cmd(
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[运行] 开始执行 Python 文件...\033[0m"; time python3 "%" 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[完成] Python 程序执行完毕\033[0m"; else echo -e "\033[31m[错误] Python 程序执行失败！退出码: $exit_code\033[0m"; fi']])
     elseif filetype == "java" then
         -- Java：先编译 → 运行（取文件名作为类名）→ 删除.class文件 → 保留终端
         local class_name = vim.fn.expand("%:t:r") -- 提取文件名（不含路径和后缀）
@@ -75,8 +56,30 @@ local run_code_with_data = function()
         vim.cmd(
             [[vsplit | terminal bash -c 'echo -e "\033[34m[编译] 开始编译 C++ 文件...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[运行] 程序输出结果：\033[0m"; time ./a.out < ~/WorkSpace/Algorithm/data | lolcat; echo -e "\033[33m[清理] 删除临时文件 a.out\033[0m"; rm -f a.out; echo -e "\033[32m[完成] 所有操作执行完毕\033[0m"; else echo -e "\033[31m[错误] 编译失败！请修复代码后重试\033[0m"; fi']])
     elseif filetype == "python" then
-        vim.cmd("split | terminal python3 % < ~/WorkSpace/Algorithm/data")
+        -- Python 带输入数据：彩色提示、计时、错误检测、lolcat输出
+        vim.cmd(
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[运行] 开始执行 Python 文件（带输入数据）...\033[0m"; time python3 "%" < ~/WorkSpace/Algorithm/data 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[完成] Python 程序执行完毕\033[0m"; else echo -e "\033[31m[错误] Python 程序执行失败！退出码: $exit_code\033[0m"; fi']])
     else
+        print("不支持的文件类型: " .. filetype)
+    end
+end
+
+-- ======================== 自定义函数：运行CUDA/C/C++代码 ========================
+local run_cuda = function()
+    vim.cmd("w") -- 执行前先保存当前文件，避免运行旧代码
+
+    -- 获取当前缓冲区的文件类型（如cuda/c/cpp）
+    local filetype = vim.bo.filetype
+
+    -- 根据文件类型执行对应编译运行命令
+    if filetype == "cuda" or filetype == "c" or filetype == "cpp" then
+        -- 分割窗口并打开终端，执行：
+        -- 1. nvcc编译（指定架构sm_89，适配RTX 30/40系显卡）
+        -- 2. 运行生成的a.out
+        -- 3. 运行后删除a.out临时文件
+        vim.cmd("split | terminal nvcc -arch=sm_89 % && ./a.out && rm -f a.out")
+    else
+        -- 非支持类型给出提示
         print("不支持的文件类型: " .. filetype)
     end
 end

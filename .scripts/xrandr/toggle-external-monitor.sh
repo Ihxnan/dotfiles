@@ -11,6 +11,6 @@ else
     xrandr --output "$MAIN_MONITOR" --primary --auto --output "$MONITOR" --off
 fi
 
-sleep 1
+sleep 2
 $HOME/.scripts/polybar/launch.sh
 $HOME/.scripts/feh/random_feh.sh

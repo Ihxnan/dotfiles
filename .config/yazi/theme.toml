@@ -1,26 +1,26 @@
 # : Manager [[[
 
 [mgr]
-cwd = { fg = "#dee4e0" }
+cwd = { fg = "#dde4e3" }
 
 # Find
 find_keyword  = { fg = "#ffb4ab", bold = true, italic = true, underline = true }
 find_position = { fg = "#ffb4ab", bold = true, italic = true }
 
 # Marker
-marker_copied   = { fg = "#60bcff", bg = "#60bcff" }
-marker_cut      = { fg = "#c6e7ff", bg = "#c6e7ff" }
+marker_copied   = { fg = "#6ea1ff", bg = "#6ea1ff" }
+marker_cut      = { fg = "#d4e3ff", bg = "#d4e3ff" }
 marker_marked   = { fg = "#ffb4ab", bg = "#ffb4ab" }
-marker_selected = { fg = "#aacbe3", bg = "#aacbe3" }
+marker_selected = { fg = "#b4c7e9", bg = "#b4c7e9" }
 
 # Count
-count_copied   = { fg = "#001e2e", bg = "#c6e7ff" }
-count_cut      = { fg = "#001e2e", bg = "#c6e7ff" }
-count_selected = { fg = "#00382d", bg = "#aacbe3" }
+count_copied   = { fg = "#061c36", bg = "#d4e3ff" }
+count_cut      = { fg = "#061c36", bg = "#d4e3ff" }
+count_selected = { fg = "#003738", bg = "#b4c7e9" }
 
 # Border
 border_symbol = "│"
-border_style  = { fg = "#85d6c0" }
+border_style  = { fg = "#80d4d7" }
 
 # : ]]]
 
@@ -36,8 +36,8 @@ padding = { open = "█", close = "█" }
 # : Tabs [[[
 
 [tabs]
-active    = { fg = "#85d6c0", bold = true, bg = "#0e1513" }
-inactive  = { fg = "#b1ccc3", bg = "#0e1513" }
+active    = { fg = "#80d4d7", bold = true, bg = "#0e1415" }
+inactive  = { fg = "#b0cccc", bg = "#0e1415" }
 sep_inner = { open = "[", close = "]" }
 
 # : ]]]
@@ -47,16 +47,16 @@ sep_inner = { open = "[", close = "]" }
 
 [mode]
 # Mode
-normal_main = { bg = "#85d6c0", fg = "#00382d", bold = true }
-normal_alt  = { bg = "#3f4945", fg = "#bfc9c4" }
+normal_main = { bg = "#80d4d7", fg = "#003738", bold = true }
+normal_alt  = { bg = "#3f4949", fg = "#bec8c8" }
 
 # Select mode
-select_main = { bg = "#b1ccc3", fg = "#1d352e", bold = true }
-select_alt  = { bg = "#3f4945", fg = "#bfc9c4" }
+select_main = { bg = "#b0cccc", fg = "#1b3435", bold = true }
+select_alt  = { bg = "#3f4949", fg = "#bec8c8" }
 
 # Unset mode
-unset_main = { bg = "#aacbe3", fg = "#103447", bold = true }
-unset_alt  = { bg = "#3f4945", fg = "#bfc9c4" }
+unset_main = { bg = "#b4c7e9", fg = "#1e314c", bold = true }
+unset_alt  = { bg = "#3f4949", fg = "#bec8c8" }
 
 # : ]]]
 
@@ -68,16 +68,16 @@ sep_left  = { open = "🭁", close = "🭠" }
 sep_right = { open = "🭁", close = "🭠" }
 
 # Permissions
-perm_type  = { fg = "#5a8a7a" }
-perm_write = { fg = "#3c84b8" }
+perm_type  = { fg = "#598a8a" }
+perm_write = { fg = "#3e6fc6" }
 perm_read  = { fg = "#ff2b12" }
-perm_exec  = { fg = "#2da7ff" }
-perm_sep   = { fg = "#1edca6" }
+perm_exec  = { fg = "#3b7fff" }
+perm_sep   = { fg = "#1bd7db" }
 
 # Progress
 progress_label  = { bold = true }
-progress_normal = { fg = "#85d6c0", bg = "#343b38" }
-progress_error  = { fg = "#ffb4ab", bg = "#343b38" }
+progress_normal = { fg = "#80d4d7", bg = "#343a3a" }
+progress_error  = { fg = "#ffb4ab", bg = "#343a3a" }
 
 # : ]]]
 
@@ -86,12 +86,12 @@ progress_error  = { fg = "#ffb4ab", bg = "#343b38" }
 
 [which]
 cols = 3
-mask = { bg = "#343b38" }
-cand = { fg = "#85d6c0" }
-rest = { fg = "#00382d" }
-desc = { fg = "#dee4e0" }
+mask = { bg = "#343a3a" }
+cand = { fg = "#80d4d7" }
+rest = { fg = "#003738" }
+desc = { fg = "#dde4e3" }
 separator = " ▶ "
-separator_style = { fg = "#dee4e0" }
+separator_style = { fg = "#dde4e3" }
 
 # : ]]]
 
@@ -99,8 +99,8 @@ separator_style = { fg = "#dee4e0" }
 # : Notify [[[
 
 [notify]
-title_info  = { fg = "#aacbe3" }
-title_warn  = { fg = "#85d6c0" }
+title_info  = { fg = "#b4c7e9" }
+title_warn  = { fg = "#80d4d7" }
 title_error = { fg = "#ffb4ab" }
 
 # : ]]]
@@ -109,8 +109,8 @@ title_error = { fg = "#ffb4ab" }
 # : Picker [[[
 
 [pick]
-border = { fg = "#85d6c0" }
-active = { fg = "#aacbe3", bold = true }
+border = { fg = "#80d4d7" }
+active = { fg = "#b4c7e9", bold = true }
 inactive = {}
 
 # : ]]]
@@ -119,8 +119,8 @@ inactive = {}
 # : Input [[[
 
 [input]
-border = { fg = "#85d6c0" }
-value  = { fg = "#dee4e0" }
+border = { fg = "#80d4d7" }
+value  = { fg = "#dde4e3" }
 
 # : ]]]
 
@@ -128,7 +128,7 @@ value  = { fg = "#dee4e0" }
 # : Completion [[[
 
 [cmp]
-border = { fg = "#85d6c0", bg = "#00382d" }
+border = { fg = "#80d4d7", bg = "#003738" }
 
 # : ]]]
 
@@ -136,9 +136,9 @@ border = { fg = "#85d6c0", bg = "#00382d" }
 # : Tasks [[[
 
 [tasks]
-border  = { fg = "#85d6c0" }
+border  = { fg = "#80d4d7" }
 title   = {}
-hovered = { fg = "#c6e7ff", underline = true }
+hovered = { fg = "#d4e3ff", underline = true }
 
 # : ]]]
 
@@ -146,9 +146,9 @@ hovered = { fg = "#c6e7ff", underline = true }
 # : Help [[[
 
 [help]
-on     = { fg = "#dee4e0" }
-run    = { fg = "#dee4e0" }
-footer = { fg = "#1d352e", bg = "#b1ccc3" }
+on     = { fg = "#dde4e3" }
+run    = { fg = "#dde4e3" }
+footer = { fg = "#1b3435", bg = "#b0cccc" }
 
 # : ]]]
 
@@ -175,8 +175,8 @@ rules = [
     { name = "*", is = "exec", fg = "#ffdad6" },
 
     # Fallback
-    { url = "*", fg = "#dee4e0" },
-    { url = "*/", fg = "#85d6c0" },
+    { url = "*", fg = "#dde4e3" },
+    { url = "*/", fg = "#80d4d7" },
 ]
 
 
@@ -189,21 +189,21 @@ rules = [
 # ==========================================
 prepend_conds = [
     # 隐藏的文件夹 (半透明或较暗的颜色)
-    { if = "dir & hidden", text = "", fg = "#d1f0e7" },
+    { if = "dir & hidden", text = "", fg = "#ceeeef" },
     
     # 普通文件夹 - 提到前面来，确保文件夹图标最先被匹配
-    { if = "dir", text = "", fg = "#85d6c0" },
+    { if = "dir", text = "", fg = "#80d4d7" },
     
     # 损坏的符号链接 (孤儿) - 使用 Error 色
     { if = "orphan", text = "󰌌", fg = "#ffb4ab" },
     # 正常的符号链接 - 使用 Tertiary 固定色
-    { if = "link", text = "󰌷", fg = "#c6e7ff" },
+    { if = "link", text = "󰌷", fg = "#d4e3ff" },
     
     # 可执行文件 - 【关键修复：必须排除文件夹 (!dir)】
-    { if = "exec & !dir", text = "󰆧", fg = "#b1ccc3" },
+    { if = "exec & !dir", text = "󰆧", fg = "#b0cccc" },
 
     # 普通隐藏文件 (暗淡的文字色)
-    { if = "hidden", text = "󰈙", fg = "#bfc9c4" },
+    { if = "hidden", text = "󰈙", fg = "#bec8c8" },
 ]
 
 # ==========================================
@@ -211,19 +211,19 @@ prepend_conds = [
 # ==========================================
 prepend_dirs = [
     # 使用 Primary 颜色高亮常用主目录
-    { name = "Desktop", text = "", fg = "#85d6c0" },
-    { name = "Documents", text = "󰈙", fg = "#85d6c0" },
-    { name = "Downloads", text = "󰇚", fg = "#85d6c0" },
-    { name = "Pictures", text = "󰉏", fg = "#85d6c0" },
-    { name = "Music", text = "󰎆", fg = "#85d6c0" },
-    { name = "Videos", text = "󰕧", fg = "#85d6c0" },
-    { name = "Public", text = "", fg = "#85d6c0" },
+    { name = "Desktop", text = "", fg = "#80d4d7" },
+    { name = "Documents", text = "󰈙", fg = "#80d4d7" },
+    { name = "Downloads", text = "󰇚", fg = "#80d4d7" },
+    { name = "Pictures", text = "󰉏", fg = "#80d4d7" },
+    { name = "Music", text = "󰎆", fg = "#80d4d7" },
+    { name = "Videos", text = "󰕧", fg = "#80d4d7" },
+    { name = "Public", text = "", fg = "#80d4d7" },
 
     # 使用 Secondary 颜色标记开发/配置目录
-    { name = ".config", text = "", fg = "#b1ccc3" },
-    { name = ".git", text = "󰊢", fg = "#b1ccc3" },
-    { name = "Github", text = "󰊢", fg = "#b1ccc3" },
-    { name = "src", text = "", fg = "#b1ccc3" },
+    { name = ".config", text = "", fg = "#b0cccc" },
+    { name = ".git", text = "󰊢", fg = "#b0cccc" },
+    { name = "Github", text = "󰊢", fg = "#b0cccc" },
+    { name = "src", text = "", fg = "#b0cccc" },
 ]
 
 # ==========================================
@@ -231,48 +231,48 @@ prepend_dirs = [
 # ==========================================
 prepend_exts = [
     # 图片/媒体 - 使用 Tertiary 颜色 (提供视觉对比)
-    { name = "png", text = "󰉏", fg = "#aacbe3" },
-    { name = "jpg", text = "󰉏", fg = "#aacbe3" },
-    { name = "jpeg", text = "󰉏", fg = "#aacbe3" },
-    { name = "webp", text = "󰉏", fg = "#aacbe3" },
-    { name = "svg", text = "󰜡", fg = "#aacbe3" },
-    { name = "mp4", text = "󰕧", fg = "#aacbe3" },
-    { name = "mkv", text = "󰕧", fg = "#aacbe3" },
-    { name = "mp3", text = "󰎆", fg = "#aacbe3" },
-    { name = "flac", text = "󰎆", fg = "#aacbe3" },
+    { name = "png", text = "󰉏", fg = "#b4c7e9" },
+    { name = "jpg", text = "󰉏", fg = "#b4c7e9" },
+    { name = "jpeg", text = "󰉏", fg = "#b4c7e9" },
+    { name = "webp", text = "󰉏", fg = "#b4c7e9" },
+    { name = "svg", text = "󰜡", fg = "#b4c7e9" },
+    { name = "mp4", text = "󰕧", fg = "#b4c7e9" },
+    { name = "mkv", text = "󰕧", fg = "#b4c7e9" },
+    { name = "mp3", text = "󰎆", fg = "#b4c7e9" },
+    { name = "flac", text = "󰎆", fg = "#b4c7e9" },
 
     # 档案/压缩包 - 使用 Error Container 相关的颜色 (以示区别，或可选 tertiary_fixed)
-    { name = "zip", text = "󰛫", fg = "#aacbe3" },
-    { name = "tar", text = "󰛫", fg = "#aacbe3" },
-    { name = "gz", text = "󰛫", fg = "#aacbe3" },
-    { name = "rar", text = "󰛫", fg = "#aacbe3" },
-    { name = "7z", text = "󰛫", fg = "#aacbe3" },
+    { name = "zip", text = "󰛫", fg = "#b4c7e9" },
+    { name = "tar", text = "󰛫", fg = "#b4c7e9" },
+    { name = "gz", text = "󰛫", fg = "#b4c7e9" },
+    { name = "rar", text = "󰛫", fg = "#b4c7e9" },
+    { name = "7z", text = "󰛫", fg = "#b4c7e9" },
 
     # 常用代码/配置文件 - 使用 Primary 或 On Surface 色
-    { name = "conf", text = "", fg = "#85d6c0" },
-    { name = "toml", text = "", fg = "#85d6c0" },
-    { name = "yaml", text = "", fg = "#85d6c0" },
-    { name = "yml", text = "", fg = "#85d6c0" },
-    { name = "json", text = "", fg = "#85d6c0" },
-    { name = "sh", text = "", fg = "#85d6c0" },
-    { name = "bash", text = "", fg = "#85d6c0" },
-    { name = "py", text = "", fg = "#85d6c0" },
-    { name = "rs", text = "", fg = "#85d6c0" },
-    { name = "c", text = "", fg = "#85d6c0" },
-    { name = "cpp", text = "", fg = "#85d6c0" },
-    { name = "md", text = "", fg = "#85d6c0" },
-    { name = "txt", text = "󰈙", fg = "#dee4e0" },
+    { name = "conf", text = "", fg = "#80d4d7" },
+    { name = "toml", text = "", fg = "#80d4d7" },
+    { name = "yaml", text = "", fg = "#80d4d7" },
+    { name = "yml", text = "", fg = "#80d4d7" },
+    { name = "json", text = "", fg = "#80d4d7" },
+    { name = "sh", text = "", fg = "#80d4d7" },
+    { name = "bash", text = "", fg = "#80d4d7" },
+    { name = "py", text = "", fg = "#80d4d7" },
+    { name = "rs", text = "", fg = "#80d4d7" },
+    { name = "c", text = "", fg = "#80d4d7" },
+    { name = "cpp", text = "", fg = "#80d4d7" },
+    { name = "md", text = "", fg = "#80d4d7" },
+    { name = "txt", text = "󰈙", fg = "#dde4e3" },
 ]
 
 # ==========================================
 # 4. 预设特定文件名
 # ==========================================
 prepend_files = [
-    { name = "PKGBUILD", text = "", fg = "#85d6c0" },
-    { name = "README.md", text = "󰂺", fg = "#b1ccc3" },
-    { name = "Makefile", text = "", fg = "#b1ccc3" },
-    { name = ".bashrc", text = "", fg = "#b1ccc3" },
-    { name = ".zshrc", text = "", fg = "#b1ccc3" },
+    { name = "PKGBUILD", text = "", fg = "#80d4d7" },
+    { name = "README.md", text = "󰂺", fg = "#b0cccc" },
+    { name = "Makefile", text = "", fg = "#b0cccc" },
+    { name = ".bashrc", text = "", fg = "#b0cccc" },
+    { name = ".zshrc", text = "", fg = "#b0cccc" },
 ]
 
 # : ]]]
