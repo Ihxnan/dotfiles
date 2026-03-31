@@ -14,53 +14,42 @@ local keymap = vim.keymap -- 简化按键映射函数的调用（:help vim.keyma
 
 -- ======================== 自定义函数：多语言代码通用运行 ========================
 local run_code = function()
-    vim.cmd("w")                     -- 执行前保存文件
-    local filetype = vim.bo.filetype -- 获取当前文件类型
+    vim.cmd("w")
+    local filetype = vim.bo.filetype
 
-    -- 按文件类型执行不同编译/运行命令
     if filetype == "cpp" or filetype == "c" then
-        -- C/C++：g++编译（-O3开启最高级优化）→ 运行 → 删除临时文件
         vim.cmd(
-            [[vsplit | terminal bash -c 'echo -e "\033[34m[编译] 开始编译 C++ 文件...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[运行] 程序输出结果：\033[0m"; time ./a.out | lolcat; echo -e "\033[33m[清理] 删除临时文件 a.out\033[0m"; rm -f a.out; echo -e "\033[32m[完成] 所有操作执行完毕\033[0m"; else echo -e "\033[31m[错误] 编译失败！请修复代码后重试\033[0m"; fi']])
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[Compile] Starting C++ compilation...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[Run] Program output:\033[0m"; time ./a.out | lolcat; echo -e "\033[33m[Clean] Removing temporary file a.out\033[0m"; rm -f a.out; echo -e "\033[32m[Done] All operations completed\033[0m"; else echo -e "\033[31m[Error] Compilation failed! Please fix your code and try again\033[0m"; fi']])
     elseif filetype == "python" then
-        -- Python：带彩色提示、计时、错误检测和lolcat输出
         vim.cmd(
-            [[vsplit | terminal bash -c 'echo -e "\033[34m[运行] 开始执行 Python 文件...\033[0m"; time python3 "%" 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[完成] Python 程序执行完毕\033[0m"; else echo -e "\033[31m[错误] Python 程序执行失败！退出码: $exit_code\033[0m"; fi']])
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[Run] Executing Python file...\033[0m"; time python3 "%" 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[Done] Python program executed successfully\033[0m"; else echo -e "\033[31m[Error] Python program failed! Exit code: $exit_code\033[0m"; fi']])
     elseif filetype == "java" then
-        -- Java：先编译 → 运行（取文件名作为类名）→ 删除.class文件 → 保留终端
-        local class_name = vim.fn.expand("%:t:r") -- 提取文件名（不含路径和后缀）
+        local class_name = vim.fn.expand("%:t:r")
         vim.cmd("split | terminal javac % && java " .. class_name .. " | lolcat; rm -f " .. class_name .. ".class")
     elseif filetype == "cmake" then
-        -- CMake：清理旧build → 创建新build → 进入build编译 → 保留终端
         vim.cmd("split | terminal rm -rf build && mkdir build && cd build && cmake .. && make; $SHELL")
-        vim.cmd("startinsert") -- 自动进入终端插入模式
+        vim.cmd("startinsert")
     elseif filetype == "sh" then
-        -- Shell脚本：直接运行
         vim.cmd("split | terminal sh %")
     elseif filetype == "html" then
-        -- HTML：用chromium浏览器打开预览
         vim.cmd("split | terminal chromium %")
     else
-        print("不支持的文件类型: " .. filetype)
+        print("Unsupported file type: " .. filetype)
     end
 end
 
--- ======================== 自定义函数：带输入数据运行代码 ========================
 local run_code_with_data = function()
-    vim.cmd("w") -- 执行前保存文件
+    vim.cmd("w")
     local filetype = vim.bo.filetype
 
-    -- 仅支持C/C++/Python，从指定路径读取输入数据（算法刷题常用）
     if filetype == "cpp" or filetype == "c" then
-        -- 编译后，从~/WorkSpace/Algorithm/data读取输入数据
         vim.cmd(
-            [[vsplit | terminal bash -c 'echo -e "\033[34m[编译] 开始编译 C++ 文件...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[运行] 程序输出结果：\033[0m"; time ./a.out < ~/WorkSpace/Algorithm/data | lolcat; echo -e "\033[33m[清理] 删除临时文件 a.out\033[0m"; rm -f a.out; echo -e "\033[32m[完成] 所有操作执行完毕\033[0m"; else echo -e "\033[31m[错误] 编译失败！请修复代码后重试\033[0m"; fi']])
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[Compile] Starting C++ compilation...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[Run] Program output:\033[0m"; time ./a.out < ~/WorkSpace/Algorithm/data | lolcat; echo -e "\033[33m[Clean] Removing temporary file a.out\033[0m"; rm -f a.out; echo -e "\033[32m[Done] All operations completed\033[0m"; else echo -e "\033[31m[Error] Compilation failed! Please fix your code and try again\033[0m"; fi']])
     elseif filetype == "python" then
-        -- Python 带输入数据：彩色提示、计时、错误检测、lolcat输出
         vim.cmd(
-            [[vsplit | terminal bash -c 'echo -e "\033[34m[运行] 开始执行 Python 文件（带输入数据）...\033[0m"; time python3 "%" < ~/WorkSpace/Algorithm/data 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[完成] Python 程序执行完毕\033[0m"; else echo -e "\033[31m[错误] Python 程序执行失败！退出码: $exit_code\033[0m"; fi']])
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[Run] Executing Python file (with input data)...\033[0m"; time python3 "%" < ~/WorkSpace/Algorithm/data 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[Done] Python program executed successfully\033[0m"; else echo -e "\033[31m[Error] Python program failed! Exit code: $exit_code\033[0m"; fi']])
     else
-        print("不支持的文件类型: " .. filetype)
+        print("Unsupported file type: " .. filetype)
     end
 end
 
