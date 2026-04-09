@@ -8,7 +8,7 @@ WALLPAPER_DIR=$HOME/.wallpapers
 
 FEH_MODE=--bg-fill
 
-WALLPAPER_LIST=($(ls -1 "$WALLPAPER_DIR"/* 2>/dev/null | grep -E "\.(jpg|jpeg|png|gif|bmp|webp)$" | sort -R))
+WALLPAPER_LIST=($(ls -1 "$WALLPAPER_DIR"/* 2>/dev/null | grep -E "\.(jpg|jpeg|png|gif|bmp|webp|avif)$" | sort -R))
 
 RANDOM_INDEX=$((RANDOM % ${#WALLPAPER_LIST[@]}))
 

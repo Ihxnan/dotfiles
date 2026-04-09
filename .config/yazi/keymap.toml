@@ -134,9 +134,9 @@ keymap = [
 	{ on = [ "g", "p" ],       run = "cd ~/Pictures/Screenshots/",  desc = "Go ~/Pictures/Screenshots/" },
 	{ on = [ "g", "w" ],       run = "cd ~/WorkSpace/",             desc = "Go ~/WorkSpace/" },
 	{ on = [ "g", "d" ],       run = "cd ~/Downloads",              desc = "Go ~/Downloads" },
-	{ on = [ "g", "a" ],       run = "cd ~/Github/AlgorithmBlog",   desc = "Go ~/YUN/AlgorithmBlog" },
+	{ on = [ "g", "a" ],       run = "cd ~/Github/AlgorithmBlog",   desc = "Go ~/Github/AlgorithmBlog" },
 	{ on = [ "g", "s" ],       run = "cd /share",                   desc = "Go /share" },
-	{ on = [ "g", "m" ],       run = "cd /mnt",                     desc = "Go /mnt" },
+	{ on = [ "g", "m" ],       run = "cd ~/Music/",                     desc = "Go ~/Music" },
 	{ on = [ "g", "<Space>" ], run = "cd --interactive",            desc = "Jump interactively" },
 	{ on = [ "g", "f" ],       run = "follow",                      desc = "Follow hovered symlink" },
 

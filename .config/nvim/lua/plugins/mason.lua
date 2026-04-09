@@ -23,7 +23,6 @@ return {
                 "json-lsp",                   -- JSON LSP（对应 servers 中的 jsonls）
                 "pyright",                    -- Python LSP（对应 servers 中的 pyright）
                 "clangd",                     -- C/C++ LSP（对应 servers 中的 clangd）
-                "jdtls",                      -- Java LSP（对应 servers 中的 jdtls）
             },
             auto_update = false,              -- 不自动更新已安装工具（避免兼容性问题）
             run_on_start = true,              -- Neovim 启动时自动检查并安装缺失工具
@@ -84,9 +83,6 @@ return {
                 },
                 clangd = {
                     cmd = { mason_path .. "bin/clangd" },
-                },
-                jdtls = {
-                    cmd = { mason_path .. "bin/jdtls" },
                 },
             }
 
