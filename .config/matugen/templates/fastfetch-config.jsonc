@@ -90,11 +90,11 @@
             "format": "{1} {2}",
             "keyColor": "{{colors.secondary_fixed.default.hex}}"
         },
-        {
-            "type": "disk",
-            "key": " ├ 󰋊  DIS ",
-            "keyColor": "{{colors.secondary_fixed.default.hex}}"
-        },
+        // {
+        //     "type": "disk",
+        //     "key": " ├ 󰋊  DIS ",
+        //     "keyColor": "{{colors.secondary_fixed.default.hex}}"
+        // },
         {
             "type": "display",
             "key": " └   MON ",

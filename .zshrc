@@ -212,7 +212,7 @@ alias push='hexo clean && hexo generate && hexo deploy && submit'
 # 相同文件提示
 alias mv='mv -i'
 
-alias ls="eza --icons=auto"
+alias ls="eza --icons"
 
 alias fff='sel=$(find ~ -type f | fzf --preview="[ -f {} ] && bat --color=always --style=numbers {} || eza -lha --color=always {}" --height=80%); [ -n "$sel" ] && echo "$sel"'
 

@@ -1,6 +1,6 @@
 ncmpcpp_directory = ~/.ncmpcpp
 lyrics_directory = ~/.ncmpcpp/lyrics
-mpd_music_dir = ~/Music
+mpd_music_dir = ~/Music/mp3
 
 visualizer_in_stereo = "no"
 visualizer_output_name = "my_fifo"
