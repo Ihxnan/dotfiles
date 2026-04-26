@@ -19,7 +19,7 @@ local run_code = function()
 
     if filetype == "cpp" or filetype == "c" then
         vim.cmd(
-            [[vsplit | terminal bash -c 'echo -e "\033[34m[Compile] Starting C++ compilation...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[Run] Program output:\033[0m"; time ./a.out | lolcat; echo -e "\033[33m[Clean] Removing temporary file a.out\033[0m"; rm -f a.out; echo -e "\033[32m[Done] All operations completed\033[0m"; else echo -e "\033[31m[Error] Compilation failed! Please fix your code and try again\033[0m"; fi']])
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[Compile] Starting C++ compilation...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out -DLOCAL; if [ $? -eq 0 ]; then echo -e "\033[36m[Run] Program output:\033[0m"; time ./a.out | lolcat; echo -e "\033[33m[Clean] Removing temporary file a.out\033[0m"; rm -f a.out; echo -e "\033[32m[Done] All operations completed\033[0m"; else echo -e "\033[31m[Error] Compilation failed! Please fix your code and try again\033[0m"; fi']])
     elseif filetype == "python" then
         vim.cmd(
             [[vsplit | terminal bash -c 'echo -e "\033[34m[Run] Executing Python file...\033[0m"; time python3 "%" 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[Done] Python program executed successfully\033[0m"; else echo -e "\033[31m[Error] Python program failed! Exit code: $exit_code\033[0m"; fi']])
@@ -44,7 +44,7 @@ local run_code_with_data = function()
 
     if filetype == "cpp" or filetype == "c" then
         vim.cmd(
-            [[vsplit | terminal bash -c 'echo -e "\033[34m[Compile] Starting C++ compilation...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out; if [ $? -eq 0 ]; then echo -e "\033[36m[Run] Program output:\033[0m"; time ./a.out < ~/WorkSpace/Algorithm/data | lolcat; echo -e "\033[33m[Clean] Removing temporary file a.out\033[0m"; rm -f a.out; echo -e "\033[32m[Done] All operations completed\033[0m"; else echo -e "\033[31m[Error] Compilation failed! Please fix your code and try again\033[0m"; fi']])
+            [[vsplit | terminal bash -c 'echo -e "\033[34m[Compile] Starting C++ compilation...\033[0m"; g++ -O3 -fsanitize=undefined "%" -o a.out -DLOCAL; if [ $? -eq 0 ]; then echo -e "\033[36m[Run] Program output:\033[0m"; time ./a.out < ~/WorkSpace/Algorithm/data | lolcat; echo -e "\033[33m[Clean] Removing temporary file a.out\033[0m"; rm -f a.out; echo -e "\033[32m[Done] All operations completed\033[0m"; else echo -e "\033[31m[Error] Compilation failed! Please fix your code and try again\033[0m"; fi']])
     elseif filetype == "python" then
         vim.cmd(
             [[vsplit | terminal bash -c 'echo -e "\033[34m[Run] Executing Python file (with input data)...\033[0m"; time python3 "%" < ~/WorkSpace/Algorithm/data 2>&1 | lolcat; exit_code=${PIPESTATUS[0]}; if [ $exit_code -eq 0 ]; then echo -e "\033[32m[Done] Python program executed successfully\033[0m"; else echo -e "\033[31m[Error] Python program failed! Exit code: $exit_code\033[0m"; fi']])

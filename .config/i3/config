@@ -61,6 +61,9 @@ bindsym $mod+Shift+c exec --no-startup-id prime-run chromium
 # start nmtui
 bindsym $mod+w exec kitty -e nmtui
 
+# start pinta
+bindsym $mod+p exec pinta
+
 # start btop
 bindsym $mod+b exec kitty -e btop
 
