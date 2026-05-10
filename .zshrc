@@ -230,3 +230,7 @@ function jk() {
 	rm -f -- "$tmp"
 }
 
+export PATH="$HOME/.npm-global/bin:$PATH"
+
+# OpenClaw Completion
+source "/home/ihxnan/.openclaw/completions/openclaw.zsh"

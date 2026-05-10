@@ -126,25 +126,25 @@ echo -e "${YELLOW}Installing Zsh plugins...${NC}"
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
-    git_clone "https://github.com/zsh-users/zsh-autosuggestions" "$ZSH_CUSTOM/plugins/zsh-autosuggestions" "zsh-autosuggestions"
+    git_clone "https://gitee.com/mirrors/zsh-autosuggestions" "$ZSH_CUSTOM/plugins/zsh-autosuggestions" "zsh-autosuggestions"
 else
     echo -e "${GREEN}zsh-autosuggestions already installed${NC}"
 fi
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
-    git_clone "https://github.com/zsh-users/zsh-syntax-highlighting.git" "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
+    git_clone "https://gitee.com/mirrors/zsh-syntax-highlighting.git" "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
 else
     echo -e "${GREEN}zsh-syntax-highlighting already installed${NC}"
 fi
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-completions" ]]; then
-    git_clone "https://github.com/zsh-users/zsh-completions" "$ZSH_CUSTOM/plugins/zsh-completions" "zsh-completions"
+    git_clone "https://gitee.com/mirrors/zsh-completions" "$ZSH_CUSTOM/plugins/zsh-completions" "zsh-completions"
 else
     echo -e "${GREEN}zsh-completions already installed${NC}"
 fi
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
-    git_clone "https://github.com/Aloxaf/fzf-tab" "$ZSH_CUSTOM/plugins/fzf-tab" "fzf-tab"
+    git_clone "https://gitee.com/mirrors/fzf-tab" "$ZSH_CUSTOM/plugins/fzf-tab" "fzf-tab"
 else
     echo -e "${GREEN}fzf-tab already installed${NC}"
 fi
