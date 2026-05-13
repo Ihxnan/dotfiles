@@ -35,10 +35,10 @@ keymap = [
 
 	# Navigation
 	{ on = "h", run = "leave", desc = "Back to the parent directory" },
-	{ on = "l", run = "enter", desc = "Enter the child directory" },
+	{ on = "l", run = "plugin smart-enter", desc = "Enter the child directory, or open the file" },
 
 	{ on = "<Left>",  run = "leave", desc = "Back to the parent directory" },
-	{ on = "<Right>", run = "enter", desc = "Enter the child directory" },
+	{ on = "<Right>", run = "plugin smart-enter", desc = "Enter the child directory, or open the file" },
 
 	{ on = "H", run = "back",    desc = "Back to previous directory" },
 	{ on = "L", run = "forward", desc = "Forward to next directory" },
@@ -62,7 +62,7 @@ keymap = [
 	# Operation
 	{ on = "o",         run = "open",                        desc = "Open selected files" },
 	{ on = "O",         run = "open --interactive",          desc = "Open selected files interactively" },
-	{ on = "<Enter>",   run = "open",                        desc = "Open selected files" },
+	{ on = "<Enter>",   run = "plugin smart-enter",          desc = "Enter the child directory, or open the file" },
 	{ on = "<S-Enter>", run = "open --interactive",          desc = "Open selected files interactively" },
 	{ on = "y",         run = "yank",                        desc = "Yank selected files (copy)" },
 	{ on = "x",         run = "yank --cut",                  desc = "Yank selected files (cut)" },
@@ -78,6 +78,9 @@ keymap = [
 	{ on = "a",         run = "create",                      desc = "Create a file (ends with / for directories)" },
 	{ on = "r",         run = "rename --cursor=before_ext",  desc = "Rename selected file(s)" },
 	{ on = ";",         run = "shell --interactive",         desc = "Run a shell command" },
+	{ on = "<C-g>",     run = "shell --block lazygit",       desc = "Run lazygit" },
+	{ on = "<C-x>",     run = "shell --block codex",         desc = "Run codex" },
+	{ on = "<C-o>",     run = "shell --block opencode",      desc = "Run opencode" },
 	{ on = ":",         run = "shell --block --interactive", desc = "Run a shell command (block until finishes)" },
 	{ on = ".",         run = "hidden toggle",               desc = "Toggle the visibility of hidden files" },
 	{ on = "s",         run = "search --via=fd",             desc = "Search files by name via fd" },
@@ -95,10 +98,10 @@ keymap = [
 	{ on = [ "m", "n" ], run = "linemode none",        desc = "Linemode: none" },
 
 	# Copy
-	{ on = [ "c", "c" ], run = "copy path",             desc = "Copy file URL" },
-	{ on = [ "c", "d" ], run = "copy dirname",          desc = "Copy directory URL" },
-	{ on = [ "c", "f" ], run = "copy filename",         desc = "Copy filename" },
-	{ on = [ "c", "n" ], run = "copy name_without_ext", desc = "Copy filename without extension" },
+	{ on = [ "c", "c" ], run = "copy path",             desc = "Copy the file path" },
+	{ on = [ "c", "d" ], run = "copy dirname",          desc = "Copy the directory path" },
+	{ on = [ "c", "f" ], run = "copy filename",         desc = "Copy the filename" },
+	{ on = [ "c", "n" ], run = "copy name_without_ext", desc = "Copy the filename without extension" },
 
 	# Filter
 	{ on = "f", run = "filter --smart", desc = "Filter files" },
@@ -125,15 +128,22 @@ keymap = [
 	{ on = [ ",", "r" ], run = "sort random --reverse=no",                       desc = "Sort randomly" },
 
 	# Goto
-	{ on = [ "g", "h" ],       run = "cd ~",             desc = "Go home" },
-	{ on = [ "g", "c" ],       run = "cd ~/.config",     desc = "Go ~/.config" },
-	{ on = [ "g", "d" ],       run = "cd ~/Downloads",   desc = "Go ~/Downloads" },
-	{ on = [ "g", "<Space>" ], run = "cd --interactive", desc = "Jump interactively" },
-	{ on = [ "g", "f" ],       run = "follow",           desc = "Follow hovered symlink" },
+	{ on = [ "g", "h" ],       run = "cd ~",                       desc = "Go home" },
+	{ on = [ "g", "i" ],       run = "cd ~/Github",                desc = "Go ~/Github" },
+	{ on = [ "g", "c" ],       run = "cd ~/.config",               desc = "Go ~/.config" },
+	{ on = [ "g", "y" ],       run = "cd ~/.config/yazi",          desc = "Go ~/.config/yazi" },
+	{ on = [ "g", "n" ],       run = "cd ~/.config/nvim",          desc = "Go ~/.config/nvim" },
+	{ on = [ "g", "p" ],       run = "cd ~/Pictures/Screenshots",  desc = "Go ~/Pictures/Screenshots" },
+	{ on = [ "g", "w" ],       run = "cd ~/WorkSpace",             desc = "Go ~/WorkSpace" },
+	{ on = [ "g", "d" ],       run = "cd ~/Downloads",             desc = "Go ~/Downloads" },
+	{ on = [ "g", "a" ],       run = "cd ~/Github/AlgorithmBlog",  desc = "Go ~/Github/AlgorithmBlog" },
+	{ on = [ "g", "s" ],       run = "cd /share",                  desc = "Go /share" },
+	{ on = [ "g", "m" ],       run = "cd ~/Music",                 desc = "Go ~/Music" },
+	{ on = [ "g", "<Space>" ], run = "cd --interactive",           desc = "Jump interactively" },
+	{ on = [ "g", "f" ],       run = "follow",                     desc = "Follow hovered symlink" },
 
 	# Tabs
-	{ on = [ "t", "t" ], run = "tab_create --current",     desc = "Create a new tab in CWD" },
-	{ on = [ "t", "r" ], run = "tab_rename --interactive", desc = "Rename current tab" },
+	{ on = "t", run = "tab_create --current", desc = "Create a new tab with CWD" },
 
 	{ on = "1", run = "tab_switch 0", desc = "Switch to first tab" },
 	{ on = "2", run = "tab_switch 1", desc = "Switch to second tab" },
@@ -231,7 +241,7 @@ keymap = [
 keymap = [
 	{ on = "<C-c>",   run = "close",          desc = "Cancel input" },
 	{ on = "<Enter>", run = "close --submit", desc = "Submit input" },
-	{ on = "<Esc>",   run = "escape",         desc = "Back to normal mode, or cancel input" },
+	{ on = "<Esc>",   run = "close",          desc = "Cancel input" },
 	{ on = "<C-[>",   run = "escape",         desc = "Back to normal mode, or cancel input" },
 
 	# Mode
