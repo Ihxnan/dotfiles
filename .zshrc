@@ -156,7 +156,7 @@ export LC_ALL=en_US.UTF-8
 
 # 将用户自定义二进制目录添加到系统路径
 # 使 ~/bin 目录下的可执行文件无需绝对路径即可运行
-export PATH=/opt/cuda/bin:$PATH:~/bin:~/.cargo/bin
+export PATH=/opt/cuda/bin:$PATH:~/.local/bin:~/.cargo/bin
 
 # 设置默认浏览器为 chromium
 export BROWSER=/usr/bin/chromium

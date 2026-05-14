@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+
+# 检查是否提供了进程名参数
+if [ $# -eq 0 ]; then
+    echo "Please specify the process name to terminate"
+    exit 1
+fi
+
+process_name="$1"
+pids=$(pidof "$process_name")
+
+# 检查进程是否存在
+if [ -z "$pids" ]; then
+    echo "No process named '$process_name' found"
+    exit 1
+fi
+
+# 终止找到的进程
+echo "Terminating process: $process_name (PID: $pids)"
+kill $pids

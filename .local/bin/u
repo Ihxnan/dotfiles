@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# 目标设备和挂载点
+DEVICE="/dev/sda1"
+MOUNT_POINT="/mnt"
+
+# 检查设备是否存在
+if [ ! -b "$DEVICE" ]; then
+    echo "错误：设备 $DEVICE 不存在"
+    exit 1
+fi
+
+# 检查设备是否已挂载
+if mountpoint -q "$MOUNT_POINT"; then
+    # 已挂载则卸载
+    echo "设备 $DEVICE 已挂载到 $MOUNT_POINT，正在卸载..."
+    if sudo umount "$MOUNT_POINT"; then
+        echo "卸载成功"
+    else
+        echo "卸载失败"
+        exit 1
+    fi
+else
+    # 未挂载则挂载
+    echo "设备 $DEVICE 未挂载，准备挂载到 $MOUNT_POINT..."
+    
+    # 确保挂载点存在
+    if [ ! -d "$MOUNT_POINT" ]; then
+        echo "创建挂载点 $MOUNT_POINT..."
+        sudo mkdir -p "$MOUNT_POINT" || { echo "创建挂载点失败"; exit 1; }
+    fi
+    
+    # 执行挂载
+    if sudo mount "$DEVICE" "$MOUNT_POINT"; then
+        echo "挂载成功：$DEVICE -> $MOUNT_POINT"
+    else
+        echo "挂载失败，请检查设备格式（如NTFS需安装ntfs-3g，exfat需安装exfat-fuse）"
+        exit 1
+    fi
+fi

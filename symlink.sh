@@ -52,6 +52,7 @@ create_symlink "$DOTFILES_DIR/.Xresources" "$HOME/.Xresources"
 create_symlink "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
 create_symlink "$DOTFILES_DIR/.keynavrc" "$HOME/.keynavrc"
 create_symlink "$DOTFILES_DIR/.wallpapers" "$HOME/.wallpapers"
+create_symlink "$DOTFILES_DIR/.scripts" "$HOME/.scripts"
 
 echo ""
 echo "========================================="
@@ -79,10 +80,9 @@ create_symlink "$DOTFILES_DIR/.config/xdg-desktop-portal-termfilechooser" "$HOME
 
 echo ""
 echo "========================================="
-echo "Linking scripts directory..."
+echo "Linking .local directory..."
 echo "========================================="
-
-create_symlink "$DOTFILES_DIR/.scripts" "$HOME/.scripts"
+create_symlink "$DOTFILES_DIR/.local/bin" "$HOME/.local/bin"
 
 echo ""
 echo "========================================="

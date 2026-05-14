@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# 颜色定义
+BOLD='\033[1m'
+GREEN='\033[32m'
+BLUE='\033[34m'
+CYAN='\033[36m'
+YELLOW='\033[33m'
+RED='\033[31m'
+WHITE='\033[37m'
+GRAY='\033[90m'
+RESET='\033[0m'
+
+# ==============================================
+# 真正有效：判断是否运行在 纯 TTY 控制台
+# 图形界面终端、SSH 都会被拦截
+# ==============================================
+if [[ "$(tty)" != /dev/tty* ]]; then
+    echo -e "\n${RED}✘ 错误：${RESET}此脚本只能在 纯 TTY 文本控制台 运行！"
+    echo -e "${YELLOW}ℹ 请使用 Ctrl+Alt+F1~F6 切换到 TTY 后再运行${RESET}\n"
+    exit 1
+fi
+
+clear
+
+# 界面输出
+echo -e "${BOLD}${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}${BOLD}${GREEN}      Desktop Environment Selector${RESET}                 ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${RESET}"
+echo -e "${BOLD}${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}${BOLD}${WHITE}Please select a desktop environment:${RESET}               ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}                                                   ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}  ${GREEN}[1]${RESET} ${BLUE}i3${RESET}                             ${GRAY}(startx)${RESET}      ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}  ${GREEN}[2]${RESET} ${BLUE}KDE Plasma${RESET}            ${GRAY}(startplasma-wayland)${RESET}  ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}                                                   ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┗━━━━━━━━━━━━━━━━━━━━ remote━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${RESET}"
+echo -ne "${BOLD}${YELLOW}Please enter an option [1-2]: ${RESET}"
+read -n 1 choice
+echo
+
+case $choice in
+1)
+    echo -e "${GREEN}Starting i3...${RESET}"
+    exec sudo systemctl start lightdm
+    ;;
+2)
+    echo -e "${GREEN}Starting KDE Plasma (Wayland)...${RESET}"
+    exec startplasma-wayland
+    ;;
+*)
+    echo -e "${RED}Invalid option, exiting.${RESET}"
+    exit 1
+    ;;
+esac
