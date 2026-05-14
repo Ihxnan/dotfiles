@@ -3,7 +3,7 @@
 set -e
 
 # Log file setup
-LOG_FILE="install.log"
+LOG_FILE="/tmp/archinstall.log"
 exec > >(tee -a "$LOG_FILE")
 exec 2>&1
 
@@ -21,7 +21,7 @@ if [[ ! -d /run/archiso ]]; then
     exit 1
 fi
 
-if ! ping -c 1 -W 2 ping.archlinux.org >/dev/null 2>&1; then
+if ! ping -c 2 -W 3 ping.archlinux.org >/dev/null 2>&1; then
     echo -e "${RED}Error: No network connection detected!${NC}"
     echo -e "${YELLOW}Please ensure you have a network connection before running this script.${NC}"
     echo -e "${YELLOW}You can use 'iwctl' to connect to WiFi or 'ip link' to check network interfaces.${NC}"
@@ -35,6 +35,21 @@ echo -e "${BLUE}=== Configuration ===${NC}"
 echo -n "Target disk (default: /dev/sda): "
 read DISK_INPUT
 DISK="${DISK_INPUT:-/dev/sda}"
+
+if [[ ! -b "$DISK" ]]; then
+    echo -e "${RED}Error: $DISK is not a valid block device!${NC}"
+    echo -e "${YELLOW}Available disks:${NC}"
+    lsblk -d -o NAME,SIZE,MODEL | grep -v loop
+    exit 1
+fi
+
+if [[ $DISK =~ nvme|mmcblk ]]; then
+    DISK1="${DISK}p1"
+    DISK2="${DISK}p2"
+else
+    DISK1="${DISK}1"
+    DISK2="${DISK}2"
+fi
 
 echo -n "Hostname (default: archlinux): "
 read HOSTNAME_INPUT
@@ -65,8 +80,60 @@ TIMEZONE="${TIMEZONE_INPUT:-Asia/Shanghai}"
 echo -n "Add Chinese locale zh_CN.UTF-8? (y/N): "
 read ADD_ZH_CN
 
+echo -e "\n${YELLOW}=== Dual-boot or Fresh Install? ===${NC}"
+echo -n "Install alongside existing OS? (preserve partitions) (y/N): "
+read DUAL_BOOT
+
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    echo -e "\n${YELLOW}Current partition layout on $DISK:${NC}"
+    lsblk -o NAME,SIZE,FSTYPE,LABEL $DISK
+    echo ""
+    echo -n "Existing EFI partition (e.g., $DISK1): "
+    read EFI_PART_INPUT
+    EFI_PART="${EFI_PART_INPUT}"
+    echo -n "Target Arch ROOT partition (e.g., $DISK2): "
+    read ROOT_PART_INPUT
+    ROOT_PART="${ROOT_PART_INPUT}"
+
+    if [[ ! -b "$EFI_PART" ]]; then
+        echo -e "${RED}Error: $EFI_PART is not a valid block device!${NC}"
+        exit 1
+    fi
+    if [[ ! -b "$ROOT_PART" ]]; then
+        echo -e "${RED}Error: $ROOT_PART is not a valid block device!${NC}"
+        exit 1
+    fi
+    if [[ $(lsblk -no FSTYPE "$EFI_PART") != "vfat" ]]; then
+        echo -e "${RED}Error: $EFI_PART is not FAT32 (required for EFI)!${NC}"
+        exit 1
+    fi
+else
+    echo -e "\n${YELLOW}=== GRUB Options ===${NC}"
+    echo -e "${YELLOW}--removable writes to EFI/BOOT/BOOTX64.EFI (fallback path).${NC}"
+    echo -e "${YELLOW}Recommended for removable disks or problematic UEFI firmware.${NC}"
+    echo -n "Use --removable? (y/N): "
+    read GRUB_REMOVABLE
+    if [[ $GRUB_REMOVABLE != [Yy] ]]; then
+        echo -n "Bootloader ID (default: Arch): "
+        read GRUB_ID_INPUT
+        GRUB_ID="${GRUB_ID_INPUT:-Arch}"
+    fi
+fi
+
 echo -e "\n${BLUE}=== Configuration Summary ===${NC}"
 echo -e "Target disk: ${YELLOW}$DISK${NC}"
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    echo -e "Install mode: ${YELLOW}Dual-boot${NC}"
+    echo -e "EFI partition: ${YELLOW}$EFI_PART${NC} (preserved)"
+    echo -e "ROOT partition: ${YELLOW}$ROOT_PART${NC} (will be formatted)"
+else
+    echo -e "Install mode: ${YELLOW}Fresh install${NC}"
+    if [[ $GRUB_REMOVABLE == [Yy] ]]; then
+        echo -e "GRUB: ${YELLOW}--removable${NC}"
+    else
+        echo -e "GRUB: ${YELLOW}--bootloader-id=$GRUB_ID${NC}"
+    fi
+fi
 echo -e "Hostname: ${YELLOW}$HOSTNAME${NC}"
 echo -e "Username: ${YELLOW}$USERNAME${NC}"
 echo -e "Timezone: ${YELLOW}$TIMEZONE${NC}"
@@ -77,13 +144,29 @@ else
     echo -e "Add Chinese support: ${YELLOW}No${NC}"
 fi
 
-echo -e "\n${RED}=== WARNING: This script will format $DISK, all data will be lost! ===${NC}"
+echo -e "\n${RED}=== WARNING ===${NC}"
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    echo -e "${RED}$ROOT_PART will be FORMATTED as Btrfs!${NC}"
+    echo -e "${YELLOW}$EFI_PART and other partitions will be preserved.${NC}"
+else
+    echo -e "${RED}$DISK will be entirely formatted, all data will be lost!${NC}"
+fi
 echo -n "Confirm and continue? (y/N): "
 read confirm
 if [[ $confirm != [Yy] ]]; then
     echo -e "${RED}Installation cancelled.${NC}"
     exit 1
 fi
+
+echo -e "${BLUE}=== Detecting CPU vendor ===${NC}"
+if grep -q GenuineIntel /proc/cpuinfo; then
+    UCODE="intel-ucode"
+elif grep -q AuthenticAMD /proc/cpuinfo; then
+    UCODE="amd-ucode"
+else
+    UCODE="intel-ucode"
+fi
+echo -e "${GREEN}Detected CPU microcode package: $UCODE${NC}"
 
 echo -e "${BLUE}=== Synchronizing system time ===${NC}"
 timedatectl set-ntp true
@@ -97,44 +180,74 @@ echo -e "${BLUE}=== Updating keyring ===${NC}"
 pacman -Sy --noconfirm archlinux-keyring
 echo -e "${GREEN}Keyring updated.${NC}"
 
-echo -e "${BLUE}=== Partitioning $DISK ===${NC}"
+if [[ $DUAL_BOOT == [Yy] ]]; then
 
-echo -e "${YELLOW}Clearing disk partition table...${NC}"
-sgdisk --zap $DISK
+    echo -e "${BLUE}=== Formatting ROOT partition ===${NC}"
+    echo -e "${YELLOW}Formatting $ROOT_PART as Btrfs...${NC}"
+    mkfs.btrfs -f $ROOT_PART
+    echo -e "${GREEN}ROOT partition formatted.${NC}"
 
-echo -e "${YELLOW}Creating EFI partition (100MB)...${NC}"
-sgdisk -n 1:0:+100M -t 1:ef00 -c 1:"EFI" $DISK
+    echo -e "${YELLOW}Creating Btrfs subvolumes...${NC}"
+    mount -t btrfs $ROOT_PART /mnt
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    umount /mnt
+    echo -e "${GREEN}Btrfs subvolumes created (@ and @home).${NC}"
 
-echo -e "${YELLOW}Creating ROOT partition...${NC}"
-sgdisk -n 2:0:0 -t 2:8300 -c 2:"ROOT" $DISK
+    echo -e "${BLUE}=== Mounting partitions ===${NC}"
+    mount -t btrfs -o subvol=/@,compress=zstd $ROOT_PART /mnt
+    mount --mkdir -t btrfs -o subvol=/@home,compress=zstd $ROOT_PART /mnt/home
+    mount --mkdir $EFI_PART /mnt/efi
 
-partprobe $DISK
-echo -e "${GREEN}Partition table created.${NC}"
+else
 
-echo -e "${BLUE}=== Formatting partitions ===${NC}"
-echo -e "${YELLOW}Formatting EFI partition as FAT32...${NC}"
-mkfs.fat -F32 ${DISK}1
-echo -e "${GREEN}EFI partition formatted.${NC}"
+    echo -e "${BLUE}=== Partitioning $DISK ===${NC}"
 
-echo -e "${YELLOW}Formatting ROOT partition as Btrfs...${NC}"
-mkfs.btrfs -f ${DISK}2
-echo -e "${GREEN}ROOT partition formatted.${NC}"
+    echo -e "${YELLOW}Clearing disk partition table...${NC}"
+    sgdisk --zap $DISK
 
-echo -e "${YELLOW}Creating Btrfs subvolumes...${NC}"
-mount -t btrfs ${DISK}2 /mnt
-btrfs subvolume create /mnt/@
-btrfs subvolume create /mnt/@home
-umount /mnt
-echo -e "${GREEN}Btrfs subvolumes created (@ and @home).${NC}"
+    echo -e "${YELLOW}Waiting for kernel to reread partition table...${NC}"
+    sleep 2
 
-echo -e "${BLUE}=== Mounting partitions ===${NC}"
-mount -t btrfs -o subvol=/@,compress=zstd ${DISK}2 /mnt
-mount --mkdir -t btrfs -o subvol=/@home,compress=zstd ${DISK}2 /mnt/home
-mount --mkdir ${DISK}1 /mnt/efi
+    echo -e "${YELLOW}Creating EFI partition (100MB)...${NC}"
+    sgdisk -n 1:0:+100M -t 1:ef00 -c 1:"EFI" $DISK
+
+    echo -e "${YELLOW}Creating ROOT partition...${NC}"
+    sgdisk -n 2:0:0 -t 2:8300 -c 2:"ROOT" $DISK
+
+    partprobe $DISK
+    echo -e "${GREEN}Partition table created.${NC}"
+
+    echo -e "${BLUE}=== Formatting partitions ===${NC}"
+    echo -e "${YELLOW}Formatting EFI partition as FAT32...${NC}"
+    mkfs.fat -F32 $DISK1
+    echo -e "${GREEN}EFI partition formatted.${NC}"
+
+    echo -e "${YELLOW}Formatting ROOT partition as Btrfs...${NC}"
+    mkfs.btrfs -f $DISK2
+    echo -e "${GREEN}ROOT partition formatted.${NC}"
+
+    echo -e "${YELLOW}Creating Btrfs subvolumes...${NC}"
+    mount -t btrfs $DISK2 /mnt
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    umount /mnt
+    echo -e "${GREEN}Btrfs subvolumes created (@ and @home).${NC}"
+
+    echo -e "${BLUE}=== Mounting partitions ===${NC}"
+    mount -t btrfs -o subvol=/@,compress=zstd $DISK2 /mnt
+    mount --mkdir -t btrfs -o subvol=/@home,compress=zstd $DISK2 /mnt/home
+    mount --mkdir $DISK1 /mnt/efi
+
+fi
 
 echo -e "${GREEN}=== Installing base system ===${NC}"
-pacstrap -K /mnt base base-devel linux-zen linux-firmware btrfs-progs --noconfirm
-pacstrap /mnt grub efibootmgr networkmanager sudo vim neovim nano intel-ucode zram-generator fastfetch --noconfirm
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    DUAL_PKGS="os-prober"
+fi
+pacstrap -K /mnt base base-devel linux-zen linux-zen-headers linux-firmware btrfs-progs \
+    grub efibootmgr networkmanager sudo vim neovim nano $UCODE \
+    zram-generator fastfetch $DUAL_PKGS --noconfirm
 
 echo -e "${GREEN}=== Generating fstab ===${NC}"
 genfstab -U /mnt >>/mnt/etc/fstab
@@ -158,11 +271,12 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}Locale configured.${NC}"
 
-echo -e "${YELLOW}Setting hostname...${NC}"
+echo -e "${YELLOW}Setting hostname and hosts...${NC}"
 arch-chroot /mnt /bin/bash -c "
     echo $HOSTNAME > /etc/hostname
+    printf '127.0.0.1\tlocalhost\n::1\t\tlocalhost\n127.0.1.1\t$HOSTNAME\n' > /etc/hosts
 "
-echo -e "${GREEN}Hostname set to $HOSTNAME.${NC}"
+echo -e "${GREEN}Hostname and hosts configured.${NC}"
 
 echo -e "${YELLOW}Setting root password...${NC}"
 arch-chroot /mnt /bin/bash -c "
@@ -172,7 +286,7 @@ echo -e "${GREEN}Root password set.${NC}"
 
 echo -e "${YELLOW}Creating user $USERNAME...${NC}"
 arch-chroot /mnt /bin/bash -c "
-    useradd -m -G wheel $USERNAME
+    useradd -m -G wheel "$USERNAME"
     echo \"$USERNAME:$PASSWORD\" | chpasswd
 "
 echo -e "${GREEN}User $USERNAME created and added to wheel group.${NC}"
@@ -184,10 +298,23 @@ arch-chroot /mnt /bin/bash -c "
 echo -e "${GREEN}Sudo configured for wheel group.${NC}"
 
 echo -e "${YELLOW}Installing GRUB bootloader...${NC}"
-arch-chroot /mnt /bin/bash -c "
-    grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --removable --recheck
-    ln -s /efi/grub /boot/grub
-"
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    arch-chroot /mnt /bin/bash -c "
+        grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Arch --recheck
+        ln -s /efi/grub /boot/grub
+    "
+else
+    GRUB_FLAGS="--target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --recheck"
+    if [[ $GRUB_REMOVABLE == [Yy] ]]; then
+        GRUB_FLAGS="$GRUB_FLAGS --removable"
+    else
+        GRUB_FLAGS="$GRUB_FLAGS --bootloader-id=$GRUB_ID"
+    fi
+    arch-chroot /mnt /bin/bash -c "
+        grub-install $GRUB_FLAGS
+        ln -s /efi/grub /boot/grub
+    "
+fi
 echo -e "${GREEN}GRUB installed.${NC}"
 
 echo -e "${YELLOW}Configuring ZRAM...${NC}"
@@ -208,15 +335,24 @@ echo -e "${GREEN}Pacman and AUR helper configured.${NC}"
 
 echo -e "${YELLOW}Installing LTS kernel...${NC}"
 arch-chroot /mnt /bin/bash -c "
-    pacman -S --noconfirm linux-lts
+    pacman -S --noconfirm linux-lts linux-lts-headers
 "
 echo -e "${GREEN}LTS kernel installed.${NC}"
 
 echo -e "${YELLOW}Configuring GRUB parameters...${NC}"
-arch-chroot /mnt /bin/bash -c "
-    echo 'EDITOR=nvim' >> /etc/environment
-    sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5\"/' /etc/default/grub
-"
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    arch-chroot /mnt /bin/bash -c "
+        echo 'EDITOR=nvim' >> /etc/environment
+        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5\"/' /etc/default/grub
+        sed -i '/^GRUB_DISABLE_OS_PROBER=/d' /etc/default/grub
+        echo 'GRUB_DISABLE_OS_PROBER=false' >> /etc/default/grub
+    "
+else
+    arch-chroot /mnt /bin/bash -c "
+        echo 'EDITOR=nvim' >> /etc/environment
+        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5\"/' /etc/default/grub
+    "
+fi
 echo -e "${GREEN}GRUB parameters optimized.${NC}"
 
 echo -e "${YELLOW}Generating GRUB configuration...${NC}"
@@ -232,19 +368,19 @@ arch-chroot /mnt /bin/bash -c "
 echo -e "${GREEN}NetworkManager enabled.${NC}"
 
 echo -e "${YELLOW}=== Installation completed ===${NC}"
+cp "$LOG_FILE" /mnt/root/install.log
 umount -R /mnt
 echo -e "${GREEN}Installation finished successfully!${NC}"
 
 echo -e "${YELLOW}System will reboot in 10 seconds...${NC}"
 echo -e "${YELLOW}Press Enter to reboot immediately, or press 'n' to cancel.${NC}"
 
-for i in {10..1}; do
+for i in $(seq 10 -1 1); do
     echo -ne "\r${BLUE}Rebooting in $i seconds...${NC}"
     if read -t 1 -n 1 input; then
         if [[ -z "$input" ]]; then
             echo -e "\n${GREEN}Rebooting immediately...${NC}"
             reboot
-            exit 0
         elif [[ "$input" == [Nn] ]]; then
             echo -e "\n${YELLOW}Reboot cancelled.${NC}"
             echo -e "${YELLOW}You can reboot manually by running 'reboot' command.${NC}"

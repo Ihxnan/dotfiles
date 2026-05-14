@@ -2,10 +2,24 @@
 
 个人 Linux 桌面环境配置，基于 Arch Linux + i3wm 的平铺窗口管理器，支持动态主题切换、自动壁纸、音乐播放等功能。
 
-## ArchLinux一键安装脚本
+## ArchLinux 一键安装脚本
+
+> **前置：联网** — Arch ISO 启动后先连 WiFi：
+> ```sh
+> iwctl                          # 进入交互终端
+> device list                    # 查看网卡名（如 wlan0）
+> station wlan0 scan             # 扫描
+> station wlan0 get-networks     # 列出可用网络
+> station wlan0 connect SSID     # 连接（按提示输入密码）
+> quit                           # 退出
+> ```
 
 ```sh
-bash <(curl -L ihxnan.xyz/install.sh)
+# Gitee（国内推荐）
+bash <(curl -L https://gitee.com/ihxnan/dotfiles/raw/main/archinstall.sh)
+
+# GitHub
+bash <(curl -L https://raw.githubusercontent.com/Ihxnan/dotfiles/main/archinstall.sh)
 ```
 
 ## 核心组件
