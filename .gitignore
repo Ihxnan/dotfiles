@@ -1,1 +1,11 @@
 AGENTS.md
+
+# matugen generated files
+.config/alacritty/alacritty-colors.toml
+.config/btop/themes/matugen.theme
+.config/cava/themes/cava-theme
+.config/dunst/dunstrc
+.config/fastfetch/config.jsonc
+.config/gtk-3.0/colors.css
+.config/kitty/kitty-colors.conf
+.config/yazi/theme.toml

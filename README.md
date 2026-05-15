@@ -22,6 +22,28 @@ bash <(curl -L https://gitee.com/ihxnan/dotfiles/raw/main/archinstall.sh)
 bash <(curl -L https://raw.githubusercontent.com/Ihxnan/dotfiles/main/archinstall.sh)
 ```
 
+## 同步配置
+
+系统安装完成后，克隆仓库并执行安装脚本：
+
+```sh
+# Gitee（国内推荐）
+git clone https://gitee.com/ihxnan/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+bash install.sh
+
+# GitHub
+git clone https://github.com/Ihxnan/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+bash install.sh
+```
+
+`install.sh` 会安装所有依赖包、配置 Oh My Zsh、创建所需目录，
+并自动执行 `symlink.sh` 创建配置文件符号链接。
+
+> **注意**：克隆后的 `~/dotfiles` 目录请勿删除，所有配置文件
+> 通过符号链接指向该目录，删除后配置将全部失效。
+
 ## 核心组件
 
 - **窗口管理器**: i3wm + polybar
