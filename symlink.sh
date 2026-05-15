@@ -68,8 +68,6 @@ create_symlink "$DOTFILES_DIR/user/.config/picom.conf" "$HOME/.config/picom.conf
 create_symlink "$DOTFILES_DIR/user/.config/alacritty" "$HOME/.config/alacritty"
 create_symlink "$DOTFILES_DIR/user/.config/btop" "$HOME/.config/btop"
 create_symlink "$DOTFILES_DIR/user/.config/cava" "$HOME/.config/cava"
-create_symlink "$DOTFILES_DIR/user/.config/dunst" "$HOME/.config/dunst"
-create_symlink "$DOTFILES_DIR/user/.config/fastfetch" "$HOME/.config/fastfetch"
 create_symlink "$DOTFILES_DIR/user/.config/gtk-3.0" "$HOME/.config/gtk-3.0"
 create_symlink "$DOTFILES_DIR/user/.config/i3" "$HOME/.config/i3"
 create_symlink "$DOTFILES_DIR/user/.config/kitty" "$HOME/.config/kitty"
