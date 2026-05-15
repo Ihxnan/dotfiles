@@ -3,8 +3,8 @@
     "logo": {
         "width": 25,
         "color": {
-            "1": "#ffb3ad",
-            "2": "#ffb3ad"
+            "1": "#f9bb71",
+            "2": "#f9bb71"
         },
         "padding": {
             "top": 1,
@@ -15,8 +15,8 @@
     "display": {
         "separator": " ",
         "color": {
-            "title": "#d8c2bf",
-            "output": "#d8c2bf"
+            "title": "#d4c4b5",
+            "output": "#d4c4b5"
         }
     },
     "modules": [
@@ -24,99 +24,99 @@
         {
             "type": "os",
             "key": "OS",
-            "keyColor": "#ffb3ad"
+            "keyColor": "#f9bb71"
         },
         {
             "type": "kernel",
             "key": " ├   KER ",
-            "keyColor": "#ffb3ad"
+            "keyColor": "#f9bb71"
         },
         {
             "type": "packages",
             "key": " ├   PAK ",
             "format": "{all}",
-            "keyColor": "#ffb3ad"
+            "keyColor": "#f9bb71"
         },
         {
             "type": "title",
             "key": " └   USR ",
-            "keyColor": "#ffb3ad"
+            "keyColor": "#f9bb71"
         },
         "break",
         {
             "type": "wm",
             "key": "WM",
-            "keyColor": "#e1c28c"
+            "keyColor": "#bccd9d"
         },
         {
             "type": "de",
             "key": " ├ 󱈹  DES ",
-            "keyColor": "#e1c28c"
+            "keyColor": "#bccd9d"
         },
         {
             "type": "shell",
             "key": " ├   SHE ",
-            "keyColor": "#e1c28c"
+            "keyColor": "#bccd9d"
         },
         {
             "type": "terminal",
             "key": " ├   TER ",
-            "keyColor": "#e1c28c"
+            "keyColor": "#bccd9d"
         },
         {
             "type": "terminalfont",
             "key": " └   TFO ",
-            "keyColor": "#e1c28c"
+            "keyColor": "#bccd9d"
         },
         "break",
         {
             "type": "host",
             "key": "PC",
-            "keyColor": "#ffdad7"
+            "keyColor": "#fdddbd"
         },
         {
             "type": "cpu",
             "key": " ├   CPU ",
-            "keyColor": "#ffdad7"
+            "keyColor": "#fdddbd"
         },
         {
             "type": "memory",
             "key": " ├   MEM ",
-            "keyColor": "#ffdad7"
+            "keyColor": "#fdddbd"
         },
         {
             "type": "gpu",
             "key": " ├ 󰢮  GPU ",
             "format": "{1} {2}",
-            "keyColor": "#ffdad7"
+            "keyColor": "#fdddbd"
         },
         // {
         //     "type": "disk",
         //     "key": " ├ 󰋊  DIS ",
-        //     "keyColor": "#ffdad7"
+        //     "keyColor": "#fdddbd"
         // },
         {
             "type": "display",
             "key": " └   MON ",
             "format": "{name} {width}x{height}@{refresh-rate} ",
-            "keyColor": "#ffdad7"
+            "keyColor": "#fdddbd"
         },
         "break",
         // ✅ 已修改：使用全新主题色，随主题变化且不重复
         {
             "type": "uptime",
             "key": "ST",
-            "keyColor": "#ffdea6"
+            "keyColor": "#d8e9b8"
         },
         {
             "type": "battery",
             "key": " ├   BAT ",
-            "keyColor": "#ffdea6"
+            "keyColor": "#d8e9b8"
         },
         {
             "type": "swap",
             "key": " └ 󰣂  SWP ",
-            "keyColor": "#ffdea6"
+            "keyColor": "#d8e9b8"
         },
         "break",
         "colors"
