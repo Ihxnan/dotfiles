@@ -40,10 +40,18 @@ echo
 
 case $choice in
 1)
+    if ! command -v lightdm &>/dev/null; then
+        echo -e "${RED}lightdm 未安装，无法启动 i3${RESET}"
+        exit 1
+    fi
     echo -e "${GREEN}Starting i3...${RESET}"
     exec sudo systemctl start lightdm
     ;;
 2)
+    if ! command -v startplasma-wayland &>/dev/null; then
+        echo -e "${RED}KDE Plasma 未安装，无法启动${RESET}"
+        exit 1
+    fi
     echo -e "${GREEN}Starting KDE Plasma (Wayland)...${RESET}"
     exec startplasma-wayland
     ;;

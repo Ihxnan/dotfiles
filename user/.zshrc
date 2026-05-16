@@ -81,9 +81,9 @@ git
 sudo
 zsh-completions 
 zsh-autosuggestions 
-zsh-syntax-highlighting
 fzf
 fzf-tab
+zsh-syntax-highlighting
 )
 
 source $ZSH/oh-my-zsh.sh

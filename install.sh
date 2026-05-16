@@ -20,37 +20,24 @@ log_failed() {
 }
 
 install_pacman() {
-    local packages="$*"
-    echo -e "${YELLOW}Installing: $packages${NC}"
-    if ! sudo pacman -S --noconfirm $packages 2>&1; then
-        log_failed "$packages" "pacman installation failed"
+    local packages=("$@")
+    echo -e "${YELLOW}Installing: ${packages[*]}${NC}"
+    if ! sudo pacman -S --needed --noconfirm "${packages[@]}" 2>&1; then
+        log_failed "${packages[*]}" "pacman installation failed"
         return 1
     fi
-    echo -e "${GREEN}✓ Installed: $packages${NC}"
+    echo -e "${GREEN}✓ Installed: ${packages[*]}${NC}"
     return 0
 }
 
 install_paru() {
     local package="$1"
     echo -e "${YELLOW}Installing: $package${NC}"
-    if ! paru -S --noconfirm $package 2>&1; then
+    if ! paru -S --needed --noconfirm "$package" 2>&1; then
         log_failed "$package" "paru installation failed"
         return 1
     fi
     echo -e "${GREEN}✓ Installed: $package${NC}"
-    return 0
-}
-
-git_clone() {
-    local url="$1"
-    local dest="$2"
-    local name="${3:-$(basename $dest)}"
-    echo -e "${YELLOW}Cloning: $name${NC}"
-    if ! git clone --depth=1 $url $dest 2>&1; then
-        log_failed "$name" "git clone failed"
-        return 1
-    fi
-    echo -e "${GREEN}✓ Cloned: $name${NC}"
     return 0
 }
 
@@ -60,6 +47,11 @@ echo -e "${BLUE}=========================================${NC}"
 
 if [[ $EUID -eq 0 ]]; then
     echo -e "${RED}Error: Please do not run this script as root!${NC}"
+    exit 1
+fi
+
+if ! command -v paru >/dev/null 2>&1; then
+    echo -e "${RED}Error: paru is not installed. Please install paru first (e.g. from AUR).${NC}"
     exit 1
 fi
 
@@ -78,10 +70,7 @@ echo -e "${BLUE}=========================================${NC}"
 install_pacman noto-fonts noto-fonts-emoji noto-fonts-cjk ttf-jetbrains-mono ttf-jetbrains-mono-nerd
 
 install_pacman xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm i3-gaps polybar rofi dunst picom feh
-if [[ $? -eq 0 ]]; then
-    sudo systemctl enable lightdm
-    sudo systemctl set-default graphical.target
-fi
+sudo systemctl set-default multi-user.target
 
 install_pacman alacritty kitty
 
@@ -96,61 +85,10 @@ install_pacman neovim
 
 install_pacman flameshot
 
-install_pacman lolcat ipython
+install_pacman lolcat ipython zsh
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}Step 3: Install Shell and Plugins${NC}"
-echo -e "${BLUE}=========================================${NC}"
-install_pacman zsh
-
-echo -e "${YELLOW}Checking Oh My Zsh...${NC}"
-if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
-    echo -e "${YELLOW}Installing Oh My Zsh...${NC}"
-    if ! sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended 2>&1; then
-        log_failed "oh-my-zsh" "curl or install script failed"
-    else
-        echo -e "${GREEN}✓ Installed: oh-my-zsh${NC}"
-    fi
-else
-    echo -e "${GREEN}Oh My Zsh already installed${NC}"
-fi
-
-echo -e "${YELLOW}Checking Powerlevel10k...${NC}"
-if [[ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" ]]; then
-    git_clone "https://github.com/romkatv/powerlevel10k.git" "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" "powerlevel10k"
-else
-    echo -e "${GREEN}Powerlevel10k already installed${NC}"
-fi
-
-echo -e "${YELLOW}Installing Zsh plugins...${NC}"
-ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-
-if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
-    git_clone "https://gitee.com/mirrors/zsh-autosuggestions" "$ZSH_CUSTOM/plugins/zsh-autosuggestions" "zsh-autosuggestions"
-else
-    echo -e "${GREEN}zsh-autosuggestions already installed${NC}"
-fi
-
-if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
-    git_clone "https://gitee.com/mirrors/zsh-syntax-highlighting.git" "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" "zsh-syntax-highlighting"
-else
-    echo -e "${GREEN}zsh-syntax-highlighting already installed${NC}"
-fi
-
-if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-completions" ]]; then
-    git_clone "https://gitee.com/mirrors/zsh-completions" "$ZSH_CUSTOM/plugins/zsh-completions" "zsh-completions"
-else
-    echo -e "${GREEN}zsh-completions already installed${NC}"
-fi
-
-if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
-    git_clone "https://gitee.com/mirrors/fzf-tab" "$ZSH_CUSTOM/plugins/fzf-tab" "fzf-tab"
-else
-    echo -e "${GREEN}fzf-tab already installed${NC}"
-fi
-
-echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}Step 4: Install AUR Packages${NC}"
+echo -e "${BLUE}Step 3: Install AUR Packages${NC}"
 echo -e "${BLUE}=========================================${NC}"
 install_paru matugen
 
@@ -169,9 +107,9 @@ if install_paru miniconda3; then
 fi
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}Step 5: Install Other Dependencies${NC}"
+echo -e "${BLUE}Step 4: Install Other Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
-install_pacman npm python tree-sitter-cli bat
+install_pacman nodejs npm python tree-sitter-cli bat
 
 install_paru i3lock-color
 
@@ -182,32 +120,20 @@ install_paru xdg-desktop-portal-termfilechooser-hunkyburrito-git
 install_paru chromium
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}Step 6: Create Required Directories${NC}"
+echo -e "${BLUE}Step 5: Create Required Directories${NC}"
 echo -e "${BLUE}=========================================${NC}"
 mkdir -p ~/WorkSpace/Algorithm/cpp
 mkdir -p ~/WorkSpace/Algorithm/python
 mkdir -p ~/.mpd/playlists
-mkdir ~/Music
-sudo mkdir /etc/timidity
+mkdir -p ~/Music
+sudo mkdir -p /etc/timidity
 sudo touch /etc/timidity/timidity.cfg
 mkdir -p ~/Pictures/Screenshots
 mkdir -p ~/.local/share/fcitx5/themes/Matugen
 echo -e "${GREEN}Directories created${NC}"
 
 echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}Step 7: Set Default Shell${NC}"
-echo -e "${BLUE}=========================================${NC}"
-if [[ "$SHELL" != "/bin/zsh" ]]; then
-    echo -e "${YELLOW}Changing default shell to Zsh...${NC}"
-    chsh -s /bin/zsh
-    echo -e "${GREEN}Default shell changed to Zsh${NC}"
-    echo -e "${YELLOW}Please log out and log back in to apply changes${NC}"
-else
-    echo -e "${GREEN}Default shell is already Zsh${NC}"
-fi
-
-echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}Step 8: Execute symlink.sh${NC}"
+echo -e "${BLUE}Step 6: Execute symlink.sh${NC}"
 echo -e "${BLUE}=========================================${NC}"
 if [[ -f "$DOTFILES_DIR/symlink.sh" ]]; then
     echo -e "${YELLOW}Executing symlink.sh...${NC}"
@@ -251,7 +177,7 @@ fi
 
 echo ""
 echo -e "${GREEN}Tips:${NC}"
-echo "1. Please log out and log back in to apply Zsh configuration"
+echo "1. Run 'bash install-ohmyzsh.sh' to install Oh My Zsh (requires GitHub access)"
 echo "2. Run 'nvim' to open Neovim, plugins will be installed automatically"
 echo ""
 echo -e "${YELLOW}Note:${NC}"
