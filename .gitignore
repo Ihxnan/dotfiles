@@ -10,3 +10,4 @@ user/.config/fastfetch/config.jsonc
 user/.config/gtk-3.0/colors.css
 user/.config/kitty/kitty-colors.conf
 user/.config/yazi/theme.toml
+user/.config/mpd/log

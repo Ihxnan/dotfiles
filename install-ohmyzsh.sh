@@ -128,6 +128,40 @@ else
     echo -e "${GREEN}Default shell is already Zsh${NC}"
 fi
 
+echo -e "${BLUE}=========================================${NC}"
+echo -e "${BLUE}Step 5: Symlink Zsh Configuration${NC}"
+echo -e "${BLUE}=========================================${NC}"
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+symlink_zsh_config() {
+    local src="$1"
+    local dest="$2"
+
+    if [[ ! -e "$src" ]]; then
+        echo -e "${RED}✗ Source not found: $src${NC}"
+        return 1
+    fi
+
+    if [[ -e "$dest" || -L "$dest" ]]; then
+        echo -e "${YELLOW}⚠ Target already exists: $dest${NC}"
+        read -p "Delete and create symlink? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -rf "$dest"
+            echo -e "${GREEN}✓ Removed old file: $dest${NC}"
+        else
+            echo -e "${YELLOW}⊘ Skipped: $dest${NC}"
+            return 0
+        fi
+    fi
+
+    ln -s "$src" "$dest"
+    echo -e "${GREEN}✓ Created symlink: $dest -> $src${NC}"
+}
+
+symlink_zsh_config "$DOTFILES_DIR/user/.zshrc" "$HOME/.zshrc"
+symlink_zsh_config "$DOTFILES_DIR/user/.p10k.zsh" "$HOME/.p10k.zsh"
+
 echo ""
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${GREEN}✓ Oh My Zsh installation completed!${NC}"

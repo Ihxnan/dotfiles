@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 颜色定义
+# Color definitions
 BOLD='\033[1m'
 GREEN='\033[32m'
 BLUE='\033[34m'
@@ -12,12 +12,12 @@ GRAY='\033[90m'
 RESET='\033[0m'
 
 # ==============================================
-# 真正有效：判断是否运行在 纯 TTY 控制台
-# 图形界面终端、SSH 都会被拦截
+# Check if running in a pure TTY console
+# GUI terminals and SSH will be blocked
 # ==============================================
 if [[ "$(tty)" != /dev/tty* ]]; then
-    echo -e "\n${RED}✘ 错误：${RESET}此脚本只能在 纯 TTY 文本控制台 运行！"
-    echo -e "${YELLOW}ℹ 请使用 Ctrl+Alt+F1~F6 切换到 TTY 后再运行${RESET}\n"
+    echo -e "\n${RED}✘ Error: ${RESET}This script can only run in a pure TTY text console!"
+    echo -e "${YELLOW}ℹ Please switch to TTY using Ctrl+Alt+F1~F6 first${RESET}\n"
     exit 1
 fi
 
@@ -41,7 +41,7 @@ echo
 case $choice in
 1)
     if ! command -v lightdm &>/dev/null; then
-        echo -e "${RED}lightdm 未安装，无法启动 i3${RESET}"
+        echo -e "${RED}lightdm is not installed, cannot start i3${RESET}"
         exit 1
     fi
     echo -e "${GREEN}Starting i3...${RESET}"
@@ -49,7 +49,7 @@ case $choice in
     ;;
 2)
     if ! command -v startplasma-wayland &>/dev/null; then
-        echo -e "${RED}KDE Plasma 未安装，无法启动${RESET}"
+        echo -e "${RED}KDE Plasma is not installed, cannot start${RESET}"
         exit 1
     fi
     echo -e "${GREEN}Starting KDE Plasma (Wayland)...${RESET}"

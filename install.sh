@@ -69,7 +69,7 @@ echo -e "${BLUE}=========================================${NC}"
 
 install_pacman noto-fonts noto-fonts-emoji noto-fonts-cjk ttf-jetbrains-mono ttf-jetbrains-mono-nerd
 
-install_pacman xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm i3-gaps polybar rofi dunst picom feh
+install_pacman xorg xorg-xinit mesa xf86-video-intel lightdm lightdm-gtk-greeter i3-wm polybar rofi dunst picom feh
 sudo systemctl set-default multi-user.target
 
 install_pacman alacritty kitty
@@ -103,7 +103,7 @@ install_paru jdtls
 install_paru xclip
 
 if install_paru miniconda3; then
-    zsh -c "conda config --set auto_activate_base false"
+    /opt/miniconda3/bin/conda config --set auto_activate_base false
 fi
 
 echo -e "${BLUE}=========================================${NC}"
@@ -131,6 +131,20 @@ sudo touch /etc/timidity/timidity.cfg
 mkdir -p ~/Pictures/Screenshots
 mkdir -p ~/.local/share/fcitx5/themes/Matugen
 echo -e "${GREEN}Directories created${NC}"
+
+echo -e "${BLUE}=========================================${NC}"
+echo -e "${BLUE}Step 5.5: Configure LightDM Autologin${NC}"
+echo -e "${BLUE}=========================================${NC}"
+sudo mkdir -p /etc/lightdm/lightdm.conf.d
+sudo tee /etc/lightdm/lightdm.conf.d/50-autologin.conf > /dev/null <<EOF
+[Seat:*]
+autologin-user=$USER
+autologin-user-timeout=0
+autologin-session=i3
+EOF
+sudo groupadd -r autologin 2>/dev/null
+sudo gpasswd -a "$USER" autologin
+echo -e "${GREEN}LightDM autologin configured for $USER${NC}"
 
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 6: Execute symlink.sh${NC}"

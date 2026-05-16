@@ -18,4 +18,4 @@ feh $FEH_MODE "$CURRENT_WALLPAPER"
 
 matugen image "$CURRENT_WALLPAPER" --source-color-index 0
 
-bash /home/ihxnan/.scripts/fcitx5/reload.sh
+bash $HOME/.scripts/fcitx5/reload.sh

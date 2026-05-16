@@ -28,9 +28,6 @@ floating_modifier $mod
 # 通知
 exec_always dunst
 
-# 挂载服务器
-exec_always --no-startup-id sshfs 'ihxnan.xyz:/home/ihxnan' /home/ihxnan/YUN
-
 # 壁纸
 exec_always --no-startup-id $HOME/.scripts/feh/random_feh.sh
 
@@ -38,7 +35,7 @@ exec_always --no-startup-id $HOME/.scripts/feh/random_feh.sh
 exec_always picom
 
 # ctrl2cap
-exec --no-startup-id ~/bin/key
+exec --no-startup-id ~/.local/bin/key
 
 # 禁用屏幕超时和关闭
 exec --no-startup-id xset s off
