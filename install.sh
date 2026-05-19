@@ -19,6 +19,18 @@ log_failed() {
     echo -e "${RED}✗ Failed: $package - $reason${NC}"
 }
 
+ask_section() {
+    local description="$1"
+    local step="$2"
+    echo ""
+    echo -ne "${YELLOW}Install $step: ${description}? [Y/n] ${NC}"
+    read -r response
+    case "$response" in
+        [nN][oO]|[nN]) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
 install_pacman() {
     local packages=("$@")
     echo -e "${YELLOW}Installing: ${packages[*]}${NC}"
@@ -55,6 +67,7 @@ if ! command -v paru >/dev/null 2>&1; then
     exit 1
 fi
 
+if ask_section "pacman -Syu (full system upgrade)" "Step 1"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 1: Update System${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -62,7 +75,11 @@ echo -e "${YELLOW}Updating system...${NC}"
 if ! sudo pacman -Syu --noconfirm 2>&1; then
     log_failed "system update" "pacman update failed"
 fi
+else
+    echo -e "${YELLOW}Skipping system update${NC}"
+fi
 
+if ask_section "fonts, xorg, i3, terminal, audio, utils, neovim, etc." "Step 2"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 2: Install Base Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -86,7 +103,11 @@ install_pacman neovim
 install_pacman flameshot
 
 install_pacman lolcat ipython zsh
+else
+    echo -e "${YELLOW}Skipping base dependencies${NC}"
+fi
 
+if ask_section "matugen, yazi, lazygit, jq, jdtls, xclip, miniconda3" "Step 3"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 3: Install AUR Packages${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -105,7 +126,11 @@ install_paru xclip
 if install_paru miniconda3; then
     /opt/miniconda3/bin/conda config --set auto_activate_base false
 fi
+else
+    echo -e "${YELLOW}Skipping AUR packages${NC}"
+fi
 
+if ask_section "nodejs, python, i3lock-color, sshfs, xdg-desktop-portal, chromium" "Step 4"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 4: Install Other Dependencies${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -118,7 +143,11 @@ install_pacman sshfs
 install_paru xdg-desktop-portal-termfilechooser-hunkyburrito-git
 
 install_paru chromium
+else
+    echo -e "${YELLOW}Skipping other dependencies${NC}"
+fi
 
+if ask_section "create ~/WorkSpace, ~/.mpd, ~/Music, ~/Pictures/Screenshots, etc." "Step 5"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 5: Create Required Directories${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -131,7 +160,11 @@ sudo touch /etc/timidity/timidity.cfg
 mkdir -p ~/Pictures/Screenshots
 mkdir -p ~/.local/share/fcitx5/themes/Matugen
 echo -e "${GREEN}Directories created${NC}"
+else
+    echo -e "${YELLOW}Skipping directory creation${NC}"
+fi
 
+if ask_section "LightDM autologin configuration" "Step 5.5"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 5.5: Configure LightDM Autologin${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -145,7 +178,11 @@ EOF
 sudo groupadd -r autologin 2>/dev/null
 sudo gpasswd -a "$USER" autologin
 echo -e "${GREEN}LightDM autologin configured for $USER${NC}"
+else
+    echo -e "${YELLOW}Skipping LightDM autologin${NC}"
+fi
 
+if ask_section "run symlink.sh to create config symlinks" "Step 6"; then
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${BLUE}Step 6: Execute symlink.sh${NC}"
 echo -e "${BLUE}=========================================${NC}"
@@ -155,6 +192,9 @@ if [[ -f "$DOTFILES_DIR/symlink.sh" ]]; then
 else
     echo -e "${RED}Error: symlink.sh not found!${NC}"
     exit 1
+fi
+else
+    echo -e "${YELLOW}Skipping symlink.sh${NC}"
 fi
 
 echo -e "${BLUE}=========================================${NC}"
