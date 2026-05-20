@@ -35,7 +35,7 @@ return {
         -- Recommended/example keymaps
         vim.keymap.set({ "n", "x" }, "<leader>oa", function() require("opencode").ask("@this: ", { submit = true }) end,
             { desc = "Ask opencode…" })
-        vim.keymap.set({ "n", "t" }, "<leader>ot", function() require("opencode").toggle() end, { desc = "Toggle opencode" })
+        vim.keymap.set("n", "<leader>ot", function() require("opencode").toggle() end, { desc = "Toggle opencode" })
 
         -- You may want these if you use the opinionated `<C-a>` and `<C-x>` keymaps above — otherwise consider `<leader>o…` (and remove terminal mode from the `toggle` keymap)
         vim.keymap.set("n", "+", "<C-a>", { desc = "Increment under cursor", noremap = true })
