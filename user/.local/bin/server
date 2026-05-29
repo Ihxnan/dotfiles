@@ -1,0 +1,214 @@
+#!/bin/bash
+
+set -e
+
+VM="server"
+SERVER_IP="192.168.122.230"
+SSH_USER="ihxnan"
+MOUNT_POINT="$HOME/vm-server"
+LIBVIRT_URI="qemu:///system"
+
+usage() {
+    cat <<EOF
+用法: server <命令> [选项]
+
+命令:
+  start          启动虚拟机（等待网络就绪）
+  stop           优雅关闭虚拟机
+  ssh            SSH 连接到虚拟机
+  mount          通过 sshfs 挂载虚拟机到本地
+  umount         卸载 sshfs 挂载
+  display        打开 virt-viewer 显示
+  status         查看虚拟机运行状态
+
+选项:
+  -u, --user USER      SSH 用户（默认: ihxnan）
+  -m, --mount PATH     挂载点（默认: ~/vm-server）
+  -h, --help           显示此帮助信息
+EOF
+    exit 0
+}
+
+virsh_cmd() {
+    LC_ALL=C virsh -c "$LIBVIRT_URI" "$@"
+}
+
+is_running() {
+    local state
+    state=$(virsh_cmd domstate "$VM" 2>/dev/null)
+    [[ "$state" == "running" ]]
+}
+
+ensure_running() {
+    if ! is_running; then
+        echo "错误: 虚拟机 $VM 未运行" >&2
+        echo "请先执行: server start" >&2
+        exit 1
+    fi
+}
+
+cmd_start() {
+    if is_running; then
+        echo "虚拟机 $VM 已在运行中"
+    else
+        echo "正在启动虚拟机 $VM ..."
+        virsh_cmd start "$VM"
+        echo "虚拟机 $VM 已启动"
+    fi
+
+    echo "IP 地址: $SERVER_IP"
+
+    echo -n "等待 SSH 服务就绪..."
+    for i in $(seq 1 30); do
+        if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=accept-new \
+            -o PasswordAuthentication=no -o BatchMode=yes \
+            "$SSH_USER@$SERVER_IP" echo ready &>/dev/null 2>&1; then
+            echo " 就绪"
+            return 0
+        fi
+        echo -n "."
+        sleep 2
+    done
+    echo ""
+    echo "警告: SSH 服务可能尚未就绪，请稍后重试"
+}
+
+cmd_stop() {
+    if ! is_running; then
+        echo "虚拟机 $VM 未在运行"
+        return 0
+    fi
+    echo "正在关闭虚拟机 $VM ..."
+    virsh_cmd shutdown "$VM"
+
+    echo -n "等待虚拟机关闭..."
+    for i in $(seq 1 60); do
+        if ! is_running; then
+            echo " 完成"
+            return 0
+        fi
+        echo -n "."
+        sleep 2
+    done
+    echo ""
+    echo "优雅关闭超时，尝试强制关闭..."
+    virsh_cmd destroy "$VM"
+    echo "虚拟机 $VM 已强制关闭"
+}
+
+cmd_ssh() {
+    ensure_running
+    echo "正在连接 $SSH_USER@$SERVER_IP ..."
+    exec ssh -o StrictHostKeyChecking=accept-new "$SSH_USER@$SERVER_IP"
+}
+
+cmd_mount() {
+    ensure_running
+
+    if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        echo "挂载点 $MOUNT_POINT 已挂载"
+        return 0
+    fi
+
+    mkdir -p "$MOUNT_POINT"
+
+    echo "正在挂载 $SSH_USER@$SERVER_IP:/ 到 $MOUNT_POINT ..."
+    sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 \
+        "$SSH_USER@$SERVER_IP:/" "$MOUNT_POINT"
+    echo "挂载成功: $MOUNT_POINT"
+}
+
+cmd_umount() {
+    if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        echo "挂载点 $MOUNT_POINT 未挂载"
+        return 0
+    fi
+    echo "正在卸载 $MOUNT_POINT ..."
+    fusermount -u "$MOUNT_POINT" 2>/dev/null || umount "$MOUNT_POINT"
+    echo "已卸载 $MOUNT_POINT"
+}
+
+cmd_display() {
+    ensure_running
+    echo "正在打开虚拟机 $VM 的显示..."
+    virt-viewer -c "$LIBVIRT_URI" "$VM" &
+}
+
+cmd_status() {
+    echo "虚拟机: $VM"
+    echo "---"
+
+    local state
+    state=$(virsh_cmd domstate "$VM" 2>/dev/null) || state="未定义"
+    echo "状态:     $state"
+
+    if [[ "$state" == "running" ]]; then
+        local vcpus mem
+        echo "IP:       $SERVER_IP"
+
+        vcpus=$(virsh_cmd dominfo "$VM" 2>/dev/null | awk '/^CPU\(s\):/ {print $2}')
+        mem=$(virsh_cmd dominfo "$VM" 2>/dev/null | awk '/^Used memory:/ {printf "%.1fG", $3/1024/1024}')
+        echo "vCPUs:    ${vcpus:-未知}"
+        echo "内存:     ${mem:-未知}"
+    fi
+
+    if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        echo "挂载点:   $MOUNT_POINT (已挂载)"
+    fi
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -u|--user)
+            SSH_USER="$2"
+            shift 2
+            ;;
+        -m|--mount)
+            MOUNT_POINT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        -*)
+            echo "未知选项: $1"
+            usage
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+CMD="${1:-status}"
+
+case "$CMD" in
+    start|up|boot)
+        cmd_start
+        ;;
+    stop|shutdown|down)
+        cmd_stop
+        ;;
+    ssh|connect)
+        cmd_ssh
+        ;;
+    mount)
+        cmd_mount
+        ;;
+    umount|unmount)
+        cmd_umount
+        ;;
+    display|view|show)
+        cmd_display
+        ;;
+    status|info|st)
+        cmd_status
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        echo "未知命令: $CMD"
+        usage
+        ;;
+esac
