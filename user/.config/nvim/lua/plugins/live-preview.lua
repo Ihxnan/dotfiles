@@ -1,12 +1,11 @@
 return {
-    'brianhuster/live-preview.nvim',
+    "brianhuster/live-preview.nvim",
     dependencies = {
-        -- You can choose one of the following pickers
-        'nvim-telescope/telescope.nvim',
+        "nvim-telescope/telescope.nvim",
     },
     config = function()
-        require('live-preview').setup({
-            browser = 'chromium'
+        require("live-preview").setup({
+            browser = "chromium",
         })
-    end
+    end,
 }

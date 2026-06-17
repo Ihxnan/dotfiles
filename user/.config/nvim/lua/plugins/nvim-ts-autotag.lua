@@ -1,4 +1,3 @@
--- lua/plugins/editor.lua
 return {
     {
         "windwp/nvim-ts-autotag",
@@ -6,7 +5,7 @@ return {
         dependencies = "nvim-treesitter/nvim-treesitter",
         -- 只在特定文件类型下激活（可选，默认全支持）
         ft = {
-            "html", "xml", "vue", "javascript", "typescript", "tsx", "jsx", "markdown"
+            "html", "xml", "vue", "javascript", "typescript", "tsx", "jsx", "markdown",
         },
         config = function()
             -- 配置插件
@@ -19,5 +18,5 @@ return {
                 auto_open = true,
             })
         end,
-    }
+    },
 }
