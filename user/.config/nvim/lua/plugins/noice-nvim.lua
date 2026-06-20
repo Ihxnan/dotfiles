@@ -110,13 +110,14 @@ return {
                     -- 消息通知视图配置（用于 messages 和 notify）
                     notify = {
                         size = {
-                            width = "80%",   -- 宽度为编辑器的80%
+                            width = 50,      -- 固定宽度50列，适合右下角 toast 风格
                             height = "auto", -- 高度自适应内容
                         },
                         position = {
-                            col = "50%", -- 水平居中
-                            row = "90%", -- 垂直位置：靠近底部（90%高度处）
+                            col = "100%",
+                            row = "100%",
                         },
+                        anchor = "SE",
                     },
 
                     -- 备用消息视图配置（如果 messages.view 设置为 "messages" 则启用）
@@ -143,8 +144,10 @@ return {
             -- 配置 nvim-notify 插件（noice 依赖它显示通知）
             require("notify").setup({
                 background_colour = "#000000", -- 通知背景色（黑色）
-                max_width = 100,               -- 通知最大宽度
+                max_width = 50,                -- 通知最大宽度
                 max_height = 20,               -- 通知最大高度
+                position = "bottom-right",     -- v3+ 版：直接指定右下角
+                top_down = false,              -- < v3 版：从下往上堆叠（至少靠底）
             })
 
             -- 增强命令行补全体验的 Vim 选项设置

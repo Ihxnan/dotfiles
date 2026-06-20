@@ -38,8 +38,10 @@ end
 local function run_code(with_data)
     vim.cmd("w")
     local ft = vim.bo.filetype
+    local data_label = with_data and "（带数据）" or ""
     local data_redirect = with_data and " < ~/WorkSpace/Algorithm/data" or ""
-    local data_label    = with_data and " (with input data)" or ""
+
+    print("🚀 正在运行 " .. ft .. data_label .. " ...")
 
     if ft == "cpp" or ft == "c" then
         local cmds = {
@@ -57,7 +59,7 @@ local function run_code(with_data)
 
     elseif ft == "python" then
         local cmds = {
-            e("[Run] Executing Python file" .. data_label .. "...", C.blue),
+            e("[Run] Executing Python file" .. (with_data and " (with input data)" or "") .. "...", C.blue),
             'time python3 "%"' .. data_redirect .. " 2>&1",
             "exit_code=${PIPESTATUS[0]}",
             "if [ $exit_code -eq 0 ]; then " .. e("[Done] Python program executed successfully", C.green),
@@ -68,7 +70,7 @@ local function run_code(with_data)
 
     elseif ft == "java" then
         if with_data then
-            print("Java 暂不支持带数据运行")
+            print("⚠️ Java 暂不支持带数据运行")
             return
         end
         local class_name = vim.fn.expand("%:t:r")
@@ -76,28 +78,29 @@ local function run_code(with_data)
 
     elseif ft == "cmake" then
         if with_data then
-            print("CMake 暂不支持带数据运行")
+            print("⚠️ CMake 暂不支持带数据运行")
             return
         end
+        print("🔧 正在构建 CMake 项目 ...")
         vim.cmd("split | terminal rm -rf build && mkdir build && cd build && cmake .. && make; $SHELL")
         vim.cmd("startinsert")
 
     elseif ft == "sh" then
         if with_data then
-            print("Shell 暂不支持带数据运行")
+            print("⚠️ Shell 暂不支持带数据运行")
             return
         end
         vim.cmd("split | terminal sh %")
 
     elseif ft == "html" then
         if with_data then
-            print("HTML 暂不支持带数据运行")
+            print("⚠️ HTML 暂不支持带数据运行")
             return
         end
         vim.cmd("split | terminal chromium %")
 
     else
-        print("不支持的文件类型" .. data_label .. ": " .. ft)
+        print("❌ 不支持的文件类型: " .. ft)
     end
 end
 
@@ -148,19 +151,30 @@ end
 -- ======================== 自定义函数：粘贴剪贴板到 data 文件 ========================
 local paste_to_data = function()
   local content = vim.fn.getreg('+')
+  if not content or content == "" then
+    print("⚠️ 剪贴板为空，跳过写入")
+    return
+  end
   local file = io.open(vim.fn.expand('~/WorkSpace/Algorithm/data'), 'w')
   if file then
     file:write(content)
     file:close()
+    local lines = vim.fn.substitute(content, "[^\\n]", "", "g")
+    local line_count = #lines + 1
+    local preview = content:len() > 40 and content:sub(1, 40) .. "…" or content
+    print("✅ 已写入 " .. line_count .. " 行到 data 文件 (" .. content:len() .. " 字节)")
   else
-    print("错误：无法打开 data 文件写入")
+    print("❌ 错误：无法打开 data 文件写入")
   end
 end
 
 -- ======================== 自定义函数：粘贴剪贴板 + 运行代码 ========================
 local run_code_with_paste = function()
+  vim.cmd("w")
   paste_to_data()
-  run_code(true)
+  vim.defer_fn(function()
+    run_code(true)
+  end, 50)
 end
 
 -- ======================== 插入模式 (i-mode) 快捷键 ========================
