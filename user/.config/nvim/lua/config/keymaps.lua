@@ -46,7 +46,7 @@ local function run_code(with_data)
             e("[Compile] Starting C++ compilation...", C.blue),
             'g++ -O2 -fsanitize=address,undefined,leak "%" -o a.out -DIHXNAN',
             "if [ $? -eq 0 ]; then " .. e("[Run] Program output:", C.cyan),
-            "time ./a.out" .. data_redirect .. " | lolcat",
+            "time ./a.out" .. data_redirect,
             e("[Clean] Removing temporary file a.out", C.yellow),
             "rm -f a.out",
             e("[Done] All operations completed", C.green),
@@ -58,7 +58,7 @@ local function run_code(with_data)
     elseif ft == "python" then
         local cmds = {
             e("[Run] Executing Python file" .. data_label .. "...", C.blue),
-            'time python3 "%"' .. data_redirect .. " 2>&1 | lolcat",
+            'time python3 "%"' .. data_redirect .. " 2>&1",
             "exit_code=${PIPESTATUS[0]}",
             "if [ $exit_code -eq 0 ]; then " .. e("[Done] Python program executed successfully", C.green),
             "else " .. e("[Error] Python program failed! Exit code: $exit_code", C.red),
@@ -145,6 +145,24 @@ local close_code = function()
     end
 end
 
+-- ======================== 自定义函数：粘贴剪贴板到 data 文件 ========================
+local paste_to_data = function()
+  local content = vim.fn.getreg('+')
+  local file = io.open(vim.fn.expand('~/WorkSpace/Algorithm/data'), 'w')
+  if file then
+    file:write(content)
+    file:close()
+  else
+    print("错误：无法打开 data 文件写入")
+  end
+end
+
+-- ======================== 自定义函数：粘贴剪贴板 + 运行代码 ========================
+local run_code_with_paste = function()
+  paste_to_data()
+  run_code(true)
+end
+
 -- ======================== 插入模式 (i-mode) 快捷键 ========================
 keymap.set("i", "jk", "<ESC>")          -- 快速退出插入模式（替代ESC键，减少抬手）
 keymap.set("i", "<C-s>", "<ESC>:w<CR>") -- 插入模式下Ctrl+s快速保存
@@ -182,7 +200,10 @@ keymap.set("n", "<leader>i", ":w<CR><C-w>v:terminal<CR>iiflow<CR>", { desc = "Le
 keymap.set("n", "rc", function() run_code(false) end, { desc = "普通模式rc：运行当前代码（多语言通用）" })
 keymap.set("n", "ru", run_cuda, { desc = "普通模式ru：运行CUDA/C/C++代码" })
 keymap.set("n", "cd", ":e ~/WorkSpace/Algorithm/data<CR>", { desc = "普通模式cd：快速打开算法输入数据文件" })
+keymap.set("n", "cp", paste_to_data, { desc = "cp：覆盖写入剪贴板内容到 data 文件" })
+keymap.set("n", "ct", ":e ~/Github/Template<CR>", { desc = "普通模式cd：快速打开算法模板文件" })
 keymap.set("n", "rd", function() run_code(true) end, { desc = "普通模式rd：带输入数据运行代码（算法刷题）" })
+keymap.set("n", "rp", run_code_with_paste, { desc = "普通模式rp：粘贴剪贴板内容到 data 文件后带数据运行代码" })
 keymap.set("n", "dp", ":w<CR><C-w>v:terminal<CR>idp -k", { desc = "普通模式dp：保存并运行dp工具（-k参数）" })
 keymap.set("n", "<F5>", ":w<CR>:silent !code . &<CR>", { desc = "F5：保存并在VSCode中打开当前目录（调试用）" })
 
