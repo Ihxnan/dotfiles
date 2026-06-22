@@ -181,11 +181,9 @@
     "ACM Template": {
         "prefix": "acm",
         "body": [
-            "/* ──◆  MACRO  ◆── */",
-            "$1#define MULTIT",
-            "/* ──◆  /MACRO  ◆── */",
-            "#include <ihxnan>",
             "/* ──▶  INCLUDE  ◀── */",
+            "$1#define MULTIT",
+            "#include <ihxnan>",
             "/* ──▶  /INCLUDE  ◀── */",
             "",
             "/* ╔══════════ SOLVE ══════════╗ */",

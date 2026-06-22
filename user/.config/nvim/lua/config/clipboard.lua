@@ -38,7 +38,7 @@ local function copy_all_with_info()
   local last_line = vim.fn.line('$')
 
   -- 已知标签名
-  local labels = { "MACRO", "INCLUDE", "SOLVE" }
+  local labels = { "INCLUDE", "SOLVE" }
 
   -- 检测行是否为标签区域的开始/结束标记
   local function check_marker(line)
@@ -86,8 +86,8 @@ local function copy_all_with_info()
     else
       if state == "outside" then
         -- 标签区外的行丢弃，不保留
-      elseif state == "MACRO" or state == "SOLVE" then
-        -- macro / solve：原样复制
+      elseif state == "SOLVE" then
+        -- solve：原样复制
         emit(line)
       elseif state == "INCLUDE" then
         -- include：将 #include <Name> 内联为 /usr/local/include/<Name> 的代码
@@ -100,9 +100,7 @@ local function copy_all_with_info()
             f:close()
             -- 直接插入代码，不加注释标记
             for cline in code:gmatch("[^\r\n]+") do
-              if not cline:match('^%s*#include%s*[<"]') then
-                emit(cline)
-              end
+              emit(cline)
             end
             need_separator = true  -- 不同内联模板之间添加空行
             included_count = included_count + 1
@@ -122,54 +120,7 @@ local function copy_all_with_info()
 
   vim.fn.setpos('.', save_pos)
 
-  -- 竞赛模板头
-  local header = [=[
-#include <bits/stdc++.h>
-#define ls(x)((x)<<1)
-#define rs(x)((x)<<1|1)
-#define fid(x,y)((m)*(x-1)+(y))
-#define endl '\n'
-#ifdef IHXNAN
-    #include <dbg>
-#else
-    #define gdb(...)              ((void)0)
-    #define gdbif(c, ...)         ((void)0)
-    #define gdb_assert(cond, msg) ((void)0)
-    #define TIME(name)            ((void)0)
-    #define gc() (p1==p2&&(p2=(p1=buf)+fread(buf,1,S,stdin),p1==p2)?EOF:*p1++)
-    #define pc(c) (Top==S&&(clear(),0), buf[Top++]=c)
-#endif
-using namespace std;using ll=long long;using ul=unsigned long long;using lll=__int128;using vb=vector<bool>;using vi=vector<int>;using vvi=vector<vi>;using vl=vector<ll>;using vvl=vector<vl>;using pii=pair<int,int>;using pll=pair<ll,ll>;using ti=tuple<int,int,int>;
-struct IO{
-#define cin fin
-#define cout fout
-    static const int S=1<<21;uint8_t buf[S],*p1,*p2;int st[105],Top;
-    ~IO(){clear();}
-    inline void clear(){fwrite(buf,1,Top,stdout);Top=0;}
-    inline IO&operator>>(char&x){while(isspace(x=gc()));return *this;} inline IO&operator>>(string&x){x.clear();int c;while(isspace(c=gc()));while(!isspace(c))x+=char(c),c=gc();return*this;}
-    template<typename T>inline IO&operator>>(T&x){x=0;int f=0,ch=gc();while(!isdigit(ch)){if(ch=='-')f^=1;ch=gc();}while(isdigit(ch))x=(x<<3)+(x<<1)+(ch^48),ch=gc();f?x=-x:0;return*this;}
-    inline IO&operator<<(char c){pc(c);return*this;} inline IO&operator<<(const char*x){while(*x)pc(*x++);return*this;} inline IO&operator<<(const string&x){for(auto c:x)pc(c);return*this;}
-    template<typename T>inline IO&operator<<(T x){int f=0;if(x<0)pc('-'),f^=1;do{st[++st[0]]=f?-(x%10):x%10,x/=10;}while(x);while(st[0])pc(48^st[st[0]--]);return*this;}
-}fin,fout;
-int iINF=0x3f3f3f3f,mod=998244353;ll lINF=0x3f3f3f3f3f3f3f3f,MOD=1000000007;
-]=]
-
-  -- 竞赛模板尾
-  local footer = [[
-
-int main()
-{
-    int t = 1;
-#ifdef MULTIT
-        scanf("%d", &t);
-#endif
-    while (t--)
-        solve();
-    return 0;
-}
-]]
-
-  local full = header .. "\n" .. processed_str .. "\n" .. footer
+  local full = processed_str
   vim.fn.setreg('+', full)
   vim.fn.setreg('"', full)
   local total = #full
