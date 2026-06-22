@@ -50,5 +50,40 @@ return {
                 vim.opt_local.expandtab = true
             end,
         })
+
+        -- Python 缩进/折叠优化
+        vim.api.nvim_create_autocmd("FileType", {
+            pattern = "python",
+            callback = function()
+                vim.opt_local.tabstop = 4
+                vim.opt_local.shiftwidth = 4
+                vim.opt_local.softtabstop = 4
+                vim.opt_local.expandtab = true
+                vim.opt_local.foldmethod = "expr"
+                vim.opt_local.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+                vim.opt_local.foldlevel = 50
+                vim.opt_local.foldlevelstart = 50
+                vim.opt_local.colorcolumn = "88,100"
+            end,
+        })
+
+        -- Python 运行/测试快捷键
+        vim.api.nvim_create_autocmd("FileType", {
+            pattern = "python",
+            callback = function()
+                local opts = { buffer = true, noremap = true, silent = true }
+                vim.keymap.set("n", "<leader>rr",
+                    "<cmd>w<CR><cmd>split | terminal python3 %<CR>i",
+                    vim.tbl_extend("force", opts, { desc = "Python: 运行当前文件" }))
+                vim.keymap.set("n", "<leader>rt", function()
+                    vim.cmd("w")
+                    vim.cmd("split | terminal pytest " .. vim.fn.expand("%") .. " -x --tb=short")
+                end, vim.tbl_extend("force", opts, { desc = "Python: 运行当前测试文件" }))
+                vim.keymap.set("n", "<leader>rT", function()
+                    vim.cmd("w")
+                    vim.cmd("split | terminal pytest -x --tb=short")
+                end, vim.tbl_extend("force", opts, { desc = "Python: 运行全部测试" }))
+            end,
+        })
     end,
 }

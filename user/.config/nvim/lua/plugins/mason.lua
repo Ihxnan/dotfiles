@@ -10,17 +10,36 @@ return {
         dependencies = { "williamboman/mason.nvim" },
         opts = {
             ensure_installed = {
+                -- Python
                 "black",
-                "clang-format",
                 "isort",
-                "htmlhint",
+                "ruff",              -- 超快 lint + format（可选替代 black）
+                "pyright",
+
+                -- C/C++
+                "clang-format",
+                "clangd",
+
+                -- Lua
                 "lua-language-server",
+                "stylua",
+
+                -- Shell
+                "shfmt",
+
+                -- JS/TS/Web（prettierd 是 prettier 的守护进程版，启动更快）
+                "prettierd",
                 "typescript-language-server",
                 "html-lsp",
                 "css-lsp",
                 "json-lsp",
-                "pyright",
-                "clangd",
+                "htmlhint",
+
+                -- 构建系统
+                "cmakelang",          -- 提供 cmake-format 命令（Mason 包名不同）
+
+                -- 配置文件
+                "taplo",             -- TOML 格式化（Rust 实现，速度极快）
             },
             auto_update = false,
             run_on_start = true,
@@ -63,6 +82,56 @@ return {
 
                 vim.keymap.set("n", "<leader>dl", vim.diagnostic.setloclist, vim.tbl_extend("force", opts, { desc = "错误列表" }))
                 vim.keymap.set("n", "<leader>dh", vim.diagnostic.open_float, vim.tbl_extend("force", opts, { desc = "悬浮错误" }))
+
+                -- ========== Python 专用增强 ==========
+                if vim.bo[bufnr].filetype ~= "python" then return end
+
+                -- 通用 LSP 快捷键（所有 LSP 服务器都适用）
+                vim.keymap.set("n", "gI", vim.lsp.buf.implementation,
+                    vim.tbl_extend("force", opts, { desc = "跳转到实现" }))
+
+                if client.name == "pyright" then
+                    -- 自动检测虚拟环境路径
+                    local venv_paths = {
+                        vim.fn.getcwd() .. "/.venv",
+                        vim.fn.getcwd() .. "/venv",
+                        vim.fn.getcwd() .. "/.env",
+                        vim.fn.expand("~/.local/share/virtualenvs/*"),
+                    }
+                    local venv = ""
+                    for _, path in ipairs(venv_paths) do
+                        if vim.fn.isdirectory(path) == 1 then
+                            venv = path
+                            break
+                        end
+                    end
+
+                    client.notify("workspace/didChangeConfiguration", {
+                        settings = {
+                            python = {
+                                analysis = {
+                                    typeCheckingMode = "basic",
+                                    autoSearchPaths = true,
+                                    useLibraryCodeForTypes = true,
+                                    diagnosticMode = "workspace",
+                                    reportMissingImports = "warning",
+                                    reportMissingTypeStubs = false,
+                                    reportUnusedVariable = "warning",
+                                    reportUnusedImport = "warning",
+                                    reportGeneralTypeIssues = "warning",
+                                    venvPath = venv ~= "" and vim.fn.fnamemodify(venv, ":h") or "",
+                                    venv = venv ~= "" and vim.fn.fnamemodify(venv, ":t") or "",
+                                },
+                            },
+                        },
+                    })
+
+                    -- Python 专用快捷键
+                    vim.keymap.set("n", "gT", vim.lsp.buf.type_definition,
+                        vim.tbl_extend("force", opts, { desc = "Python: 跳转到类型定义" }))
+                    vim.keymap.set("n", "K", vim.lsp.buf.hover,
+                        vim.tbl_extend("force", opts, { desc = "Python: 显示类型/文档" }))
+                end
             end
 
             -- 服务器配置（新版格式）
