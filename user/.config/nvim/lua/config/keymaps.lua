@@ -64,7 +64,7 @@ local function run_code(with_data)
             e("[Check] Syntax checking...", C.blue),
             'python3 -m py_compile "%" 2>&1',
             "if [ $? -eq 0 ]; then " .. e("[Run] Executing Python file" .. (with_data and " (with input data)" or "") .. "...", C.cyan),
-            'time PYTHONUNBUFFERED=1 python3 "%"' .. data_redirect,
+            'time PYTHONUNBUFFERED=1 python3 "%"' .. data_redirect .. ' | lolcat',
             e("[Done] Python finished", C.green),
             "else " .. e("[Error] Syntax error! Fix your code", C.red),
             "fi",
