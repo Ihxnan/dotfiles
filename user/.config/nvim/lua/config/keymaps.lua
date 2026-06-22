@@ -8,13 +8,14 @@
 --
 --  功能：Neovim 自定义按键映射 + 多语言代码运行/预览 + 窗口/缓冲区高效管理
 
--- ======================== 基础配置 ========================
+-- ======================== 1. 基础配置 ========================
 vim.g.mapleader = " "     -- 设置<leader>键为空格（自定义快捷键的前缀）
 local keymap = vim.keymap -- 简化按键映射函数的调用（:help vim.keymap）
+require("config.clipboard")
 
--- ======================== 自定义函数：多语言代码通用运行 ========================
--- ======================== 自定义函数：多语言代码通用运行 ========================
--- ANSI 颜色常量（用于终端输出着色）
+-- ======================== 2. 自定义函数 ========================
+
+-- 2.1 ANSI 颜色常量 & 辅助函数（用于终端输出着色）
 local C = {
     blue   = "\\033[34m",
     cyan   = "\\033[36m",
@@ -34,6 +35,7 @@ local function term_cmd(cmds)
     return "vsplit | terminal bash -c '" .. table.concat(cmds, "; ") .. "'"
 end
 
+-- 2.2 多语言代码通用运行
 --- 运行代码（可选带输入数据重定向）
 local function run_code(with_data)
     vim.cmd("w")
@@ -104,7 +106,7 @@ local function run_code(with_data)
     end
 end
 
--- ======================== 自定义函数：运行CUDA/C/C++代码 ========================
+-- 2.3 CUDA/C/C++ 运行
 local run_cuda = function()
     vim.cmd("w") -- 执行前先保存当前文件，避免运行旧代码
 
@@ -124,7 +126,7 @@ local run_cuda = function()
     end
 end
 
--- ======================== 自定义函数：HTML实时预览 ========================
+-- 2.4 HTML 实时预览 & 关闭
 local preview_code = function()
     vim.cmd("w") -- 保存文件
     local filetype = vim.bo.filetype
@@ -137,7 +139,6 @@ local preview_code = function()
     end
 end
 
--- ======================== 自定义函数：关闭HTML预览 ========================
 local close_code = function()
     local filetype = vim.bo.filetype
 
@@ -148,7 +149,8 @@ local close_code = function()
     end
 end
 
--- ======================== 自定义函数：粘贴剪贴板到 data 文件 ========================
+-- 2.5 剪贴板工具
+--- 粘贴剪贴板内容到 data 文件
 local paste_to_data = function()
   local content = vim.fn.getreg('+')
   if not content or content == "" then
@@ -168,7 +170,7 @@ local paste_to_data = function()
   end
 end
 
--- ======================== 自定义函数：粘贴剪贴板 + 运行代码 ========================
+--- 粘贴剪贴板内容 + 延迟运行代码（带数据）
 local run_code_with_paste = function()
   vim.cmd("w")
   paste_to_data()
@@ -177,169 +179,103 @@ local run_code_with_paste = function()
   end, 50)
 end
 
--- ======================== 插入模式 (i-mode) 快捷键 ========================
+-- ======================== 3. 通用模式快捷键 ========================
+
+-- 3.1 插入模式
 keymap.set("i", "jk", "<ESC>")          -- 快速退出插入模式（替代ESC键，减少抬手）
 keymap.set("i", "<C-s>", "<ESC>:w<CR>") -- 插入模式下Ctrl+s快速保存
 
--- 插入模式下快速切换窗口（无需先退出插入模式）
-keymap.set("i", "<C-h>", "<ESC><C-w>h", { desc = "插入模式：切换到左侧窗口" })
-keymap.set("i", "<C-j>", "<ESC><C-w>j", { desc = "插入模式：切换到下方窗口" })
-keymap.set("i", "<C-k>", "<ESC><C-w>k", { desc = "插入模式：切换到上方窗口" })
-keymap.set("i", "<C-l>", "<ESC><C-w>l", { desc = "插入模式：切换到右侧窗口" })
-
--- ======================== 终端模式 (t-mode) 快捷键 ========================
+-- 3.2 终端模式
 keymap.set("t", "jk", "<C-\\><C-n>") -- 终端模式下jk退出到普通模式
--- 终端模式下快速切换窗口（先退出终端插入模式，再切换）
-keymap.set("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "终端模式：切换到左侧窗口" })
-keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "终端模式：切换到下方窗口" })
-keymap.set("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "终端模式：切换到上方窗口" })
-keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "终端模式：切换到右侧窗口" })
 
--- ======================== 视觉模式 (v-mode) 快捷键 ========================
--- 选中行上下移动（移动后保持选中状态并重新缩进）
+-- 3.3 视觉模式
 keymap.set("v", "J", ":m '>+1<CR>gv=gv") -- 选中行向下移动
 keymap.set("v", "K", ":m '<-2<CR>gv=gv") -- 选中行向上移动
 keymap.set("v", "ii", "<ESC>")           -- 视觉模式下ii退出到普通模式
 keymap.set("v", "<C-c>", '"+y')          -- 视觉模式下Ctrl+c复制选中内容到系统剪贴板
 
--- ======================== 普通模式 (n-mode) 快捷键 ========================
--- 窗口管理：新建窗口
+-- ======================== 4. 窗口管理 ========================
+
+-- 4.1 窗口导航 - 插入模式
+keymap.set("i", "<C-h>", "<ESC><C-w>h", { desc = "插入模式：切换到左侧窗口" })
+keymap.set("i", "<C-j>", "<ESC><C-w>j", { desc = "插入模式：切换到下方窗口" })
+keymap.set("i", "<C-k>", "<ESC><C-w>k", { desc = "插入模式：切换到上方窗口" })
+keymap.set("i", "<C-l>", "<ESC><C-w>l", { desc = "插入模式：切换到右侧窗口" })
+
+-- 4.2 窗口导航 - 终端模式
+keymap.set("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "终端模式：切换到左侧窗口" })
+keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "终端模式：切换到下方窗口" })
+keymap.set("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "终端模式：切换到上方窗口" })
+keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "终端模式：切换到右侧窗口" })
+
+-- 4.3 窗口导航 - 普通模式
+keymap.set("n", "<C-h>", "<C-w>h", { desc = "切换到左侧窗口" })
+keymap.set("n", "<C-j>", "<C-w>j", { desc = "切换到下方窗口" })
+keymap.set("n", "<C-k>", "<C-w>k", { desc = "切换到上方窗口" })
+keymap.set("n", "<C-l>", "<C-w>l", { desc = "切换到右侧窗口" })
+
+-- 4.4 窗口创建
 keymap.set("n", "<leader>wv", "<C-w>s", { desc = "Leader+wv：水平分割窗口（上下）" })
 keymap.set("n", "<leader>wh", "<C-w>v", { desc = "Leader+wh：垂直分割窗口（左右）" })
-keymap.set("n", "<C-g>", ":tabe<CR>:term lazygit<CR>i") -- Ctrl+g：新建标签页并打开lazygit
-keymap.set("n", "<leader>t", ":w<CR><C-w>v:terminal<CR>i", { desc = "Leader+t：保存并新建垂直终端窗口（插入模式）" })
-keymap.set("n", "<leader>i", ":w<CR><C-w>v:terminal<CR>iiflow<CR>", { desc = "Leader+i：保存并打开iflow工具" })
 
--- 代码运行相关快捷键
-keymap.set("n", "rc", function() run_code(false) end, { desc = "普通模式rc：运行当前代码（多语言通用）" })
-keymap.set("n", "ru", run_cuda, { desc = "普通模式ru：运行CUDA/C/C++代码" })
-keymap.set("n", "cd", ":e ~/WorkSpace/Algorithm/data<CR>", { desc = "普通模式cd：快速打开算法输入数据文件" })
-keymap.set("n", "cp", paste_to_data, { desc = "cp：覆盖写入剪贴板内容到 data 文件" })
-keymap.set("n", "ct", ":e ~/Github/Template<CR>", { desc = "普通模式cd：快速打开算法模板文件" })
-keymap.set("n", "rd", function() run_code(true) end, { desc = "普通模式rd：带输入数据运行代码（算法刷题）" })
-keymap.set("n", "rp", run_code_with_paste, { desc = "普通模式rp：粘贴剪贴板内容到 data 文件后带数据运行代码" })
-keymap.set("n", "dp", ":w<CR><C-w>v:terminal<CR>idp -k", { desc = "普通模式dp：保存并运行dp工具（-k参数）" })
-keymap.set("n", "<F5>", ":w<CR>:silent !code . &<CR>", { desc = "F5：保存并在VSCode中打开当前目录（调试用）" })
-
--- 窗口焦点切换（普通模式）
-keymap.set("n", "<C-h>", "<C-w>h", { desc = "普通模式Ctrl+h：切换到左侧窗口" })
-keymap.set("n", "<C-j>", "<C-w>j", { desc = "普通模式Ctrl+j：切换到下方窗口" })
-keymap.set("n", "<C-k>", "<C-w>k", { desc = "普通模式Ctrl+k：切换到上方窗口" })
-keymap.set("n", "<C-l>", "<C-w>l", { desc = "普通模式Ctrl+l：切换到右侧窗口" })
-
--- 窗口位置移动（将当前窗口移动到指定方向）
+-- 4.5 窗口位置移动
 keymap.set("n", "gwh", "<C-w>H", { desc = "gwh：将当前窗口移到最左侧" })
 keymap.set("n", "gwj", "<C-w>J", { desc = "gwj：将当前窗口移到最下方" })
 keymap.set("n", "gwk", "<C-w>K", { desc = "gwk：将当前窗口移到最上方" })
 keymap.set("n", "gwl", "<C-w>L", { desc = "gwl：将当前窗口移到最右侧" })
 
--- 窗口关闭
+-- 4.6 窗口关闭
 keymap.set("n", "gwd", "<C-w>q", { desc = "gwd：关闭当前窗口" })
-keymap.set("n", "gwo", "<C-w>o", { desc = "gwo：关闭其他所有窗口，仅保留当前窗口" })
+keymap.set("n", "gwo", "<C-w>o", { desc = "gwo：关闭其他所有窗口" })
 
--- 窗口大小调整（Alt+=/-）
-vim.keymap.set("n", "<M-=>", "<C-w>>", { desc = "Alt+=：扩大当前窗口宽度" })
-vim.keymap.set("n", "<M-->", "<C-w><", { desc = "Alt+-：缩小当前窗口宽度" })
+-- 4.7 窗口大小调整
+keymap.set("n", "<M-=>", "<C-w>>", { desc = "Alt+=：扩大当前窗口宽度" })
+keymap.set("n", "<M-->", "<C-w><", { desc = "Alt+-：缩小当前窗口宽度" })
 
--- 搜索相关
-keymap.set("n", "<leader>nh", ":nohl<CR>") -- Leader+nh：取消搜索高亮
+-- ======================== 5. 缓冲区管理 ========================
 
--- 缓冲区（标签页）管理
+-- 5.1 缓冲区切换（基于 BufferLine 插件）
+keymap.set("n", "H", ":w<CR>:BufferLineCyclePre<CR>",  { desc = "Shift+H：保存并切换到上一个缓冲区" })
+keymap.set("n", "L", ":w<CR>:BufferLineCycleNext<CR>", { desc = "Shift+L：保存并切换到下一个缓冲区" })
+
+-- 5.2 缓冲区基本操作
 keymap.set("n", "gbh", ":bprevious<CR>", { desc = "gbh：切换到上一个缓冲区" })
 keymap.set("n", "gbl", ":bnext<CR>", { desc = "gbl：切换到下一个缓冲区" })
 keymap.set("n", "gbd", ":bdelete<CR>", { desc = "gbd：关闭当前缓冲区" })
 keymap.set("n", "gbo", ":BufferLineCloseOthers<CR>", { desc = "gbo：关闭其他所有缓冲区" })
 
--- BufferLine插件：切换缓冲区（保存后切换，避免丢失修改）
-keymap.set("n", "H", ":w<CR>:BufferLineCyclePre<CR>")  -- H：保存并切换到上一个缓冲区
-keymap.set("n", "L", ":w<CR>:BufferLineCycleNext<CR>") -- L：保存并切换到下一个缓冲区
+-- ======================== 6. 代码运行快捷键 ========================
+keymap.set("n", "rc", function() run_code(false) end, { desc = "rc：运行当前代码（多语言通用）" })
+keymap.set("n", "ru", run_cuda, { desc = "ru：运行CUDA/C/C++代码" })
+keymap.set("n", "rd", function() run_code(true) end, { desc = "rd：带输入数据运行代码（算法刷题）" })
+keymap.set("n", "rp", run_code_with_paste, { desc = "rp：粘贴剪贴板到 data 文件后带数据运行代码" })
+keymap.set("n", "dp", ":w<CR><C-w>v:terminal<CR>idp -k", { desc = "dp：保存并运行dp工具（-k参数）" })
+keymap.set("n", "cd", ":e ~/WorkSpace/Algorithm/data<CR>", { desc = "cd：快速打开算法输入数据文件" })
+keymap.set("n", "cp", paste_to_data, { desc = "cp：覆盖写入剪贴板内容到 data 文件" })
+keymap.set("n", "ct", ":e ~/Github/Template<CR>", { desc = "ct：快速打开算法模板文件" })
 
--- HTML预览
-keymap.set("n", "gmp", preview_code) -- gmp：启动HTML实时预览
-keymap.set("n", "gmc", close_code)   -- gmc：关闭HTML实时预览
+-- ======================== 7. HTML 预览快捷键 ========================
+keymap.set("n", "gmp", preview_code, { desc = "gmp：启动HTML实时预览" })
+keymap.set("n", "gmc", close_code,   { desc = "gmc：关闭HTML实时预览" })
 
--- 快速保存/编辑效率
-keymap.set("n", "<C-S>", ":w<CR>") -- 普通模式Ctrl+S快速保存
-keymap.set("n", "j", "gj")         -- j：按视觉行向下移动（兼容折行）
-keymap.set("n", "k", "gk")         -- k：按视觉行向上移动（兼容折行）
-keymap.set("n", "J", "5j")         -- J：快速向下移动5行
-keymap.set("n", "K", "5k")         -- K：快速向上移动5行
-keymap.set("n", "n", "nzz")        -- n：搜索下一个并居中显示
-keymap.set("n", "N", "Nzz")        -- N：搜索上一个并居中显示
+-- ======================== 8. 搜索与导航 ========================
+keymap.set("n", "<leader>nh", ":nohl<CR>", { desc = "Leader+nh：取消搜索高亮" })
+keymap.set("n", "n", "nzz", { desc = "n：搜索下一个并居中显示" })
+keymap.set("n", "N", "Nzz", { desc = "N：搜索上一个并居中显示" })
 
--- 快速剪切/复制/粘贴（兼容系统操作习惯）
--- 快速剪切/复制/粘贴（兼容 Windows 系统剪贴板 + 黑洞寄存器）
-keymap.set("n", "<C-x>", '"+dd')          -- Ctrl+x：剪切当前行到系统剪贴板
-keymap.set("n", "<C-c>", '"+yy')          -- Ctrl+c：复制当前行到系统剪贴板
-keymap.set("n", "<C-a><C-c>", 'gg"+yG``') -- Ctrl+a+Ctrl+c：复制全部内容到系统剪贴板
-keymap.set("n", "<C-a><C-x>", 'gg"+dG')   -- Ctrl+a+Ctrl+x：剪切全部内容到系统剪贴板
-keymap.set("n", "<C-v>", '"+P')           -- Ctrl+v：从系统剪贴板粘贴
-keymap.set("n", "<C-a><C-v>", 'ggVG"_d"+P') -- Ctrl+a+Ctrl+v：全选 → 黑洞删除 → 粘贴系统剪贴板覆盖
+-- ======================== 9. 编辑效率 ========================
 
--- Ctrl+a+Ctrl+i：复制文件的两段内容（22-$ + 1-3），拼接并添加个人信息头尾
-local function copy_all_with_info()
-  local save_pos = vim.fn.getpos('.')
-  local last = vim.fn.line('$')
+-- 9.1 常用工具启动
+keymap.set("n", "<C-g>", ":tabe<CR>:term lazygit<CR>i", { desc = "Ctrl+g：新建标签页并打开lazygit" })
+keymap.set("n", "<leader>t", ":w<CR><C-w>v:terminal<CR>i", { desc = "Leader+t：保存并新建垂直终端窗口" })
+keymap.set("n", "<leader>i", ":w<CR><C-w>v:terminal<CR>ireasonix<CR>", { desc = "Leader+i：保存并打开reasonix工具" })
+keymap.set("n", "<F5>", ":w<CR>:silent !code . &<CR>", { desc = "F5：保存并在VSCode中打开当前目录" })
 
-  local lines1 = vim.fn.getline(1, 1)
-  local lines2 = vim.fn.getline(3, last)
+-- 9.2 快速保存
+keymap.set("n", "<C-S>", ":w<CR>", { desc = "Ctrl+S：快速保存" })
 
-  local content = table.concat(lines1, "\n") .. "\n" .. table.concat(lines2, "\n")
-
-  vim.fn.setpos('.', save_pos)
-
-    local header = [=[
-#include <bits/stdc++.h>
-#define ls(x)((x)<<1)
-#define rs(x)((x)<<1|1)
-#define fid(x,y)((m)*(x-1)+(y))
-#define endl '\n'
-#ifdef IHXNAN
-    #include <dbg>
-#else
-    #define gdb(...)              ((void)0)
-    #define gdbif(c, ...)         ((void)0)
-    #define gdb_assert(cond, msg) ((void)0)
-    #define TIME(name)            ((void)0)
-    #define gc() (p1==p2&&(p2=(p1=buf)+fread(buf,1,S,stdin),p1==p2)?EOF:*p1++)
-    #define pc(c) (Top==S&&(clear(),0), buf[Top++]=c)
-#endif
-using namespace std;using ll=long long;using ul=unsigned long long;using lll=__int128;using vb=vector<bool>;using vi=vector<int>;using vvi=vector<vi>;using vl=vector<ll>;using vvl=vector<vl>;using pii=pair<int,int>;using pll=pair<ll,ll>;using ti=tuple<int,int,int>;
-struct IO{
-#define cin fin
-#define cout fout
-    static const int S=1<<21;uint8_t buf[S],*p1,*p2;int st[105],Top;
-    ~IO(){clear();}
-    inline void clear(){fwrite(buf,1,Top,stdout);Top=0;}
-    inline IO&operator>>(char&x){while(isspace(x=gc()));return *this;} inline IO&operator>>(string&x){x.clear();int c;while(isspace(c=gc()));while(!isspace(c))x+=char(c),c=gc();return*this;}
-    template<typename T>inline IO&operator>>(T&x){x=0;int f=0,ch=gc();while(!isdigit(ch)){if(ch=='-')f^=1;ch=gc();}while(isdigit(ch))x=(x<<3)+(x<<1)+(ch^48),ch=gc();f?x=-x:0;return*this;}
-    inline IO&operator<<(char c){pc(c);return*this;} inline IO&operator<<(const char*x){while(*x)pc(*x++);return*this;} inline IO&operator<<(const string&x){for(auto c:x)pc(c);return*this;}
-    template<typename T>inline IO&operator<<(T x){int f=0;if(x<0)pc('-'),f^=1;do{st[++st[0]]=f?-(x%10):x%10,x/=10;}while(x);while(st[0])pc(48^st[st[0]--]);return*this;}
-}fin,fout;
-int iINF=0x3f3f3f3f,mod=998244353;ll lINF=0x3f3f3f3f3f3f3f3f,MOD=1000000007;
-
-]=]
-    local footer = [[
-
-
-int main()
-{
-    int t = 1;
-#ifdef MULTIT
-        scanf("%d", &t);
-#endif
-    while (t--)
-        solve();
-    return 0;
-}
-]]
-    local full = header .. content .. footer
-    vim.fn.setreg('+', full)
-    vim.fn.setreg('"', full)
-    print("已复制整个文件 + 头文件")
-end
-
-keymap.set("n", "<C-a><C-i>", copy_all_with_info,
-    { desc = "复制整个文件（自动添加头文件）" })
-
-
+-- 9.3 光标快速移动（兼容折行）
+keymap.set("n", "j", "gj", { desc = "j：按视觉行向下移动" })
+keymap.set("n", "k", "gk", { desc = "k：按视觉行向上移动" })
+keymap.set("n", "J", "5j", { desc = "J：快速向下移动5行" })
+keymap.set("n", "K", "5k", { desc = "K：快速向上移动5行" })

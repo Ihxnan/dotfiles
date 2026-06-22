@@ -181,13 +181,19 @@
     "ACM Template": {
         "prefix": "acm",
         "body": [
+            "/* ──◆  MACRO  ◆── */",
             "$1#define MULTIT",
+            "/* ──◆  /MACRO  ◆── */",
             "#include <ihxnan>",
+            "/* ──▶  INCLUDE  ◀── */",
+            "/* ──▶  /INCLUDE  ◀── */",
             "",
+            "/* ╔══════════ SOLVE ══════════╗ */",
             "void solve()",
             "{",
             "    $0",
-            "}"
+            "}",
+            "/* ╚══════════ /SOLVE ══════════╝ */"
         ],
         "description": "ACM Final Template with fast IO"
     }
