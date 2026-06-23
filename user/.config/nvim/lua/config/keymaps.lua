@@ -275,6 +275,7 @@ keymap.set("n", "N", "Nzz", { desc = "N：搜索上一个并居中显示" })
 keymap.set("n", "<C-g>", ":tabe<CR>:term lazygit<CR>i", { desc = "Ctrl+g：新建标签页并打开lazygit" })
 keymap.set("n", "<leader>t", ":w<CR><C-w>v:terminal<CR>i", { desc = "Leader+t：保存并新建垂直终端窗口" })
 keymap.set("n", "<leader>i", ":w<CR><C-w>v:terminal<CR>ireasonix<CR>", { desc = "Leader+i：保存并打开reasonix工具" })
+keymap.set({ "n", "t" }, "<A-t>", "<Cmd>ToggleTerm<CR>", { desc = "Alt+t：切换 toggleterm 悬浮终端" })
 keymap.set("n", "<F5>", ":w<CR>:silent !code . &<CR>", { desc = "F5：保存并在VSCode中打开当前目录" })
 
 -- 9.2 快速保存
