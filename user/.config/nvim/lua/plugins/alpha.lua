@@ -2,15 +2,15 @@ return {
     -- 禁用 snacks.nvim 的 dashboard 避免冲突
     { "folke/snacks.nvim", priority = 1000, opts = { dashboard = { enabled = false }, notifier = { enabled = false } } },
 
-    -- Alpha-nvim 启动界面核心配置
+    -- Alpha-nvim 启动界面
     {
         "goolord/alpha-nvim",
         event = "VimEnter",
-        enabled = true,
-        init = false,
         opts = function()
             local dashboard = require("alpha.themes.dashboard")
-            -- 自定义 Logo（保留你的 ASCII 艺术）
+            local config_dir = vim.fn.stdpath("config")
+            local snippet_dir = config_dir .. "/snippets"
+
             local logo = [[
     ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰
 ★  ╔═════════════════════════════════════════════╗ ★
@@ -24,26 +24,28 @@ return {
     ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰   ✰
       ]]
 
-            -- 设置头部 Logo
             dashboard.section.header.val = vim.split(logo, "\n")
 
-            -- 基础功能按钮（保留核心操作入口）
+            -- 常用操作按钮
             dashboard.section.buttons.val = {
-                dashboard.button("f", "  Find file", [[<cmd>lua require('telescope.builtin').find_files()<cr>]]),
-                dashboard.button("c", "  Config", "<cmd> e ~/.config/nvim/lua/config/ <cr>"),
-                dashboard.button("p", "  Plugins", "<cmd> e ~/.config/nvim/lua/plugins/<cr>"),
-                dashboard.button("j", "  jsons", "<cmd> e ~/.config/nvim/snippets/<cr>"),
-                dashboard.button("tc", "  cpp", "<cmd> e ~/WorkSpace/Algorithm/cpp/test.cpp<cr>"),
-                dashboard.button("tp", "  python", "<cmd> e ~/WorkSpace/Algorithm/python/test.py<cr>"),
-                dashboard.button("tu", "  cuda", "<cmd> e ~/WorkSpace/Algorithm/cuda/test.cu<cr>"),
-                dashboard.button("ts", "  shell", "<cmd> e ~/WorkSpace/Algorithm/shell/test.sh<cr>"),
-                dashboard.button("b", "  Blog", "<cmd> e ~/Hexo-Blog/blog-demo/source/_posts/<cr>"),
-                dashboard.button("l", "󰒲  Lazy", "<cmd> Lazy <cr>"),
-                dashboard.button("h", "  Helath check", "<cmd> checkhealth <cr>"),
-                dashboard.button("q", "  Quit", "<cmd> qa <cr>"),
+                dashboard.button("f", "  Find file", "<cmd>Telescope find_files<cr>"),
+                dashboard.button("r", "  Recent files", "<cmd>Telescope oldfiles<cr>"),
+                dashboard.button("n", "  New file", function()
+                    local name = vim.fn.input("File: ")
+                    if name and name ~= "" then
+                        vim.cmd("e " .. name)
+                    end
+                end),
+                dashboard.button("c", "  Config", "<cmd>Telescope find_files search_dirs=" .. config_dir .. "/lua/config<cr>"),
+                dashboard.button("p", "  Plugins", "<cmd>Telescope find_files search_dirs=" .. config_dir .. "/lua/plugins<cr>"),
+                dashboard.button("s", "  Snippets", "<cmd>Telescope find_files search_dirs=" .. snippet_dir .. "<cr>"),
+                dashboard.button("tc", "  C++ test", "<cmd>Telescope find_files search_dirs=~/WorkSpace/Algorithm/cpp<cr>"),
+                dashboard.button("tp", "  Python test", "<cmd>Telescope find_files search_dirs=~/WorkSpace/Algorithm/python<cr>"),
+                dashboard.button("l", "󰒲  Lazy", "<cmd>Lazy<cr>"),
+                dashboard.button("q", "  Quit", "<cmd>qa<cr>"),
             }
 
-            -- 高亮样式配置
+            -- 统一高亮
             for _, button in ipairs(dashboard.section.buttons.val) do
                 button.opts.hl = "AlphaButtons"
                 button.opts.hl_shortcut = "AlphaShortcut"
@@ -51,21 +53,19 @@ return {
             dashboard.section.header.opts.hl = "AlphaHeader"
             dashboard.section.buttons.opts.hl = "AlphaButtons"
             dashboard.section.footer.opts.hl = "AlphaFooter"
-            dashboard.opts.layout[1].val = 0 -- 头部间距调整
+            dashboard.opts.layout[1].val = 0
 
             return dashboard
         end,
         config = function(_, dashboard)
             vim.api.nvim_set_hl(0, "AlphaShortcut", {
-                fg = "#a855f7", -- 更亮的紫色快捷键，强化操作指引
+                fg = "#a855f7",
                 bg = "none",
                 bold = true,
             })
 
-            -- 基础初始化配置
             require("alpha").setup(dashboard.opts)
 
-            -- 启动完成后显示插件加载统计
             vim.api.nvim_create_autocmd("User", {
                 once = true,
                 pattern = "LazyVimStarted",

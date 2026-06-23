@@ -1,15 +1,22 @@
 return {
     {
         "nvim-telescope/telescope.nvim",
-        tag = "0.1.8",
         dependencies = { "nvim-lua/plenary.nvim" },
         -- 配置函数，在插件加载后执行
         config = function()
-            -- 引入 telescope 内置功能
             local builtin = require("telescope.builtin")
 
-            -- 设置快捷键
             vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
+
+            -- 搜索界面透明背景
+            vim.api.nvim_set_hl(0, "TelescopeNormal",       { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopeBorder",       { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopePromptNormal", { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopePromptBorder", { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopeResultsNormal", { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopeResultsBorder", { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopePreviewNormal", { bg = "none" })
+            vim.api.nvim_set_hl(0, "TelescopePreviewBorder", { bg = "none" })
         end,
     },
 }
