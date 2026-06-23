@@ -160,7 +160,12 @@ local paste_to_data = function()
   end
   local file = io.open(vim.fn.expand('~/WorkSpace/Algorithm/data'), 'w')
   if file then
-    file:write(content)
+    -- 确保末尾有换行符，避免 C++ 的 gc() 读到 EOF 后死循环
+    local to_write = content
+    if not to_write:match("\n$") then
+      to_write = to_write .. "\n"
+    end
+    file:write(to_write)
     file:close()
     local lines = vim.fn.substitute(content, "[^\\n]", "", "g")
     local line_count = #lines + 1

@@ -81,10 +81,8 @@ return {
                     },
                 },
 
-                ----- C/C++（Microsoft Allman 风格：大括号独占一行） -----
-                ["clang-format"] = {
-                    prepend_args = { "--style=Microsoft" },
-                },
+                ----- C/C++（读取项目 .clang-format 配置） -----
+                ["clang-format"] = {},
 
                 ----- Prettier（优先使用 daemon 版本，性能更好） -----
                 prettier = {

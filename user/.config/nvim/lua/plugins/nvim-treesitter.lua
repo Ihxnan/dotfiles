@@ -56,7 +56,6 @@ return {
                 vim.opt_local.foldexpr = "v:lua.vim.treesitter.foldexpr()"
                 vim.opt_local.foldlevel = 50
                 vim.opt_local.foldlevelstart = 50
-                vim.opt_local.colorcolumn = "88,100"
             end,
         })
 

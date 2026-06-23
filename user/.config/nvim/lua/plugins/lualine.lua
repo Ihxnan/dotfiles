@@ -12,6 +12,19 @@ return {
 			sections = {
 				lualine_c = {
 					"filename",
+					-- musicode 播放状态（仅在播放时显示）
+					{
+						function()
+							return require("musicode").statusline()
+						end,
+						cond = function()
+							local ok, status = pcall(function()
+								return require("musicode").statusline()
+							end)
+							return ok and status ~= "" and status ~= "musicode: stopped"
+						end,
+						color = { fg = "#a8e6cf", gui = "italic" },
+					},
 					{
 						"macro-recording",
 						fmt = function()
