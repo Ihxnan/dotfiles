@@ -1,16 +1,9 @@
 return {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
-    event = { "BufReadPost", "BufNewFile" }, -- 延迟加载，核心修复
-    priority = 1000,                         -- 最高优先级加载，核心修复
+    lazy = false,                            -- 启动时加载（treesitter 太基础了，懒加载反而出问题）
     config = function()
-        -- 安全容错加载，核心修复
-        local ok, configs = pcall(require, "nvim-treesitter.configs")
-        if not ok then
-            vim.notify("nvim-treesitter 初始化中，重启后正常 ✔️", vim.log.levels.INFO)
-            return
-        end
-        configs.setup({
+        require("nvim-treesitter.config").setup({
             ensure_installed = {
                 "c",
                 "cpp",

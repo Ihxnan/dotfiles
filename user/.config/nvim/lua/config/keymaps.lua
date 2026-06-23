@@ -41,14 +41,14 @@ local function run_code(with_data)
     vim.cmd("w")
     local ft = vim.bo.filetype
     local data_label = with_data and "（带数据）" or ""
-    local data_redirect = with_data and " < ~/WorkSpace/Algorithm/data" or ""
+    local data_redirect = with_data and " < $HOME/WorkSpace/Algorithm/data" or ""
 
     print("🚀 正在运行 " .. ft .. data_label .. " ...")
 
     if ft == "cpp" or ft == "c" then
         local cmds = {
             e("[Compile] Starting C++ compilation...", C.blue),
-            'g++ -O2 -fsanitize=address,undefined,leak "%" -o a.out -DIHXNAN',
+            'g++ -O2 -fsanitize=address,undefined,leak "%" -o a.out -DIHXNAN 2>&1',
             "if [ $? -eq 0 ]; then " .. e("[Run] Program output:", C.cyan),
             "time ./a.out" .. data_redirect,
             e("[Clean] Removing temporary file a.out", C.yellow),

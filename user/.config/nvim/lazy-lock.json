@@ -17,6 +17,7 @@
   "mini.comment": { "branch": "main", "commit": "4677392f091e8b5c18d4b535130220a6d1da4aca" },
   "mini.cursorword": { "branch": "main", "commit": "331bc17172e41343d39d91a4ab571d510766812e" },
   "mini.icons": { "branch": "main", "commit": "e56797f90192d81f1fda02e662fc3e8e3d775027" },
+  "musicode.nvim": { "branch": "main", "commit": "c356cdc889770fd55582b7aa73603fda01dafe9d" },
   "neo-tree.nvim": { "branch": "v3.x", "commit": "ebd66767191714e008ce73b769518a763ff31bdc" },
   "noice.nvim": { "branch": "main", "commit": "7bfd942445fb63089b59f97ca487d605e715f155" },
   "nui.nvim": { "branch": "main", "commit": "de740991c12411b663994b2860f1a4fd0937c130" },

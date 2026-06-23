@@ -29,8 +29,8 @@ return {
 
             -- ========== 按文件类型配置格式化器 ==========
             formatters_by_ft = {
-                ---------- Python ----------
-                python = { { "isort" }, { "black" } },
+                ---------- Python（isort 排序 → black 格式化，依次执行） ----------
+                python = { "isort", "black" },
 
                 ---------- Lua ----------
                 lua    = { "stylua" },
@@ -45,23 +45,23 @@ return {
                 bash   = { "shfmt" },
                 zsh    = { "shfmt" },
 
-                ---------- JS/TS（React 支持） ----------
-                javascript       = { { "prettierd", "prettier" } },
-                typescript       = { { "prettierd", "prettier" } },
-                javascriptreact  = { { "prettierd", "prettier" } },
-                typescriptreact  = { { "prettierd", "prettier" } },
+                ---------- JS/TS（优先 prettierd，不存在则用 prettier） ----------
+                javascript       = { "prettierd", "prettier", stop_after_first = true },
+                typescript       = { "prettierd", "prettier", stop_after_first = true },
+                javascriptreact  = { "prettierd", "prettier", stop_after_first = true },
+                typescriptreact  = { "prettierd", "prettier", stop_after_first = true },
 
-                ---------- 前端标记语言 ----------
-                json      = { { "prettierd", "prettier" } },
-                jsonc     = { { "prettierd", "prettier" } },
-                html      = { { "prettierd", "prettier" } },
-                css       = { { "prettierd", "prettier" } },
-                scss      = { { "prettierd", "prettier" } },
-                less      = { { "prettierd", "prettier" } },
+                ---------- 前端标记语言（同上） ----------
+                json      = { "prettierd", "prettier", stop_after_first = true },
+                jsonc     = { "prettierd", "prettier", stop_after_first = true },
+                html      = { "prettierd", "prettier", stop_after_first = true },
+                css       = { "prettierd", "prettier", stop_after_first = true },
+                scss      = { "prettierd", "prettier", stop_after_first = true },
+                less      = { "prettierd", "prettier", stop_after_first = true },
 
                 ---------- 文档/配置 ----------
-                markdown  = { { "prettierd", "prettier" } },
-                yaml      = { { "prettierd", "prettier" } },
+                markdown  = { "prettierd", "prettier", stop_after_first = true },
+                yaml      = { "prettierd", "prettier", stop_after_first = true },
                 toml      = { "taplo" },
 
                 ---------- 构建系统 ----------
