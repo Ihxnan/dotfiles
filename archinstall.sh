@@ -123,6 +123,10 @@ else
     fi
 fi
 
+# Detect RAM size for swap default
+RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+RAM_GB=$(( (RAM_MB + 1023) / 1024 ))
+
 echo -e "\n${BLUE}=== Configuration Summary ===${NC}"
 echo -e "Target disk: ${YELLOW}$DISK${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
@@ -147,7 +151,7 @@ else
     echo -e "Add Chinese support: ${YELLOW}No${NC}"
 fi
 if [[ -z "$SWAP_SIZE_INPUT" ]]; then
-    echo -e "Swap file: ${YELLOW}auto (RAM size)${NC}"
+    echo -e "Swap file: ${YELLOW}auto (${RAM_GB}G = RAM size)${NC}"
 else
     echo -e "Swap file: ${YELLOW}$SWAP_SIZE_INPUT${NC}"
 fi
@@ -333,10 +337,6 @@ echo -e "${GREEN}ZRAM configured.${NC}"
 
 echo -e "${YELLOW}Creating swap file for hibernation...${NC}"
 
-# Determine swap size (default = RAM size for hibernation)
-RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
-RAM_GB=$(( (RAM_MB + 1023) / 1024 ))
-
 if [[ -z "$SWAP_SIZE_INPUT" ]]; then
     SWAP_SIZE_MB=$RAM_MB
     SWAP_DISPLAY="${RAM_GB}G (auto = RAM size)"
@@ -357,7 +357,6 @@ echo -e "Swap file size: ${YELLOW}$SWAP_DISPLAY ($SWAP_SIZE_MB MB)${NC}"
 # Create swap file on Btrfs (must disable CoW + compression)
 truncate -s 0 /mnt/swapfile
 chattr +C /mnt/swapfile
-btrfs property set /mnt/swapfile compression none
 dd if=/dev/zero of=/mnt/swapfile bs=1M count=$SWAP_SIZE_MB status=progress
 chmod 600 /mnt/swapfile
 mkswap /mnt/swapfile
@@ -371,11 +370,7 @@ echo -e "Swap file ready. Root UUID: ${YELLOW}$ROOT_UUID${NC}, offset: ${YELLOW}
 
 # Add swap to fstab
 echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
-if [[ $DUAL_BOOT == [Yy] ]]; then
-    echo -e "${GREEN}Swap file created and added to fstab.${NC}"
-else
-    echo -e "${GREEN}Swap file created and added to fstab.${NC}"
-fi
+echo -e "${GREEN}Swap file created and added to fstab.${NC}"
 
 echo -e "${YELLOW}Configuring pacman and AUR helper...${NC}"
 arch-chroot /mnt /bin/bash -c "
@@ -386,8 +381,6 @@ arch-chroot /mnt /bin/bash -c "
     sed -i 's/^#BottomUp/BottomUp/' /etc/paru.conf
 "
 echo -e "${GREEN}Pacman and AUR helper configured.${NC}"
-
-
 
 echo -e "${YELLOW}Configuring GRUB parameters...${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
