@@ -16,10 +16,10 @@
 
 ```sh
 # Gitee（国内推荐）
-curl -sL https://gitee.com/ihxnan/dotfiles/raw/main/archinstall.sh | bash
+bash <(curl -sL https://gitee.com/ihxnan/dotfiles/raw/main/archinstall.sh)
 
 # GitHub
-curl -sL https://raw.githubusercontent.com/Ihxnan/dotfiles/main/archinstall.sh | bash
+bash <(curl -sL https://raw.githubusercontent.com/Ihxnan/dotfiles/main/archinstall.sh)
 ```
 
 ## 同步配置

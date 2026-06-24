@@ -28,6 +28,9 @@ if ! ping -c 2 -W 3 ping.archlinux.org >/dev/null 2>&1; then
     exit 1
 fi
 
+# Redirect stdin to terminal (required for curl ... | bash mode)
+exec </dev/tty
+
 echo -e "${BLUE}=== Arch Linux Automated Installation Script ===${NC}"
 
 echo -e "${BLUE}=== Configuration ===${NC}"
