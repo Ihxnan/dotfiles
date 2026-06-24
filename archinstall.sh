@@ -33,12 +33,12 @@ exec </dev/tty
 
 clear
 echo -e "${BLUE}┌────────────────────────────────────────────────────┐${NC}"
-echo -e "${BLUE}│          Arch Linux 一键安装脚本                    │${NC}"
+echo -e "${BLUE}│             Arch Linux Auto Install                  │${NC}"
 echo -e "${BLUE}│          Automated Installation Script              │${NC}"
 echo -e "${BLUE}└────────────────────────────────────────────────────┘${NC}"
 echo ""
 
-echo -e "${BOLD}${YELLOW}═══ 可用磁盘 ═══${NC}"
+echo -e "${BOLD}${YELLOW}═══ Available Disks ═══${NC}"
 lsblk -d -o NAME,SIZE,MODEL | grep -v loop
 echo ""
 echo -n -e "${BOLD}Target disk${NC} (default: ${YELLOW}/dev/sda${NC}): "
@@ -62,7 +62,7 @@ else
     DISK3="${DISK}3"
 fi
 
-echo -e "\n${BOLD}${YELLOW}═══ 系统信息 ═══${NC}"
+echo -e "\n${BOLD}${YELLOW}═══ System Info ═══${NC}"
 echo -n "Hostname (default: archlinux): "
 read HOSTNAME_INPUT
 HOSTNAME="${HOSTNAME_INPUT:-archlinux}"
@@ -95,7 +95,7 @@ read ADD_ZH_CN
 echo -n "Swap partition size for hibernation (e.g., '8G', press Enter for auto = RAM size): "
 read SWAP_SIZE_INPUT
 
-echo -e "\n${BOLD}${YELLOW}═══ 安装模式 ═══${NC}"
+echo -e "\n${BOLD}${YELLOW}═══ Install Mode ═══${NC}"
 echo -n "Install alongside existing OS? (preserve partitions) (y/N): "
 read DUAL_BOOT
 
@@ -158,49 +158,50 @@ else
     fi
 fi
 
-echo -e "\n${BOLD}${YELLOW}═══ 配置摘要 ═══${NC}"
-printf "  %-14s %s\n" "目标磁盘" "${YELLOW}$DISK${NC}"
+echo -e "\n${BOLD}${YELLOW}═══ Configuration Summary ═══${NC}"
+printf "  %-14s %s\n" "Disk" "${YELLOW}$DISK${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
-    printf "  %-14s %s\n" "安装模式" "${YELLOW}双系统${NC}"
-    printf "  %-14s %s\n" "EFI 分区" "${YELLOW}$EFI_PART${NC} (保留)"
-    printf "  %-14s %s\n" "ROOT 分区" "${YELLOW}$ROOT_PART${NC} (将格式化)"
+    printf "  %-14s %s\n" "Mode" "${YELLOW}Dual-boot${NC}"
+    printf "  %-14s %s\n" "EFI" "${YELLOW}$EFI_PART${NC} (preserved)"
+    printf "  %-14s %s\n" "ROOT" "${YELLOW}$ROOT_PART${NC} (will be formatted)"
 else
-    printf "  %-14s %s\n" "安装模式" "${YELLOW}全新安装${NC}"
+    printf "  %-14s %s\n" "Mode" "${YELLOW}Fresh install${NC}"
     if [[ $GRUB_REMOVABLE == [Yy] ]]; then
         printf "  %-14s %s\n" "GRUB" "${YELLOW}--removable${NC}"
     else
         printf "  %-14s %s\n" "GRUB" "${YELLOW}--bootloader-id=$GRUB_ID${NC}"
     fi
 fi
-printf "  %-14s %s\n" "主机名" "${YELLOW}$HOSTNAME${NC}"
-printf "  %-14s %s\n" "用户" "${YELLOW}$USERNAME${NC}"
-printf "  %-14s %s\n" "时区" "${YELLOW}$TIMEZONE${NC}"
-printf "  %-14s %s\n" "语言" "${YELLOW}en_US.UTF-8${NC}"
+printf "  %-14s %s\n" "Hostname" "${YELLOW}$HOSTNAME${NC}"
+printf "  %-14s %s\n" "User" "${YELLOW}$USERNAME${NC}"
+printf "  %-14s %s\n" "Timezone" "${YELLOW}$TIMEZONE${NC}"
+printf "  %-14s %s\n" "Locale" "${YELLOW}en_US.UTF-8${NC}"
 if [[ $ADD_ZH_CN == [Yy] ]]; then
-    printf "  %-14s %s\n" "中文支持" "${YELLOW}是${NC}"
+    printf "  %-14s %s\n" "zh_CN" "${YELLOW}Yes${NC}"
 fi
 if [[ $DUAL_BOOT == [Yy] && -n "$SWAP_PART" ]]; then
-    printf "  %-14s %s\n" "Swap 分区" "${YELLOW}$SWAP_PART${NC} (保留)"
+    printf "  %-14s %s\n" "Swap" "${YELLOW}$SWAP_PART${NC} (preserved)"
 elif [[ $DUAL_BOOT == [Yy] ]]; then
-    printf "  %-14s %s\n" "Swap" "${YELLOW}无 (休眠不可用)${NC}"
+    printf "  %-14s %s\n" "Swap" "${YELLOW}none (no hibernation)${NC}"
+    GRUB_RESUME=""
 else
     if [[ -z "$SWAP_SIZE_INPUT" ]]; then
-        printf "  %-14s %s\n" "Swap 分区" "${YELLOW}${RAM_GB}G (auto = RAM size)${NC}"
+        printf "  %-14s %s\n" "Swap" "${YELLOW}${RAM_GB}G (auto = RAM size)${NC}"
     else
-        printf "  %-14s %s\n" "Swap 分区" "${YELLOW}$SWAP_SIZE_INPUT${NC}"
+        printf "  %-14s %s\n" "Swap" "${YELLOW}$SWAP_SIZE_INPUT${NC}"
     fi
 fi
 
 echo ""
-echo -e "  ${RED}─── ⚠ 警告 ───${NC}"
+echo -e "  ${RED}─── ⚠ WARNING ───${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
-    echo -e "  ${RED}$ROOT_PART 将被格式化为 Btrfs！${NC}"
-    echo -e "  ${YELLOW}$EFI_PART${NC} (EFI，保留)"
+    echo -e "  ${RED}$ROOT_PART will be formatted as Btrfs!${NC}"
+    echo -e "  ${YELLOW}$EFI_PART${NC} (EFI, preserved)"
     if [[ -n "$SWAP_PART" ]]; then
-        echo -e "  ${YELLOW}$SWAP_PART${NC} (swap，将格式化)"
+        echo -e "  ${YELLOW}$SWAP_PART${NC} (swap, will be formatted)"
     fi
 else
-    echo -e "  ${RED}$DISK 将被完全格式化，所有数据将丢失！${NC}"
+    echo -e "  ${RED}$DISK will be COMPLETELY FORMATTED, all data will be LOST!${NC}"
 fi
 echo -n "Confirm and continue? (y/N): "
 read confirm
@@ -209,7 +210,7 @@ if [[ $confirm != [Yy] ]]; then
     exit 1
 fi
 
-echo -e "\n${BOLD}${BLUE}─── 安装前准备 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Preparing ───${NC}"
 echo -e "${BLUE}=== Detecting CPU vendor ===${NC}"
 if grep -q GenuineIntel /proc/cpuinfo; then
     UCODE="intel-ucode"
@@ -234,7 +235,7 @@ echo -e "${GREEN}Keyring updated.${NC}"
 
 if [[ $DUAL_BOOT == [Yy] ]]; then
 
-    echo -e "\n${BOLD}${BLUE}─── 分区与挂载 ───${NC}"
+    echo -e "\n${BOLD}${BLUE}─── Partition & Mount ───${NC}"
     echo -e "${BLUE}=== Formatting ROOT partition ===${NC}"
     echo -e "${YELLOW}Formatting $ROOT_PART as Btrfs...${NC}"
     mkfs.btrfs -f $ROOT_PART
@@ -284,7 +285,7 @@ else
     udevadm settle
     echo -e "${GREEN}Partition table created.${NC}"
 
-    echo -e "\n${BOLD}${BLUE}─── 格式化与挂载 ───${NC}"
+    echo -e "\n${BOLD}${BLUE}─── Format & Mount ───${NC}"
 
     echo -e "${BLUE}=== Formatting partitions ===${NC}"
     echo -e "${YELLOW}Formatting EFI partition as FAT32...${NC}"
@@ -314,7 +315,7 @@ else
 
 fi
 
-echo -e "\n${BOLD}${BLUE}─── 安装基础系统 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Installing Base System ───${NC}"
 echo -e "${GREEN}=== Installing base system ===${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
     DUAL_PKGS="os-prober"
@@ -326,7 +327,7 @@ pacstrap -K /mnt base base-devel linux-zen linux-zen-headers linux-firmware btrf
 echo -e "${GREEN}=== Generating fstab ===${NC}"
 genfstab -U /mnt >>/mnt/etc/fstab
 
-echo -e "\n${BOLD}${BLUE}─── 系统配置 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── System Config ───${NC}"
 echo -e "${GREEN}=== Configuring system ===${NC}"
 echo -e "${YELLOW}Configuring timezone...${NC}"
 arch-chroot /mnt /bin/bash -c "
@@ -372,7 +373,7 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}Sudo configured for wheel group.${NC}"
 
-echo -e "\n${BOLD}${BLUE}─── 引导安装 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Bootloader ───${NC}"
 echo -e "${YELLOW}Installing GRUB bootloader...${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
     arch-chroot /mnt /bin/bash -c "
@@ -393,7 +394,7 @@ else
 fi
 echo -e "${GREEN}GRUB installed.${NC}"
 
-echo -e "\n${BOLD}${BLUE}─── 内存与 Swap ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Memory & Swap ───${NC}"
 echo -e "${YELLOW}Configuring ZRAM...${NC}"
 arch-chroot /mnt /bin/bash -c "
     echo -e '[zram0]\nzram-size = ram\ncompression-algorithm = zstd' > /etc/systemd/zram-generator.conf
@@ -416,7 +417,7 @@ else
 fi
 echo -e "${GREEN}Swap partition resolved.${NC}"
 
-echo -e "\n${BOLD}${BLUE}─── 包管理器 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Package Manager ───${NC}"
 echo -e "${YELLOW}Configuring pacman and AUR helper...${NC}"
 arch-chroot /mnt /bin/bash -c "
     sed -i 's/^#Color$/Color/' /etc/pacman.conf
@@ -428,7 +429,7 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}Pacman and AUR helper configured.${NC}"
 
-echo -e "\n${BOLD}${BLUE}─── 内核与引导参数 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Kernel & Boot Params ───${NC}"
 echo -e "${YELLOW}Configuring GRUB parameters...${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
     arch-chroot /mnt /bin/bash -c "
@@ -464,7 +465,7 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}NetworkManager enabled.${NC}"
 
-echo -e "\n${BOLD}${BLUE}─── 安装完成 ───${NC}"
+echo -e "\n${BOLD}${BLUE}─── Installation Complete ───${NC}"
 echo -e "${YELLOW}=== Installation completed ===${NC}"
 cp "$LOG_FILE" /mnt/root/install.log
 umount -R /mnt
