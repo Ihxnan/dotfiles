@@ -159,36 +159,36 @@ else
 fi
 
 echo -e "\n${BOLD}${YELLOW}═══ Configuration Summary ═══${NC}"
-printf "  %-14s %s\n" "Disk" "${YELLOW}$DISK${NC}"
+printf "  %-14s %b\n" "Disk" "${YELLOW}$DISK${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
-    printf "  %-14s %s\n" "Mode" "${YELLOW}Dual-boot${NC}"
-    printf "  %-14s %s\n" "EFI" "${YELLOW}$EFI_PART${NC} (preserved)"
-    printf "  %-14s %s\n" "ROOT" "${YELLOW}$ROOT_PART${NC} (will be formatted)"
+    printf "  %-14s %b\n" "Mode" "${YELLOW}Dual-boot${NC}"
+    printf "  %-14s %b\n" "EFI" "${YELLOW}$EFI_PART${NC} (preserved)"
+    printf "  %-14s %b\n" "ROOT" "${YELLOW}$ROOT_PART${NC} (will be formatted)"
 else
-    printf "  %-14s %s\n" "Mode" "${YELLOW}Fresh install${NC}"
+    printf "  %-14s %b\n" "Mode" "${YELLOW}Fresh install${NC}"
     if [[ $GRUB_REMOVABLE == [Yy] ]]; then
-        printf "  %-14s %s\n" "GRUB" "${YELLOW}--removable${NC}"
+        printf "  %-14s %b\n" "GRUB" "${YELLOW}--removable${NC}"
     else
-        printf "  %-14s %s\n" "GRUB" "${YELLOW}--bootloader-id=$GRUB_ID${NC}"
+        printf "  %-14s %b\n" "GRUB" "${YELLOW}--bootloader-id=$GRUB_ID${NC}"
     fi
 fi
-printf "  %-14s %s\n" "Hostname" "${YELLOW}$HOSTNAME${NC}"
-printf "  %-14s %s\n" "User" "${YELLOW}$USERNAME${NC}"
-printf "  %-14s %s\n" "Timezone" "${YELLOW}$TIMEZONE${NC}"
-printf "  %-14s %s\n" "Locale" "${YELLOW}en_US.UTF-8${NC}"
+printf "  %-14s %b\n" "Hostname" "${YELLOW}$HOSTNAME${NC}"
+printf "  %-14s %b\n" "User" "${YELLOW}$USERNAME${NC}"
+printf "  %-14s %b\n" "Timezone" "${YELLOW}$TIMEZONE${NC}"
+printf "  %-14s %b\n" "Locale" "${YELLOW}en_US.UTF-8${NC}"
 if [[ $ADD_ZH_CN == [Yy] ]]; then
-    printf "  %-14s %s\n" "zh_CN" "${YELLOW}Yes${NC}"
+    printf "  %-14s %b\n" "zh_CN" "${YELLOW}Yes${NC}"
 fi
 if [[ $DUAL_BOOT == [Yy] && -n "$SWAP_PART" ]]; then
-    printf "  %-14s %s\n" "Swap" "${YELLOW}$SWAP_PART${NC} (preserved)"
+    printf "  %-14s %b\n" "Swap" "${YELLOW}$SWAP_PART${NC} (preserved)"
 elif [[ $DUAL_BOOT == [Yy] ]]; then
-    printf "  %-14s %s\n" "Swap" "${YELLOW}none (no hibernation)${NC}"
+    printf "  %-14s %b\n" "Swap" "${YELLOW}none (no hibernation)${NC}"
     GRUB_RESUME=""
 else
     if [[ -z "$SWAP_SIZE_INPUT" ]]; then
-        printf "  %-14s %s\n" "Swap" "${YELLOW}${RAM_GB}G (auto = RAM size)${NC}"
+        printf "  %-14s %b\n" "Swap" "${YELLOW}${RAM_GB}G (auto = RAM size)${NC}"
     else
-        printf "  %-14s %s\n" "Swap" "${YELLOW}$SWAP_SIZE_INPUT${NC}"
+        printf "  %-14s %b\n" "Swap" "${YELLOW}$SWAP_SIZE_INPUT${NC}"
     fi
 fi
 
