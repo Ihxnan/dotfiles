@@ -80,6 +80,9 @@ TIMEZONE="${TIMEZONE_INPUT:-Asia/Shanghai}"
 echo -n "Add Chinese locale zh_CN.UTF-8? (y/N): "
 read ADD_ZH_CN
 
+echo -n "Swap file size for hibernation (e.g., '8G', press Enter for auto = RAM size): "
+read SWAP_SIZE_INPUT
+
 echo -e "\n${YELLOW}=== Dual-boot or Fresh Install? ===${NC}"
 echo -n "Install alongside existing OS? (preserve partitions) (y/N): "
 read DUAL_BOOT
@@ -142,6 +145,11 @@ if [[ $ADD_ZH_CN == [Yy] ]]; then
     echo -e "Add Chinese support: ${YELLOW}Yes${NC}"
 else
     echo -e "Add Chinese support: ${YELLOW}No${NC}"
+fi
+if [[ -z "$SWAP_SIZE_INPUT" ]]; then
+    echo -e "Swap file: ${YELLOW}auto (RAM size)${NC}"
+else
+    echo -e "Swap file: ${YELLOW}$SWAP_SIZE_INPUT${NC}"
 fi
 
 echo -e "\n${RED}=== WARNING ===${NC}"
@@ -246,8 +254,8 @@ if [[ $DUAL_BOOT == [Yy] ]]; then
     DUAL_PKGS="os-prober"
 fi
 pacstrap -K /mnt base base-devel linux-zen linux-zen-headers linux-firmware btrfs-progs \
-    grub efibootmgr networkmanager sudo vim neovim nano $UCODE \
-    zram-generator fastfetch $DUAL_PKGS --noconfirm
+    grub efibootmgr networkmanager sudo neovim $UCODE \
+    zram-generator $DUAL_PKGS --noconfirm
 
 echo -e "${GREEN}=== Generating fstab ===${NC}"
 genfstab -U /mnt >>/mnt/etc/fstab
@@ -323,6 +331,52 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}ZRAM configured.${NC}"
 
+echo -e "${YELLOW}Creating swap file for hibernation...${NC}"
+
+# Determine swap size (default = RAM size for hibernation)
+RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+RAM_GB=$(( (RAM_MB + 1023) / 1024 ))
+
+if [[ -z "$SWAP_SIZE_INPUT" ]]; then
+    SWAP_SIZE_MB=$RAM_MB
+    SWAP_DISPLAY="${RAM_GB}G (auto = RAM size)"
+else
+    # Parse input: "4G" / "4096M" / number (treated as GB)
+    if [[ $SWAP_SIZE_INPUT =~ ^[0-9]+[Gg]$ ]]; then
+        SWAP_SIZE_MB=$(( ${SWAP_SIZE_INPUT%[Gg]} * 1024 ))
+    elif [[ $SWAP_SIZE_INPUT =~ ^[0-9]+[Mm]$ ]]; then
+        SWAP_SIZE_MB=${SWAP_SIZE_INPUT%[Mm]}
+    else
+        SWAP_SIZE_MB=$(( SWAP_SIZE_INPUT * 1024 ))
+    fi
+    SWAP_DISPLAY="$SWAP_SIZE_INPUT"
+fi
+
+echo -e "Swap file size: ${YELLOW}$SWAP_DISPLAY ($SWAP_SIZE_MB MB)${NC}"
+
+# Create swap file on Btrfs (must disable CoW + compression)
+truncate -s 0 /mnt/swapfile
+chattr +C /mnt/swapfile
+btrfs property set /mnt/swapfile compression none
+dd if=/dev/zero of=/mnt/swapfile bs=1M count=$SWAP_SIZE_MB status=progress
+chmod 600 /mnt/swapfile
+mkswap /mnt/swapfile
+swapon /mnt/swapfile
+
+# Get UUID and physical offset for resume= kernel param
+ROOT_UUID=$(findmnt -no UUID /mnt)
+RESUME_OFFSET=$(filefrag -v /mnt/swapfile | awk '/^ *0:/{print $4}' | cut -d. -f1)
+
+echo -e "Swap file ready. Root UUID: ${YELLOW}$ROOT_UUID${NC}, offset: ${YELLOW}$RESUME_OFFSET${NC}"
+
+# Add swap to fstab
+echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+if [[ $DUAL_BOOT == [Yy] ]]; then
+    echo -e "${GREEN}Swap file created and added to fstab.${NC}"
+else
+    echo -e "${GREEN}Swap file created and added to fstab.${NC}"
+fi
+
 echo -e "${YELLOW}Configuring pacman and AUR helper...${NC}"
 arch-chroot /mnt /bin/bash -c "
     sed -i 's/^#Color$/Color/' /etc/pacman.conf
@@ -333,24 +387,20 @@ arch-chroot /mnt /bin/bash -c "
 "
 echo -e "${GREEN}Pacman and AUR helper configured.${NC}"
 
-echo -e "${YELLOW}Installing LTS kernel...${NC}"
-arch-chroot /mnt /bin/bash -c "
-    pacman -S --noconfirm linux-lts linux-lts-headers
-"
-echo -e "${GREEN}LTS kernel installed.${NC}"
+
 
 echo -e "${YELLOW}Configuring GRUB parameters...${NC}"
 if [[ $DUAL_BOOT == [Yy] ]]; then
     arch-chroot /mnt /bin/bash -c "
         echo 'EDITOR=nvim' >> /etc/environment
-        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5\"/' /etc/default/grub
+        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5 resume=UUID=$ROOT_UUID resume_offset=$RESUME_OFFSET\"/' /etc/default/grub
         sed -i '/^GRUB_DISABLE_OS_PROBER=/d' /etc/default/grub
         echo 'GRUB_DISABLE_OS_PROBER=false' >> /etc/default/grub
     "
 else
     arch-chroot /mnt /bin/bash -c "
         echo 'EDITOR=nvim' >> /etc/environment
-        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5\"/' /etc/default/grub
+        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"zswap.enabled=0 loglevel=5 resume=UUID=$ROOT_UUID resume_offset=$RESUME_OFFSET\"/' /etc/default/grub
     "
 fi
 echo -e "${GREEN}GRUB parameters optimized.${NC}"
@@ -360,6 +410,13 @@ arch-chroot /mnt /bin/bash -c "
     grub-mkconfig -o /boot/grub/grub.cfg
 "
 echo -e "${GREEN}GRUB configuration generated.${NC}"
+
+echo -e "${YELLOW}Adding resume hook and rebuilding initramfs...${NC}"
+arch-chroot /mnt /bin/bash -c "
+    sed -i 's/^HOOKS=(\(.*\) filesystems \(.*\))/HOOKS=(\1 filesystems resume \2)/' /etc/mkinitcpio.conf
+    mkinitcpio -P
+"
+echo -e "${GREEN}Initramfs rebuilt with resume support.${NC}"
 
 echo -e "${YELLOW}Enabling NetworkManager...${NC}"
 arch-chroot /mnt /bin/bash -c "
