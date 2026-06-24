@@ -367,7 +367,8 @@ swapon /mnt/swapfile
 
 # Get UUID and physical offset for resume= kernel param
 ROOT_UUID=$(findmnt -no UUID /mnt)
-RESUME_OFFSET=$(filefrag -v /mnt/swapfile | awk '/^ *0:/{print $4}' | cut -d. -f1)
+RESUME_OFFSET=$(btrfs inspect-internal map-swapfile -r /mnt/swapfile)
+RESUME_OFFSET=$(( RESUME_OFFSET / 4096 ))
 
 echo -e "Swap file ready. Root UUID: ${YELLOW}$ROOT_UUID${NC}, offset: ${YELLOW}$RESUME_OFFSET${NC}"
 
