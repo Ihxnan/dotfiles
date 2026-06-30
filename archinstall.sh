@@ -33,8 +33,8 @@ exec </dev/tty
 
 clear
 echo -e "${BLUE}┌────────────────────────────────────────────────────┐${NC}"
-echo -e "${BLUE}│             Arch Linux Auto Install                  │${NC}"
-echo -e "${BLUE}│          Automated Installation Script              │${NC}"
+echo -e "${BLUE}│             Arch Linux Auto Install                │${NC}"
+echo -e "${BLUE}│          Automated Installation Script             │${NC}"
 echo -e "${BLUE}└────────────────────────────────────────────────────┘${NC}"
 echo ""
 
@@ -143,18 +143,18 @@ fi
 
 # Detect RAM size for swap default
 RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
-RAM_GB=$(( (RAM_MB + 1023) / 1024 ))
+RAM_GB=$(((RAM_MB + 1023) / 1024))
 
 # Calculate swap partition size
 if [[ -z "$SWAP_SIZE_INPUT" ]]; then
     SWAP_SIZE_MB=$RAM_MB
 else
     if [[ $SWAP_SIZE_INPUT =~ ^[0-9]+[Gg]$ ]]; then
-        SWAP_SIZE_MB=$(( ${SWAP_SIZE_INPUT%[Gg]} * 1024 ))
+        SWAP_SIZE_MB=$((${SWAP_SIZE_INPUT%[Gg]} * 1024))
     elif [[ $SWAP_SIZE_INPUT =~ ^[0-9]+[Mm]$ ]]; then
         SWAP_SIZE_MB=${SWAP_SIZE_INPUT%[Mm]}
     else
-        SWAP_SIZE_MB=$(( SWAP_SIZE_INPUT * 1024 ))
+        SWAP_SIZE_MB=$((SWAP_SIZE_INPUT * 1024))
     fi
 fi
 
