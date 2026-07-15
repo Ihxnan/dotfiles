@@ -1,0 +1,12 @@
+#!/bin/bash
+while true; do
+    yazi "$@"
+    code=$?
+    # If restart flag exists, clean it and restart yazi
+    if [ -f /tmp/yazi-restart-flag ]; then
+        rm -f /tmp/yazi-restart-flag
+        continue
+    fi
+    # Normal exit, stop the loop
+    exit "$code"
+done

@@ -279,7 +279,7 @@
 
 # use theme file instead of defining colors in this file
 # themes are located in $HOME/.config/cava/themes
- theme = 'cava-theme'
+ theme = 'your-theme'
 
 
 [smoothing]

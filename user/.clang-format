@@ -1,0 +1,11 @@
+BasedOnStyle: Microsoft
+BreakBeforeBraces: Allman
+SortIncludes: true
+IncludeBlocks: Merge
+IncludeCategories:
+    - Regex: "<ihxnan>"
+      Priority: -200
+    - Regex: "ihxnan"
+      Priority: -100
+    - Regex: ".*"
+      Priority: 10

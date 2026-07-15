@@ -1,0 +1,366 @@
+#!/bin/bash
+
+set -e
+
+VM="archlinux"
+SERVER_IP="192.168.122.8"
+SSH_USER="ihxnan"
+MOUNT_POINT="$HOME/vm-server"
+CLOUD_USER="ihxnan"
+CLOUD_IP="103.236.99.247"
+CLOUD_PORT=40214
+CLOUD_MOUNT="$HOME/vm-cloud"
+USE_VM=false
+SYNC_DEFAULT="$HOME/Github/blog"
+LIBVIRT_URI="qemu:///system"
+
+usage() {
+    cat <<EOF
+用法: server <命令> [选项]
+
+命令:
+  ssh            SSH 连接到云服务器/虚拟机
+  mount          通过 sshfs 挂载到本地
+  umount         卸载 sshfs 挂载
+  sync           同步本地目录到远程
+  deploy         构建并重新部署 blog
+  status         查看运行状态
+  start          启动虚拟机
+  stop           优雅关闭虚拟机
+  display        打开 virt-viewer 显示
+
+选项:
+  -v, --vm           切换到本地虚拟机 (${SSH_USER}@${SERVER_IP})
+  -a, --all          卸载所有挂载点
+  -u, --user USER    SSH 用户（默认: ihxnan）
+  -m, --mount PATH   挂载点（默认: ~/vm-cloud / ~/vm-server）
+  -h, --help         显示此帮助信息
+
+sync 参数:
+  用法: server sync [local_path] [remote_path]
+
+  不指定 local_path 时默认同步 $SYNC_DEFAULT
+  不指定 remote_path 时远端路径与本地相同
+  示例:
+    server sync              # 同步 blog 默认目录
+    server sync ~/Pictures
+    server sync ~/Github/blog /srv/blog
+
+deploy 参数:
+  用法: server deploy
+
+  在云服务器上执行 ~/.local/bin/reload.sh，重新构建并部署 blog。
+EOF
+    exit 0
+}
+
+virsh_cmd() {
+    LC_ALL=C virsh -c "$LIBVIRT_URI" "$@"
+}
+
+is_running() {
+    local state
+    state=$(virsh_cmd domstate "$VM" 2>/dev/null)
+    [[ "$state" == "running" ]]
+}
+
+auto_start() {
+    if ! is_running; then
+        echo "虚拟机 $VM 未运行，自动启动..."
+        cmd_start
+    fi
+}
+
+ensure_running() {
+    if ! is_running; then
+        echo "错误: 虚拟机 $VM 未运行" >&2
+        echo "请先执行: server start" >&2
+        exit 1
+    fi
+}
+
+vm_only() {
+    if ! $USE_VM; then
+        echo "错误: 此操作仅支持本地虚拟机，请使用 -v 选项" >&2
+        exit 1
+    fi
+}
+
+cmd_start() {
+    vm_only
+    if is_running; then
+        echo "虚拟机 $VM 已在运行中"
+    else
+        echo "正在启动虚拟机 $VM ..."
+        virsh_cmd start "$VM"
+        echo "虚拟机 $VM 已启动"
+    fi
+
+    echo "IP 地址: $SERVER_IP"
+
+    echo -n "等待 SSH 服务就绪..."
+    for i in $(seq 1 30); do
+        if timeout 2 bash -c "echo >/dev/tcp/$SERVER_IP/22" 2>/dev/null; then
+            echo " 就绪"
+            return 0
+        fi
+        echo -n "."
+        sleep 2
+    done
+    echo ""
+    echo "警告: SSH 服务可能尚未就绪，请稍后重试"
+}
+
+cmd_stop() {
+    vm_only
+    if ! is_running; then
+        echo "虚拟机 $VM 未在运行"
+        return 0
+    fi
+    echo "正在关闭虚拟机 $VM ..."
+    virsh_cmd shutdown "$VM"
+
+    echo -n "等待虚拟机关闭..."
+    for i in $(seq 1 60); do
+        if ! is_running; then
+            echo " 完成"
+            return 0
+        fi
+        echo -n "."
+        sleep 2
+    done
+    echo ""
+    echo "优雅关闭超时，尝试强制关闭..."
+    virsh_cmd destroy "$VM"
+    echo "虚拟机 $VM 已强制关闭"
+}
+
+cmd_ssh() {
+    if $USE_VM; then
+        auto_start
+        echo "正在连接 ${SSH_USER}@${SERVER_IP} ..."
+        exec ssh -o StrictHostKeyChecking=accept-new "${SSH_USER}@${SERVER_IP}"
+    fi
+    echo "正在连接 ${CLOUD_USER}@${CLOUD_IP}:${CLOUD_PORT} ..."
+    exec ssh -p "$CLOUD_PORT" -o StrictHostKeyChecking=accept-new "${CLOUD_USER}@${CLOUD_IP}"
+}
+
+cmd_mount() {
+    local target mount_pt remote_path="/"
+    if [[ $# -gt 0 ]]; then
+        remote_path="$1"
+    fi
+    if $USE_VM; then
+        auto_start
+        target="${SSH_USER}@${SERVER_IP}"
+        mount_pt="$MOUNT_POINT"
+    else
+        target="-p ${CLOUD_PORT} ${CLOUD_USER}@${CLOUD_IP}"
+        mount_pt="$CLOUD_MOUNT"
+    fi
+
+    if mountpoint -q "$mount_pt" 2>/dev/null; then
+        echo "挂载点 $mount_pt 已挂载"
+        return 0
+    fi
+
+    mkdir -p "$mount_pt"
+
+    echo "正在挂载 ${target}:${remote_path} 到 $mount_pt ..."
+    # shellcheck disable=SC2086
+    sshfs -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3 \
+        $target:${remote_path} "$mount_pt"
+    echo "挂载成功: $mount_pt"
+}
+
+cmd_umount() {
+    if $UNMOUNT_ALL; then
+        for mount_pt in "$MOUNT_POINT" "$CLOUD_MOUNT"; do
+            if mountpoint -q "$mount_pt" 2>/dev/null; then
+                echo "正在卸载 $mount_pt ..."
+                fusermount -u "$mount_pt" 2>/dev/null || umount "$mount_pt"
+                echo "已卸载 $mount_pt"
+            fi
+        done
+        return 0
+    fi
+    local mount_pt
+    if $USE_VM; then
+        mount_pt="$MOUNT_POINT"
+    else
+        mount_pt="$CLOUD_MOUNT"
+    fi
+
+    if ! mountpoint -q "$mount_pt" 2>/dev/null; then
+        echo "挂载点 $mount_pt 未挂载"
+        return 0
+    fi
+    echo "正在卸载 $mount_pt ..."
+    fusermount -u "$mount_pt" 2>/dev/null || umount "$mount_pt"
+    echo "已卸载 $mount_pt"
+}
+
+cmd_sync() {
+    if $USE_VM; then
+        echo "错误: sync 仅支持云服务器" >&2
+        exit 1
+    fi
+
+    local src="${1:-$SYNC_DEFAULT}" dst="${2:-}"
+
+    # 去掉末尾斜杠，统一行为
+    src="${src%/}"
+    dst="${dst%/}"
+
+    # 远程路径: 不指定则与本地相同
+    if [[ -z "$dst" ]]; then
+        dst="$src"
+    fi
+
+    local target="${CLOUD_USER}@${CLOUD_IP}:${dst}/"
+
+    echo "同步: $src/ → ${CLOUD_USER}@${CLOUD_IP}:${dst}/"
+
+    rsync -avz --delete --mkpath --info=progress2 \
+        -e "ssh -p ${CLOUD_PORT} -o ServerAliveInterval=30 -o ServerAliveCountMax=5" \
+        "${src}/" "$target"
+
+    echo ""
+    echo "✓ 同步完成"
+}
+
+cmd_deploy() {
+    if $USE_VM; then
+        echo "错误: deploy 仅支持云服务器" >&2
+        exit 1
+    fi
+
+    local remote="ssh -p ${CLOUD_PORT} ${CLOUD_USER}@${CLOUD_IP}"
+
+    # 先同步代码
+    echo "→ 同步代码 ..."
+    cmd_sync
+
+    # 再执行远端部署脚本
+    echo ""
+    echo "→ 执行远端 reload 脚本 ..."
+    $remote "~/.local/bin/reload.sh" || {
+        echo "  ✗ 远端执行失败" >&2
+        exit 1
+    }
+    echo "  ✓ 部署完成"
+}
+
+cmd_display() {
+    vm_only
+    auto_start
+    echo "正在打开虚拟机 $VM 的显示..."
+    virt-viewer -c "$LIBVIRT_URI" "$VM" &
+}
+
+cmd_status() {
+    if $USE_VM; then
+        echo "虚拟机: $VM"
+        echo "---"
+        local state
+        state=$(virsh_cmd domstate "$VM" 2>/dev/null) || state="未定义"
+        echo "状态:     $state"
+
+        if [[ "$state" == "running" ]]; then
+            local vcpus mem
+            echo "IP:       $SERVER_IP"
+            vcpus=$(virsh_cmd dominfo "$VM" 2>/dev/null | awk '/^CPU\(s\):/ {print $2}')
+            mem=$(virsh_cmd dominfo "$VM" 2>/dev/null | awk '/^Used memory:/ {printf "%.1fG", $3/1024/1024}')
+            echo "vCPUs:    ${vcpus:-未知}"
+            echo "内存:     ${mem:-未知}"
+        fi
+
+        if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+            echo "挂载点:   $MOUNT_POINT (已挂载)"
+        fi
+        return 0
+    fi
+    echo "服务器: 云服务器"
+    echo "---"
+    echo "连接:     ${CLOUD_USER}@${CLOUD_IP}:${CLOUD_PORT}"
+    if mountpoint -q "$CLOUD_MOUNT" 2>/dev/null; then
+        echo "挂载点:   $CLOUD_MOUNT (已挂载)"
+    fi
+}
+
+CMD=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -u | --user)
+            SSH_USER="$2"
+            shift 2
+            ;;
+        -m | --mount)
+            MOUNT_POINT="$2"
+            shift 2
+            ;;
+        -v | --vm)
+            USE_VM=true
+            shift
+            ;;
+        -a | --all)
+            UNMOUNT_ALL=true
+            shift
+            ;;
+        -h | --help)
+            usage
+            ;;
+        -*)
+            echo "未知选项: $1"
+            usage
+            ;;
+        *)
+            if [[ -z "$CMD" ]]; then
+                CMD="$1"
+                shift
+            else
+                # 遇到命令后的参数，停止解析，留给命令自己处理
+                break
+            fi
+            ;;
+    esac
+done
+
+CMD="${CMD:-status}"
+
+case "$CMD" in
+    start | up | boot)
+        cmd_start
+        ;;
+    stop | shutdown | down)
+        cmd_stop
+        ;;
+    ssh | connect)
+        cmd_ssh
+        ;;
+    mount)
+        cmd_mount "$@"
+        ;;
+    umount | unmount)
+        cmd_umount
+        ;;
+    sync)
+        cmd_sync "$@"
+        ;;
+    deploy)
+        cmd_deploy
+        ;;
+    display | view | show)
+        cmd_display
+        ;;
+    status | info | st)
+        cmd_status
+        ;;
+    -h | --help | help)
+        usage
+        ;;
+    *)
+        echo "未知命令: $CMD"
+        usage
+        ;;
+esac

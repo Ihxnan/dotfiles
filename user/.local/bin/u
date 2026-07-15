@@ -4,6 +4,18 @@
 DEVICE="/dev/sda1"
 MOUNT_POINT="/mnt"
 
+usage() {
+    echo "Usage: $(basename "$0") [-h]"
+    echo "  Toggle mount/unmount $DEVICE to $MOUNT_POINT"
+    echo "Options:"
+    echo "  -h, --help    Show this help message"
+    exit 0
+}
+
+case "${1:-}" in
+    -h|--help) usage ;;
+esac
+
 # 检查设备是否存在
 if [ ! -b "$DEVICE" ]; then
     echo "错误：设备 $DEVICE 不存在"

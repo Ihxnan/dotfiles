@@ -4,10 +4,21 @@ install.log
 # matugen generated files
 user/.config/alacritty/alacritty-colors.toml
 user/.config/btop/themes/matugen.theme
-user/.config/cava/themes/cava-theme
+user/.config/cava/themes/your-theme
 user/.config/dunst/dunstrc
 user/.config/fastfetch/config.jsonc
+user/.config/fuzzel/colors.ini
 user/.config/gtk-3.0/colors.css
+user/.config/gtk-3.0/dank-colors.css
+user/.config/gtk-4.0/dank-colors.css
 user/.config/kitty/kitty-colors.conf
+user/.config/kitty/dank-theme.conf
+user/.config/kitty/dank-tabs.conf
+user/.config/niri/dms/colors.kdl
+user/.config/starship.toml
 user/.config/yazi/theme.toml
 user/.config/mpd/log
+
+# opencode
+user/.config/opencode/node_modules/
+user/.config/opencode/.reasonix/

@@ -1,0 +1,55 @@
+#!/bin/bash
+set -euo pipefail
+
+WALL_DIR="$HOME/Pictures/Wallpapers"
+SILENT_MODE=false
+
+usage() {
+    echo "用法: $(basename "$0") [-s] [-d DIR] [-h]"
+    echo "  -s  静默模式，不发送通知"
+    echo "  -d  指定壁纸目录（默认 ~/Pictures/Wallpapers）"
+    echo "  -h  帮助"
+    exit 0
+}
+
+while getopts "sd:h" opt; do
+    case $opt in
+        s) SILENT_MODE=true ;;
+        d) WALL_DIR="$OPTARG" ;;
+        h) usage ;;
+        *) usage ;;
+    esac
+done
+
+if [ ! -d "$WALL_DIR" ]; then
+    echo "错误：目录 $WALL_DIR 不存在" >&2
+    exit 1
+fi
+
+WALL=$(find "$WALL_DIR" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \) | shuf -n1 2>/dev/null || true)
+
+if [ -z "$WALL" ]; then
+    msg="在 $WALL_DIR 中未找到图片文件"
+    if [ "$SILENT_MODE" = false ]; then
+        dms notify "Wallpaper Error" "$msg"
+    fi
+    echo "$msg" >&2
+    exit 1
+fi
+
+dms ipc call wallpaper set "$WALL"
+
+# 钩子
+(
+    if [ -x "$HOME/.config/scripts/matugen-update.sh" ]; then
+        "$HOME/.config/scripts/matugen-update.sh" "$WALL" > /dev/null 2>&1 || true
+    fi
+    sleep 0.5
+    if [ -x "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" ]; then
+        "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" > /dev/null 2>&1 || true
+    fi
+) &
+
+if [ "$SILENT_MODE" = false ]; then
+    dms notify "Wallpaper" "Switched to $(basename "$WALL")"
+fi

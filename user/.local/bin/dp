@@ -1,247 +1,279 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ── colors ───────────────────────────────────────────────────
+RED='\033[31m';   GREEN='\033[32m'; YELLOW='\033[33m'
+CYAN='\033[36m';  BOLD='\033[1m';   RESET='\033[0m'
+
 MAX_ATTEMPTS=100
 KEEP_FILES=0
-DIFF_FLAGS="-u"
 USE_O3=1
+CXX_STD="c++17"
+
+# DIFF_FLAGS as array — no eval, no word-splitting surprises
+DIFF_FLAGS=(-u)
+
+# 源文件
+ANS_SRC="ans.cpp"
+TEST_SRC="test.cpp"
+DATA_SRC="data.cpp"
 
 DATA_FILE="data.txt"
 ANS_FILE="ans.txt"
 TEST_FILE="test.txt"
 DIFF_CASE_FILE="diff_case.txt"
 
-if [ -f "$DIFF_CASE_FILE" ]; then
-    rm "$DIFF_CASE_FILE"
-fi
+# ── helpers ──────────────────────────────────────────────────
 
 usage() {
-    echo "Usage: $0 [options]"
-    echo "  -n, --max-attempts <number>  Set maximum test attempts (default: $MAX_ATTEMPTS)"
-    echo "  -k, --keep-files             Keep diff_case.txt when counterexample found (default: delete)"
-    echo "  -d, --diff-flags <flags>     Diff flags like -bB to ignore spaces (default: '$DIFF_FLAGS')"
-    echo "      --no-o3                  Disable O3 optimization (use no optimization for compilation)"
-    echo "  -h, --help                   Show this help message"
+    cat <<EOF
+Usage: $(basename "$0") [options]
+
+对拍程序 — 自动生成测试数据，对比 ans.cpp 与 test.cpp 的输出。
+
+Options:
+  -n, --max-attempts <num>   测试轮数 (default: $MAX_ATTEMPTS)
+  -k, --keep-files           保留反例文件 (default: 自动删除)
+  -d, --diff-flags <flags>   diff 参数 (default: '-u')
+  -s, --std <standard>       C++ 标准 (default: $CXX_STD)
+  -a, --ans <file>           参考答案源文件 (default: $ANS_SRC)
+  -t, --test <file>          被测程序源文件 (default: $TEST_SRC)
+  -g, --gen <file>          数据生成器源文件 (default: $DATA_SRC)
+      --no-o3                编译时不加优化
+  -h, --help                 显示此帮助
+
+Examples:
+  $(basename "$0")
+  $(basename "$0") -n 5000 -k
+
+  # diff 常用参数:
+  $(basename "$0") -d "-bB"              # 忽略空白差异 (行首尾 + 中间)
+  $(basename "$0") -d "-w"               # 忽略所有空白 (含换行)
+  $(basename "$0") -d "-u -bB"           # 合并多个参数
+
+  # 其他:
+  $(basename "$0") -a brute.cpp -t solve.cpp -g gen.cpp
+  $(basename "$0") -s c++20 --no-o3
+EOF
     exit 0
 }
 
-replace_spaces_with_dots() {
-    local input_file="$1"
-    sed -e 's/ /./g' "$input_file"
-}
+# Replace spaces with '.' for visually clear diff output
+spaces_to_dots() { sed 's/ /./g'; }
 
-create_diff_case_file() {
+write_diff_report() {
     local attempt=$1
-    local diff_file="$DIFF_CASE_FILE"
 
-    >"$diff_file"
+    # Capture diff output once — reuse for preview and report
+    local diff_out
+    diff_out="$(diff "${DIFF_FLAGS[@]}" "$ANS_FILE" "$TEST_FILE" || true)"
 
-    echo "┌───────────────────────────────────────────────────────┐" >>"$diff_file"
-    echo "│          Counterexample Found - Attempt $attempt            │" >>"$diff_file"
-    echo "├───────────────────────────────────────────────────────┤" >>"$diff_file"
-    echo "│ Time: $(date)                 │"
-    echo "│ Config: Max attempts=$MAX_ATTEMPTS, diff flags='$DIFF_FLAGS'             │" >>"$diff_file"
-    echo "└───────────────────────────────────────────────────────┘" >>"$diff_file"
-    echo "" >>"$diff_file"
+    {
+        echo "┌───────────────────────────────────────────────────────┐"
+        printf "│  Counterexample Found — Attempt %-3d                      │\n" "$attempt"
+        echo "├───────────────────────────────────────────────────────┤"
+        printf "│  Time: %-42s │\n" "$(date)"
+        printf "│  Max attempts: %-10s  Keep files: %-3s              │\n" \
+            "$MAX_ATTEMPTS" "$([ $KEEP_FILES -eq 1 ] && echo 'Yes' || echo 'No')"
+        echo "└───────────────────────────────────────────────────────┘"
+        echo ""
 
-    echo " Test Data ($DATA_FILE):" >>"$diff_file"
-    echo "─────────────────────────────────────────────────────────" >>"$diff_file"
-    cat $DATA_FILE >>$diff_file
-    echo "" >>"$diff_file"
+        echo "Input  ($DATA_FILE):"
+        echo "─────────────────────────────────────────────────────────"
+        cat "$DATA_FILE"
+        echo ""
 
-    echo " Expected Output ($ANS_FILE) [spaces as '.']:" >>"$diff_file"
-    echo "─────────────────────────────────────────────────────────" >>"$diff_file"
-    replace_spaces_with_dots $ANS_FILE >>$diff_file
-    echo "" >>"$diff_file"
+        echo "Expected ($ANS_FILE)  [spaces → '.']:"
+        echo "─────────────────────────────────────────────────────────"
+        spaces_to_dots < "$ANS_FILE"
+        echo ""
 
-    echo " Your Output ($TEST_FILE) [spaces as '.']:" >>"$diff_file"
-    echo "─────────────────────────────────────────────────────────" >>"$diff_file"
-    replace_spaces_with_dots $TEST_FILE >>$diff_file
-    echo "" >>"$diff_file"
+        echo "Got     ($TEST_FILE)  [spaces → '.']:"
+        echo "─────────────────────────────────────────────────────────"
+        spaces_to_dots < "$TEST_FILE"
+        echo ""
 
-    echo " Diff Output (diff $DIFF_FLAGS):" >>"$diff_file"
-    echo "─────────────────────────────────────────────────────────" >>"$diff_file"
-    diff $DIFF_FLAGS "$ANS_FILE" "$TEST_FILE" | while IFS= read -r line; do
-        echo "$line" >>"$diff_file"
-    done
-    echo "" >>"$diff_file"
+        echo "Diff (${DIFF_FLAGS[*]}):"
+        echo "─────────────────────────────────────────────────────────"
+        echo "$diff_out"
+        echo ""
+    } > "$DIFF_CASE_FILE"
 
-    echo "┌───────────────────────────────────────────────────────┐" >>"$diff_file"
-    echo "│                 Test Finished                        │" >>"$diff_file"
-    echo "└───────────────────────────────────────────────────────┘" >>"$diff_file"
+    # Also return diff text for preview
+    echo "$diff_out"
 }
 
 cleanup() {
     echo ""
-    echo "  Interrupt detected, cleaning up..."
-    rm -f *.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
+    echo "Interrupt detected, cleaning up..."
+    rm -f ./*.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
     if [[ $KEEP_FILES -eq 0 ]] && [[ -f "$DIFF_CASE_FILE" ]]; then
         rm -f "$DIFF_CASE_FILE"
-        echo "  All temporary files deleted."
+        echo "All temporary files deleted."
     elif [[ -f "$DIFF_CASE_FILE" ]]; then
-        echo "  Diff case file preserved: $DIFF_CASE_FILE"
+        echo "Diff case preserved: $DIFF_CASE_FILE"
     else
-        echo "  Temporary files deleted."
+        echo "Temporary files deleted."
     fi
     exit 1
 }
 
+# ── options ──────────────────────────────────────────────────
+
 trap cleanup SIGINT
 
-while getopts "n:kd:h-:" opt; do
+while getopts "n:kd:a:t:g:s:h-:" opt; do
     case "$opt" in
-    n)
-        MAX_ATTEMPTS="$OPTARG"
-        ;;
-    k)
-        KEEP_FILES=1
-        ;;
-    d)
-        DIFF_FLAGS="$OPTARG"
-        ;;
-    h)
-        usage
-        ;;
+    n) MAX_ATTEMPTS="$OPTARG" ;;
+    k) KEEP_FILES=1 ;;
+    d) read -ra DIFF_FLAGS <<< "$OPTARG" ;;
+    s) CXX_STD="$OPTARG" ;;
+    a) ANS_SRC="$OPTARG" ;;
+    t) TEST_SRC="$OPTARG" ;;
+    g) DATA_SRC="$OPTARG" ;;
+    h) usage ;;
     -)
         case "${OPTARG}" in
-        max-attempts)
-            MAX_ATTEMPTS="${!OPTIND}"
-            OPTIND=$((OPTIND + 1))
-            ;;
-        keep-files)
-            KEEP_FILES=1
-            ;;
-        diff-flags)
-            DIFF_FLAGS="${!OPTIND}"
-            OPTIND=$((OPTIND + 1))
-            ;;
-        no-o3)
-            USE_O3=0
-            ;;
-        help)
-            usage
-            ;;
-        *)
-            echo "Error: Unknown long option '--${OPTARG}'" >&2
-            usage
-            ;;
+        max-attempts) MAX_ATTEMPTS="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        keep-files)   KEEP_FILES=1 ;;
+        diff-flags)   read -ra DIFF_FLAGS <<< "${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        std)          CXX_STD="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        ans)          ANS_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        test)         TEST_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        gen|data)     DATA_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        no-o3)        USE_O3=0 ;;
+        help)         usage ;;
+        *)            echo "Error: Unknown long option '--${OPTARG}'" >&2; usage ;;
         esac
         ;;
-    \?)
-        echo "Error: Unknown option '-$OPTARG'" >&2
-        usage
-        ;;
-    :)
-        echo "Error: Option '-$OPTARG' requires an argument" >&2
-        usage
-        ;;
+    \?) echo "Error: Unknown option '-$OPTARG'" >&2; usage ;;
+    :)  echo "Error: Option '-$OPTARG' requires an argument" >&2; usage ;;
     esac
 done
 shift $((OPTIND - 1))
 
-# 确定编译优化参数
-if [[ $USE_O3 -eq 1 ]]; then
-    OPT_FLAGS="-O3"
-else
-    OPT_FLAGS=""
-fi
+# ── compilation (parallel) ───────────────────────────────────
 
-echo "  Compiling programs with flags: g++ -std=c++17 $OPT_FLAGS..."
-if ! g++ -std=c++17 $OPT_FLAGS ans.cpp -o ans.out; then
-    echo "  Compilation failed: ans.cpp"
-    exit 1
-fi
-if ! g++ -std=c++17 $OPT_FLAGS test.cpp -o test.out; then
-    echo "  Compilation failed: test.cpp"
-    exit 1
-fi
-if ! g++ -std=c++17 $OPT_FLAGS data.cpp -o data.out; then
-    echo "  Compilation failed: data.cpp"
-    exit 1
-fi
-echo "  All programs compiled successfully!"
-echo "--------------------"
+OPT_FLAGS=""
+[[ $USE_O3 -eq 1 ]] && OPT_FLAGS="-O3"
 
-echo "  Starting automated testing..."
-echo "  Press Ctrl+C to interrupt and cleanup."
-echo "  Config: Max attempts=$MAX_ATTEMPTS, Keep files=$([ $KEEP_FILES -eq 1 ] && echo "Yes" || echo "No"), Diff flags='$DIFF_FLAGS', Optimization=$OPT_FLAGS"
-echo "--------------------"
+CXXFLAGS="-std=$CXX_STD $OPT_FLAGS"
+echo "Compiling with: g++ $CXXFLAGS ..."
+
+compile_one() {
+    local src="$1" out="$2"
+    if ! g++ $CXXFLAGS "$src" -o "$out"; then
+        printf "${RED}  ✗ Compilation failed: %s${RESET}\n" "$src" >&2
+        exit 1
+    fi
+}
+
+compile_one "$DATA_SRC" data.out &
+compile_one "$ANS_SRC"  ans.out &
+compile_one "$TEST_SRC" test.out &
+wait
+
+printf "  ${GREEN}✔ All programs compiled successfully!${RESET}\n"
+echo ""
+
+# ── test loop ────────────────────────────────────────────────
+
+# ── progress bar ─────────────────────────────────────────────
+
+BAR_WIDTH=24
+
+draw_bar() {
+    local current=$1 total=$2
+    local pct filled
+
+    (( total > 0 )) || total=1
+    pct=$(( current * 100 / total ))
+    filled=$(( current * BAR_WIDTH / total ))
+
+    printf -v bar '%*s' "$filled" ''
+    bar="${bar// /█}"
+    printf -v bar '%s%*s' "$bar" $(( BAR_WIDTH - filled )) ''
+    bar="${bar// /░}"
+
+    printf "\033[2K\r  ${CYAN}Run${RESET}  [${CYAN}%s${RESET}]  %3d/%-3d  (%3d%%)" "$bar" "$current" "$total" "$pct"
+}
+
+# ── test loop ────────────────────────────────────────────────
+
+printf "${CYAN}┌──────────────────────────────────────┐${RESET}\n"
+line="M=$MAX_ATTEMPTS  K=$([ $KEEP_FILES -eq 1 ] && echo 'Y' || echo 'N')  O=${OPT_FLAGS:-(none)}  F=${DIFF_FLAGS[*]}"
+printf "${CYAN}│${RESET}  %s%*s ${CYAN}│${RESET}\n" "$line" $((35 - ${#line})) ""
+printf "${CYAN}└──────────────────────────────────────┘${RESET}\n"
+printf "  ${YELLOW}Press Ctrl+C to interrupt.${RESET}\n"
+echo ""
 
 count=0
-found_counterexample=0
+found=0
 
 while ((count < MAX_ATTEMPTS)); do
     ((++count))
 
-    echo "Running test attempt $count..."
-
-    echo "  - Generating test data..."
-    if ! ./data.out >"$DATA_FILE"; then
-        echo "  Data generator crashed!"
-        exit 1
+    # generate
+    if ! ./data.out > "$DATA_FILE"; then
+        printf "${RED}\n  ✗ data.out crashed${RESET}\n"; exit 1
     fi
 
-    echo "  - Running reference program (ans.out)..."
-    if ! ./ans.out <"$DATA_FILE" >"$ANS_FILE"; then
-        echo "  Reference program crashed!"
-        exit 1
+    # reference & target run in sequence (need data.txt for both)
+    if ! ./ans.out < "$DATA_FILE" > "$ANS_FILE"; then
+        printf "${RED}\n  ✗ ans.out crashed${RESET}\n"; exit 1
+    fi
+    if ! ./test.out < "$DATA_FILE" > "$TEST_FILE"; then
+        printf "${RED}\n  ✗ test.out crashed${RESET}\n"; exit 1
     fi
 
-    echo "  - Running your program (test.out)..."
-    if ! ./test.out <"$DATA_FILE" >"$TEST_FILE"; then
-        echo "  Your program crashed!"
-        exit 1
-    fi
-
-    echo "  - Comparing outputs (using: $DIFF_FLAGS)..."
-    if ! eval "diff $DIFF_FLAGS \"$ANS_FILE\" \"$TEST_FILE\"" >/dev/null; then
-        found_counterexample=1
-        echo "--------------------"
-        echo "  Counterexample found! On attempt $count."
-
-        create_diff_case_file "$count" || true
-        echo "  Diff case saved to: $DIFF_CASE_FILE"
+    # quick equality check with cmp (much cheaper than diff)
+    if ! cmp -s "$ANS_FILE" "$TEST_FILE"; then
+        found=1
         echo ""
-        echo " Diff preview:"
-        echo "─────────────────────────────────────────────────────────────────────"
-        eval "diff $DIFF_FLAGS \"$ANS_FILE\" \"$TEST_FILE\" | head -20" || true
-        if eval "diff $DIFF_FLAGS \"$ANS_FILE\" \"$TEST_FILE\" | head -21 | tail -1" >/dev/null 2>&1; then
-            echo "   ... (full diff in $DIFF_CASE_FILE)"
-        fi
-        echo "─────────────────────────────────────────────────────────────────────"
+        echo ""
+        printf "${RED}┌──────────────────────────────────────┐${RESET}\n"
+        printf "${RED}│${RESET}  ${BOLD}✗ Counterexample found!${RESET}  Attempt %-4d ${RED}│${RESET}\n" "$count"
+        printf "${RED}└──────────────────────────────────────┘${RESET}\n"
+        echo ""
 
-        rm -f *.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
+        # single diff call — captured into variable
+        diff_text="$(write_diff_report "$count")"
+        echo "Diff preview (${DIFF_FLAGS[*]}):"
+        echo "─────────────────────────────────────────────────────────"
+        head -20 <<< "$diff_text"
+        if [[ $(wc -l <<< "$diff_text") -gt 20 ]]; then
+            echo "  … (full report in $DIFF_CASE_FILE)"
+        fi
+        echo "─────────────────────────────────────────────────────────"
         break
-    else
-        echo "  - Attempt $count: Outputs match."
     fi
 
-    echo "--------------------"
+    draw_bar "$count" "$MAX_ATTEMPTS"
 done
 
-if ((!found_counterexample)); then
-    rm -f *.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
-fi
+# newline after the progress bar
+echo ""
 
-if ((found_counterexample)); then
-    echo ""
-    if [[ $KEEP_FILES -eq 1 ]]; then
-        echo "  Counterexample analysis complete. Diff report: $DIFF_CASE_FILE"
+# ── teardown ─────────────────────────────────────────────────
+
+rm -f ./*.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
+
+if ((found)); then
+    if [[ $KEEP_FILES -eq 0 ]]; then
+        rm -f "$DIFF_CASE_FILE"
+        echo ""
+        echo "Temporary files cleaned up."
+        echo "Use -k to preserve the diff report."
     else
-        echo "  Counterexample found. Diff report will be deleted at exit."
-        echo "   Use -k option to preserve the diff report file."
+        echo ""
+        echo "Diff report: $DIFF_CASE_FILE"
+        clear
+        cat "$DIFF_CASE_FILE"
     fi
-elif ((count >= MAX_ATTEMPTS)); then
-    echo "  All $MAX_ATTEMPTS attempts completed. No counterexamples found. Test passed!"
+else
+    echo ""
+    text="✓  All ${MAX_ATTEMPTS} attempts passed."
+    printf "${GREEN}┌──────────────────────────────────────┐${RESET}\n"
+    printf "${GREEN}│${RESET}  %s%*s ${GREEN}│${RESET}\n" "$text" $((35 - ${#text})) ""
+    printf "${GREEN}└──────────────────────────────────────┘${RESET}\n"
 fi
-
-if [[ $KEEP_FILES -eq 0 ]] && [[ -f "$DIFF_CASE_FILE" ]]; then
-    rm -f "$DIFF_CASE_FILE"
-    echo "  All temporary files cleaned up."
-elif [[ -f "$DIFF_CASE_FILE" ]]; then
-    echo "  Diff report preserved: $DIFF_CASE_FILE"
-    clear
-    cat "$DIFF_CASE_FILE"
-fi
-
-echo "﫠  Script finished."
