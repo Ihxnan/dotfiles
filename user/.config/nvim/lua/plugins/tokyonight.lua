@@ -1,7 +1,7 @@
 return {
 	{
 		"folke/tokyonight.nvim",
-		lazy = true, -- 主题通常不懒加载
+		lazy = false, -- 启动时立即加载 colorscheme
 		priority = 1000, -- 确保优先加载
 		config = function()
 			require("tokyonight").setup({

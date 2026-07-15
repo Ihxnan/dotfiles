@@ -129,8 +129,6 @@ return {
                     -- Python 专用快捷键
                     vim.keymap.set("n", "gT", vim.lsp.buf.type_definition,
                         vim.tbl_extend("force", opts, { desc = "Python: 跳转到类型定义" }))
-                    vim.keymap.set("n", "K", vim.lsp.buf.hover,
-                        vim.tbl_extend("force", opts, { desc = "Python: 显示类型/文档" }))
                 end
             end
 

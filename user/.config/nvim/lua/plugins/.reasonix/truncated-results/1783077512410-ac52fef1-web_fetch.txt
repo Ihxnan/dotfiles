@@ -1,0 +1,714 @@
+GitHub - 3rd/image.nvim: 🖼️ Bringing images to Neovim. · GitHub
+https://github.com/3rd/image.nvim
+
+<!DOCTYPE html>
+
+GitHub - 3rd/image.nvim: 🖼️ Bringing images to Neovim. · GitHub
+
+Skip to content
+
+Navigation Menu
+
+Toggle navigation
+
+Sign in
+
+Appearance settings
+
+Search or jump to...
+
+Search code, repositories, users, issues, pull requests...
+
+Search
+
+Clear
+
+Search syntax tips 
+
+Provide feedback
+
+We read every piece of feedback, and take your input very seriously.
+
+Include my email address so I can be contacted
+
+Cancel
+
+Submit feedback
+
+Saved searches
+
+Use saved searches to filter your results more quickly
+
+Name
+
+Query
+
+To see all available qualifiers, see our documentation.
+
+Cancel
+
+Create saved search
+
+Sign in
+
+Sign up
+
+Appearance settings
+
+Resetting focus
+
+You signed in with another tab or window. Reload to refresh your session.
+You signed out in another tab or window. Reload to refresh your session.
+You switched accounts on another tab or window. Reload to refresh your session.
+
+Dismiss alert
+
+{{ message }}
+
+3rd
+
+/
+
+image.nvim
+
+Public
+
+Notifications
+You must be signed in to change notification settings
+
+Fork
+103
+
+Star
+2k
+
+3rd/image.nvim
+
+ master
+
+BranchesTags
+
+Go to file
+
+Code
+Open more actions menu
+
+Folders and files
+
+NameName
+Last commit message
+
+Last commit date
+
+Latest commit
+
+ 
+
+History
+453 Commits
+
+453 Commits
+
+.github/workflows
+
+.github/workflows
+
+ 
+
+ 
+
+lua
+
+lua
+
+ 
+
+ 
+
+scripts
+
+scripts
+
+ 
+
+ 
+
+tests
+
+tests
+
+ 
+
+ 
+
+.actrc
+
+.actrc
+
+ 
+
+ 
+
+.busted
+
+.busted
+
+ 
+
+ 
+
+.gitignore
+
+.gitignore
+
+ 
+
+ 
+
+.luarc.json
+
+.luarc.json
+
+ 
+
+ 
+
+CHANGELOG.md
+
+CHANGELOG.md
+
+ 
+
+ 
+
+LICENSE
+
+LICENSE
+
+ 
+
+ 
+
+Makefile
+
+Makefile
+
+ 
+
+ 
+
+README.md
+
+README.md
+
+ 
+
+ 
+
+flake.lock
+
+flake.lock
+
+ 
+
+ 
+
+flake.nix
+
+flake.nix
+
+ 
+
+ 
+
+image.nvim-scm-1.rockspec
+
+image.nvim-scm-1.rockspec
+
+ 
+
+ 
+
+minimal-setup.lua
+
+minimal-setup.lua
+
+ 
+
+ 
+
+stylua.toml
+
+stylua.toml
+
+ 
+
+ 
+
+View all files
+
+Repository files navigation
+
+🖼️ image.nvim
+
+This plugin adds image support to Neovim using Kitty's Graphics Protocol or ueberzugpp.
+
+It works great with Kitty and Tmux, and it handles all the rendering complexity for you.
+
+Join on Discord: https://discord.gg/GTwbCxBNgz
+
+readme_720p.mp4
+
+We provide:
+
+A library for working with images
+
+A set of built-in integrations like Markdown and Neorg
+
+Try it out quickly by downloading minimal-setup.lua from the root of this repository and running nvim --clean -c ":luafile minimal-setup.lua"
+
+Getting started
+
+Quick start for the best experience
+
+Install the Kitty terminal
+
+Install ImageMagick
+
+Install the plugin and tweak the configuration
+
+Optionally configure Tmux
+
+Check the How to ...? section
+
+Dependencies
+
+Rendering backend
+
+We support three rendering backends, so first you need to set up one of these:
+
+Kitty (recommended) >= 28.0 for the kitty backend
+
+Has the best performance, native clipping, caching, etc.
+
+You need to use Kitty or a terminal emulator that implements Kitty's Graphics Protocol.
+
+WezTerm implements it, but the performance is bad and it's not fully compliant.
+Most things work, but due to these issues it's not officially supported.
+
+Ghostty not that much information about this yet! SUBJECT TO CHANGE
+
+Überzug++ for the ueberzug backend
+
+Works with any terminal emulator.
+
+Has much lower performance.
+
+Sixel-supporting terminals for the sixel backend
+
+Works with terminals that support the Sixel graphics protocol
+
+Compatible with many terminals including XTerm, WezTerm, foot, and others
+
+No additional dependencies beyond ImageMagick (which must have Sixel support)
+
+Pretty crap performance, although very usable with only_render_image_at_cursor=true and only_render_image_at_cursor_mode="popup"
+
+ImageMagick
+
+We need to convert, scale, and crop images, and for that we use ImageMagick.
+
+There are two ways we can do this, and you need to pick and follow the setup for the one you prefer.
+
+Via CLI wrapping (default) - using the magick_cli processor
+
+Shells out to ImageMagick's CLI utilities like identify and convert.
+
+Slightly scary in some scenarios as we could potentially pass untrusted input to a shell.
+We try to keep things secure, but this would be the main selling point of using the bindings instead.
+
+Via FFI bindings - using the magick_rock processor and the magick Lua rock
+
+Has slightly better performance.
+
+Requires a working LuaRocks setup and building the magick rock.
+
+For the magick_cli processor (default) you need a regular installation of ImageMagick.
+
+For the magick_rock processor you need to install the development version of ImageMagick.
+
+NixOS
+
+NixOS users need to install the imagemagick package.
+For magick_rock you need to install luajitPackages.magick as well (thanks to @donovanglover).
+
+Home Manager
+
+thanks to @wuliuqii in #13
+
+<span class="pl-kos">{</span> <span class="pl-s1">pkgs</span><span class="pl-kos">,</span> ... <span class="pl-kos">}</span>:
+
+<span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">programs</span><span class="pl-kos">.</span><span class="pl-s1">neovim</span></span> <span class="pl-kos">=</span> <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">enable</span></span> <span class="pl-kos">=</span> <span class="pl-s1">true</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">extraLuaPackages</span></span> <span class="pl-kos">=</span> <span class="pl-s1">ps</span>: <span class="pl-kos">[</span> <span class="pl-s1">ps</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">magick</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">extraPackages</span></span> <span class="pl-kos">=</span> <span class="pl-kos">[</span> <span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">imagemagick</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c"># ... other config</span>
+<span class="pl-kos">}</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span>
+
+Vanilla NixOS
+
+<span class="pl-c"># https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/editors/neovim/utils.nix#L27</span>
+<span class="pl-kos">{</span> <span class="pl-s1">pkgs</span><span class="pl-kos">,</span> <span class="pl-s1">neovimUtils</span><span class="pl-kos">,</span> <span class="pl-s1">wrapNeovimUnstable</span><span class="pl-kos">,</span> ... <span class="pl-kos">}</span>:
+
+<span class="pl-k">let</span>
+<span class="pl-c1"><span class="pl-s1">config</span></span> <span class="pl-kos">=</span> <span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">neovimUtils</span><span class="pl-kos">.</span><span class="pl-s1">makeNeovimConfig</span></span> <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">extraLuaPackages</span></span> <span class="pl-kos">=</span> <span class="pl-s1">p</span>: <span class="pl-kos">[</span> <span class="pl-s1">p</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">magick</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">extraPackages</span></span> <span class="pl-kos">=</span> <span class="pl-s1">p</span>: <span class="pl-kos">[</span> <span class="pl-s1">p</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">imagemagick</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c"># ... other config</span>
+<span class="pl-kos">}</span><span class="pl-kos">;</span>
+<span class="pl-k">in</span> <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">nixpkgs</span><span class="pl-kos">.</span><span class="pl-s1">overlays</span></span> <span class="pl-kos">=</span> <span class="pl-kos">[</span>
+<span class="pl-kos">(</span><span class="pl-s1">_</span>: <span class="pl-s1">super</span>: <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">neovim-custom</span></span> <span class="pl-kos">=</span> <span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">wrapNeovimUnstable</span></span>
+<span class="pl-kos">(</span><span class="pl-s1">super</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">neovim-unwrapped</span><span class="pl-kos">.</span><span class="pl-s1">overrideAttrs</span></span> <span class="pl-kos">(</span><span class="pl-s1">oldAttrs</span>: <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">buildInputs</span></span> <span class="pl-kos">=</span> <span class="pl-s1">oldAttrs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">buildInputs</span></span> <span class="pl-c1">++</span> <span class="pl-kos">[</span> <span class="pl-s1">super</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">tree-sitter</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">)</span> <span class="pl-s1">config</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span>
+<span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">environment</span><span class="pl-kos">.</span><span class="pl-s1">systemPackages</span></span> <span class="pl-kos">=</span> <span class="pl-k">with</span> <span class="pl-s1">pkgs</span><span class="pl-kos">;</span> <span class="pl-kos">[</span> <span class="pl-s1">neovim-custom</span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span>
+
+Arch
+
+sudo pacman -S imagemagick
+
+Ubuntu/Debian
+
+<span class="pl-c"><span class="pl-c">#</span> for magick_cli</span>
+sudo apt install imagemagick
+<span class="pl-c"><span class="pl-c">#</span> for magick_rock</span>
+sudo apt install libmagickwand-dev
+
+macOS
+
+The setup is the same for both magick_rock and magick_cli:
+
+Homebrew: brew install imagemagick
+
+For some users homebrew might install it into a weird location, so you have to add $(brew --prefix)/lib to DYLD_FALLBACK_LIBRARY_PATH by adding something like export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib:$DYLD_FALLBACK_LIBRARY_PATH" to your shell profile (probably .zshrc or .bashrc)
+
+MacPorts: sudo port install imagemagick
+
+You must add /opt/local/lib to DYLD_FALLBACK_LIBRARY_PATH, similar to homebrew.
+
+Fedora
+
+<span class="pl-c"><span class="pl-c">#</span> for magick_cli</span>
+sudo dnf install ImageMagick
+<span class="pl-c"><span class="pl-c">#</span> for magick_rock</span>
+sudo dnf install ImageMagick-devel
+
+Tmux
+
+This plugin will always have first class support for Tmux, to make it work make sure you:
+
+Use Tmux >= 3.3
+
+set -gq allow-passthrough on
+
+set -g visual-activity off
+
+set-option -g focus-events on
+
+Other
+
+cURL for remote image support
+
+Extra: Installing Überzug++
+
+NixOS
+
+NixOS users need to install the ueberzugpp package.
+
+Home Manager
+
+<span class="pl-kos">{</span> <span class="pl-s1">pkgs</span><span class="pl-kos">,</span> ... <span class="pl-kos">}</span>:
+
+<span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">programs</span><span class="pl-kos">.</span><span class="pl-s1">neovim</span></span> <span class="pl-kos">=</span> <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">enable</span></span> <span class="pl-kos">=</span> <span class="pl-s1">true</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">extraLuaPackages</span></span> <span class="pl-kos">=</span> <span class="pl-s1">ps</span>: <span class="pl-kos">[</span> <span class="pl-s1">ps</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">magick</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">extraPackages</span></span> <span class="pl-kos">=</span> <span class="pl-kos">[</span>
+<span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">ueberzugpp</span></span>
+<span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">imagemagick</span></span>
+<span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c"># ... other config</span>
+<span class="pl-kos">}</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span>
+
+Vanilla NixOS
+
+<span class="pl-c"># https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/editors/neovim/utils.nix#L27</span>
+<span class="pl-kos">{</span> <span class="pl-s1">pkgs</span><span class="pl-kos">,</span> <span class="pl-s1">neovimUtils</span><span class="pl-kos">,</span> <span class="pl-s1">wrapNeovimUnstable</span><span class="pl-kos">,</span> ... <span class="pl-kos">}</span>:
+
+<span class="pl-k">let</span>
+<span class="pl-c1"><span class="pl-s1">config</span></span> <span class="pl-kos">=</span> <span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">neovimUtils</span><span class="pl-kos">.</span><span class="pl-s1">makeNeovimConfig</span></span> <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">extraLuaPackages</span></span> <span class="pl-kos">=</span> <span class="pl-s1">p</span>: <span class="pl-kos">[</span> <span class="pl-s1">p</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">magick</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">extraPackages</span></span> <span class="pl-kos">=</span> <span class="pl-s1">p</span>: <span class="pl-kos">[</span>
+<span class="pl-s1">p</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">ueberzugpp</span></span>
+<span class="pl-s1">p</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">imagemagick</span></span>
+<span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c"># ... other config</span>
+<span class="pl-kos">}</span><span class="pl-kos">;</span>
+<span class="pl-k">in</span> <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">nixpkgs</span><span class="pl-kos">.</span><span class="pl-s1">overlays</span></span> <span class="pl-kos">=</span> <span class="pl-kos">[</span>
+<span class="pl-kos">(</span><span class="pl-s1">_</span>: <span class="pl-s1">super</span>: <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">neovim-custom</span></span> <span class="pl-kos">=</span> <span class="pl-s1">pkgs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">wrapNeovimUnstable</span></span>
+<span class="pl-kos">(</span><span class="pl-s1">super</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">neovim-unwrapped</span><span class="pl-kos">.</span><span class="pl-s1">overrideAttrs</span></span> <span class="pl-kos">(</span><span class="pl-s1">oldAttrs</span>: <span class="pl-kos">{</span>
+<span class="pl-c1"><span class="pl-s1">buildInputs</span></span> <span class="pl-kos">=</span> <span class="pl-s1">oldAttrs</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">buildInputs</span></span> <span class="pl-c1">++</span> <span class="pl-kos">[</span> <span class="pl-s1">super</span><span class="pl-kos">.</span><span class="pl-c1"><span class="pl-s1">tree-sitter</span></span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span><span class="pl-kos">)</span> <span class="pl-s1">config</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span><span class="pl-kos">)</span>
+<span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-c1"><span class="pl-s1">environment</span><span class="pl-kos">.</span><span class="pl-s1">systemPackages</span></span> <span class="pl-kos">=</span> <span class="pl-k">with</span> <span class="pl-s1">pkgs</span><span class="pl-kos">;</span> <span class="pl-kos">[</span> <span class="pl-s1">neovim-custom</span> <span class="pl-kos">]</span><span class="pl-kos">;</span>
+<span class="pl-kos">}</span>
+
+Pip
+
+sudo pip install ueberzugpp
+
+Arch
+
+sudo pacman -S ueberzugpp
+
+Ubuntu/Debian/Fedora
+
+Follow instructions on this link
+
+macOS
+
+Homebrew: brew install jstkdng/programs/ueberzugpp
+
+For some users homebrew might install it into a weird location, so you have to add $(brew --prefix)/lib to DYLD_FALLBACK_LIBRARY_PATH by adding something like export DYLD_FALLBACK_LIBRARY_PATH="$(brew -- prefix)/lib:$DYLD_FALLBACK_LIBRARY_PATH" to your shell profile (probably .zshrc or .bashrc)
+
+Setup the configuration
+
+Put this in ~/.config/ueberzugpp/config.json (the same for MacOS):
+
+<code>{
+"layer": {
+"silent": true,
+"use-escape-codes": false,
+"no-stdin": false,
+"_comment": "Replace wayland in output with iterm2, if you want ssh support, x11 if you want to use it in xorg, sixel if you want to use sixels, chafa if you want to use the terminal colors.",
+"_comment2": "Kitty is not mentioned in the list above, because image.nvim has native support for it.",
+"output": "wayland"
+}
+}
+</code>
+
+You can remove the lines with _comment and _comment2, once you have tried every available option until one or more worked!
+
+Plugin installation
+
+After you've set up the dependencies, install the image.nvim plugin.
+
+For magick_cli using Lazy
+
+{
+<span class="pl-s"><span class="pl-pds">"</span>3rd/image.nvim<span class="pl-pds">"</span></span>,
+<span class="pl-smi">build</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>, <span class="pl-c"><span class="pl-c">--</span> so that it doesn't build the rock https://github.com/3rd/image.nvim/issues/91#issuecomment-2453430239</span>
+<span class="pl-smi">opts</span> <span class="pl-k">=</span> {
+<span class="pl-smi">processor</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>magick_cli<span class="pl-pds">"</span></span>,
+}
+}
+
+For magick_rock using Lazy >= v11.*
+
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">"</span>lazy<span class="pl-pds">"</span></span>).<span class="pl-c1">setup</span>({
+<span class="pl-smi">rocks</span> <span class="pl-k">=</span> {
+<span class="pl-smi">hererocks</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>, <span class="pl-c"><span class="pl-c">--</span> recommended if you do not have global installation of Lua 5.1.</span>
+},
+<span class="pl-smi">spec</span> <span class="pl-k">=</span> {
+{
+<span class="pl-s"><span class="pl-pds">"</span>3rd/image.nvim<span class="pl-pds">"</span></span>,
+<span class="pl-smi">opts</span> <span class="pl-k">=</span> {}
+},
+}
+})
+
+For magick_rock using Lazy < v11.x
+
+It's recommended that you use vhyrro/luarocks.nvim to install Lua rocks for Neovim while using lazy, but you can install them manually as well.
+
+With luarocks.nvim
+
+Please read the luarocks.nvim README, it currently has an external dependency.
+
+{
+<span class="pl-s"><span class="pl-pds">"</span>vhyrro/luarocks.nvim<span class="pl-pds">"</span></span>,
+<span class="pl-smi">priority</span> <span class="pl-k">=</span> <span class="pl-c1">1001</span>, <span class="pl-c"><span class="pl-c">--</span> this plugin needs to run before anything else</span>
+<span class="pl-smi">opts</span> <span class="pl-k">=</span> {
+<span class="pl-smi">rocks</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>magick<span class="pl-pds">" </span></span>},
+},
+},
+{
+<span class="pl-s"><span class="pl-pds">"</span>3rd/image.nvim<span class="pl-pds">"</span></span>,
+<span class="pl-smi">dependencies</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>luarocks.nvim<span class="pl-pds">" </span></span>},
+<span class="pl-smi">opts</span> <span class="pl-k">=</span> {}
+}
+
+Without luarocks.nvim
+
+You have to install the Lua rock manually.
+
+Install LuaRocks on your system via your system package manager
+
+Run luarocks --local --lua-version=5.1 install magick
+
+<span class="pl-c"><span class="pl-c">--</span> Example for configuring Neovim to load user-installed installed Lua rocks:</span>
+<span class="pl-c1">package.path</span> <span class="pl-k">=</span> <span class="pl-c1">package.path</span> <span class="pl-k">..</span> <span class="pl-s"><span class="pl-pds">"</span>;<span class="pl-pds">" </span></span><span class="pl-k">..</span> <span class="pl-smi">vim</span>.<span class="pl-e">fn</span>.<span class="pl-c1">expand</span>(<span class="pl-s"><span class="pl-pds">"</span>$HOME<span class="pl-pds">"</span></span>) <span class="pl-k">..</span> <span class="pl-s"><span class="pl-pds">"</span>/.luarocks/share/lua/5.1/?/init.lua<span class="pl-pds">"</span></span>
+<span class="pl-c1">package.path</span> <span class="pl-k">=</span> <span class="pl-c1">package.path</span> <span class="pl-k">..</span> <span class="pl-s"><span class="pl-pds">"</span>;<span class="pl-pds">" </span></span><span class="pl-k">..</span> <span class="pl-smi">vim</span>.<span class="pl-e">fn</span>.<span class="pl-c1">expand</span>(<span class="pl-s"><span class="pl-pds">"</span>$HOME<span class="pl-pds">"</span></span>) <span class="pl-k">..</span> <span class="pl-s"><span class="pl-pds">"</span>/.luarocks/share/lua/5.1/?.lua<span class="pl-pds">"</span></span>
+
+{
+<span class="pl-s"><span class="pl-pds">"</span>3rd/image.nvim<span class="pl-pds">"</span></span>,
+<span class="pl-smi">opts</span> <span class="pl-k">=</span> {}
+}
+
+For magick_rock using Rocks.nvim
+
+<code>:Rocks install image.nvim
+</code>
+
+Configuration
+
+Default configuration
+
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">"</span>image<span class="pl-pds">"</span></span>).<span class="pl-c1">setup</span>({
+<span class="pl-smi">backend</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>kitty<span class="pl-pds">"</span></span>, <span class="pl-c"><span class="pl-c">--</span> or "ueberzug" or "sixel"</span>
+<span class="pl-smi">processor</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>magick_cli<span class="pl-pds">"</span></span>, <span class="pl-c"><span class="pl-c">--</span> or "magick_rock"</span>
+<span class="pl-smi">integrations</span> <span class="pl-k">=</span> {
+<span class="pl-smi">markdown</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+<span class="pl-smi">clear_in_insert_mode</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+<span class="pl-smi">download_remote_images</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+<span class="pl-smi">only_render_image_at_cursor</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+<span class="pl-smi">only_render_image_at_cursor_mode</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>popup<span class="pl-pds">"</span></span>, <span class="pl-c"><span class="pl-c">--</span> or "inline"</span>
+<span class="pl-smi">floating_windows</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>, <span class="pl-c"><span class="pl-c">--</span> if true, images will be rendered in floating markdown windows</span>
+<span class="pl-smi">filetypes</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>markdown<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>vimwiki<span class="pl-pds">" </span></span>}, <span class="pl-c"><span class="pl-c">--</span> markdown extensions (ie. quarto) can go here</span>
+},
+<span class="pl-smi">asciidoc</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+<span class="pl-smi">clear_in_insert_mode</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+<span class="pl-smi">download_remote_images</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+<span class="pl-smi">only_render_image_at_cursor</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+<span class="pl-smi">only_render_image_at_cursor_mode</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>popup<span class="pl-pds">"</span></span>,
+<span class="pl-smi">floating_windows</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+<span class="pl-smi">filetypes</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>asciidoc<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>adoc<span class="pl-pds">" </span></span>},
+},
+<span class="pl-smi">neorg</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+<span class="pl-smi">filetypes</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>norg<span class="pl-pds">" </span></span>},
+},
+<span class="pl-smi">rst</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+},
+<span class="pl-smi">typst</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">true</span>,
+<span class="pl-smi">filetypes</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>typst<span class="pl-pds">" </span></span>},
+},
+<span class="pl-smi">html</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+},
+<span class="pl-smi">css</span> <span class="pl-k">=</span> {
+<span class="pl-smi">enabled</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>,
+},
+},
+<span class="pl-smi">max_width</span> <span class="pl-k">=</span> <span class="pl-c1">nil</span>,
+<span class="pl-smi">max_height</span> <span class="pl-k">=</span> <span class="pl-c1">nil</span>,
+<span class="pl-smi">max_width_window_percentage</span> <span class="pl-k">=</span> <span class="pl-c1">nil</span>,
+<span class="pl-smi">max_height_window_percentage</span> <span class="pl-k">=</span> <span class="pl-c1">50</span>,
+<span class="pl-smi">scale_factor</span> <span class="pl-k">=</span> <span class="pl-c1">1.0</span>,
+<span class="pl-smi">kitty_direct_chunk_size</span> <span class="pl-k">=</span> <span class="pl-c1">4096</span>, <span class="pl-c"><span class="pl-c">--</span> chunk size for direct Kitty graphics protocol transmission</span>
+<span class="pl-smi">window_overlap_clear_enabled</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>, <span class="pl-c"><span class="pl-c">--</span> toggles images when windows are overlapped</span>
+<span class="pl-smi">window_overlap_clear_ft_ignore</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>cmp_menu<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>cmp_docs<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>snacks_notif<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scrollview<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scrollview_sign<span class="pl-pds">" </span></span>},
+<span class="pl-smi">editor_only_render_when_focused</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>, <span class="pl-c"><span class="pl-c">--</span> auto show/hide images when the editor gains/looses focus</span>
+<span class="pl-smi">tmux_show_only_in_active_window</span> <span class="pl-k">=</span> <span class="pl-c1">false</span>, <span class="pl-c"><span class="pl-c">--</span> auto show/hide images in the correct Tmux window (needs visual-activity off)</span>
+<span class="pl-smi">hijack_file_patterns</span> <span class="pl-k">=</span> { <span class="pl-s"><span class="pl-pds">"</span>*.png<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>*.jpg<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>*.jpeg<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>*.gif<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>*.webp<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>*.avif<span class="pl-pds">" </span></span>}, <span class="pl-c"><span class="pl-c">--</span> render image files as images when opened</span>
+})
+
+Backends
+
+All the backends support rendering inside Tmux.
+
+kitty - best in class, works great and is very snappy
+
+ueberzug - backed by ueberzugpp, supports any terminal, but has lower performance
+
+Supports multiple images thanks to @jstkdng.
+
+sixel - uses the Sixel graphics protocol, widely supported by many terminals
+
+Works with XTerm, WezTerm, foot, and other Sixel-compatible terminals
+
+ImageMagick is required for Sixel encoding
+
+Integrations
+
+markdown - uses tree-sitter-markdown and supports any Markdown-based grammars (Quarto, VimWiki Markdown)
+
+asciidoc - scans buffers for the image macros
+
+neorg - uses tree-sitter-norg (also check nvim-neorg/neorg#971)
+
+rst (reStructuredText) - uses tree-sitter-rst
+
+typst - thanks to @etiennecollin (#223)
+
+html and css - thanks to @zuloo (#163)
+
+You can configure where images are searched for on a per-integration basis by passing a function to
+resolve_image_path as shown below:
+
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">'</span>image<span class="pl-pds">'</span></span>).<span class="pl-c1">setup</span>({
+<span class="pl-smi">integrations</span> <span class="pl-k">=</span> {
+<span class="pl-smi">markdown</span> <span class="pl-k">=</span> {
+<span class="pl-en">resolve_image_path</span> <span class="pl-k">=</span> <span class="pl-k">function</span>(<span class="pl-smi">document_path</span>, <span class="pl-smi">image_path</span>, <span class="pl-smi">fallback</span>)
+<span class="pl-c"><span class="pl-c">--</span> document_path is the path to the file that contains the image</span>
+<span class="pl-c"><span class="pl-c">--</span> image_path is the potentially relative path to the image. for</span>
+<span class="pl-c"><span class="pl-c">--</span> markdown it's `![](this text)`</span>
+
+<span class="pl-c"><span class="pl-c">--</span> you can call the fallback function to get the default behavior</span>
+<span class="pl-k">return</span> <span class="pl-c1">fallback</span>(<span class="pl-smi">document_path</span>, <span class="pl-smi">image_path</span>)
+<span class="pl-k">end</span>,
+}
+}
+})
+
+Check #190 (comment) for how to configure this for Obsidian.
+
+How to ...?
+
+General
+
+Enable / disable / get plugin status
+
+You can enable/disable the plugin and check its status on demand.
+
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">"</span>image<span class="pl-pds">"</span></span>).<span class="pl-c1">enable</span>() <span class="pl-c"><span class="pl-c">--</span> enable the plugin</span>
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">"</span>image<span class="pl-pds">"</span></span>).<span class="pl-c1">disable</span>() <span class="pl-c"><span class="pl-c">--</span> disable the plugin</span>
+<span class="pl-c1">print</span>(<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">"</span>image<span class="pl-pds">"</span></span>).<span class="pl-c1">is_enabled</span>()) <span class="pl-c"><span class="pl-c">--</span> bool</span>
+
+Integrations
+
+Render images only when under the cursor
+
+This is a built-in feature that you can configure per-integration using the following options:
+
+<span class="pl-c1">require</span>(<span class="pl-s"><span class="pl-pds">"</span>image<span class="pl-pds">"</span></span>).<span class="pl-c1">setup</span>({
+<span class="pl-smi">integrations</span> <span class="pl-k">=</span> {
+<span class="pl-smi">markdown</span> <span class="pl-k">=</span> {
+<span class="pl-smi">only_render_image_at_cursor</span> <span class="pl-k">=</span>
+
+[… truncated 7516 chars …]

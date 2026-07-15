@@ -1,8 +1,7 @@
 return {
     "numToStr/Comment.nvim",
-    -- 不 lazy，且加优先级，确保最先加载
-    lazy = false,
-    priority = 1000, -- 越高越先加载
+    -- 按键触发再加载
+    keys = { "gcc", "gc" },
     -- 用 opts 替代手写 config，Lazy 更稳
     opts = {
         -- 保持默认映射

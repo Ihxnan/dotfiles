@@ -25,15 +25,7 @@ return {
         end,
     },
 
-    -- 可添加其他 mini.nvim 系列插件
-    {
-        "echasnovski/mini.comment", -- 代码注释插件
-        version = false,
-        config = function()
-            require("mini.comment").setup()
-        end,
-    },
-
+    -- 光标下单词高亮
     {
         "echasnovski/mini.cursorword", -- 高亮当前光标所在单词
         version = false,

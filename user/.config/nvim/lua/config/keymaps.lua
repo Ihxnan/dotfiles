@@ -61,10 +61,10 @@ local function run_code(with_data)
 	elseif ft == "python" then
 		local cmds = {
 			e("[Check] Syntax checking...", C.blue),
-			'python3 -m py_compile "%" 2>&1',
+			'uv run --no-project python -B -m py_compile "%" 2>&1',
 			"if [ $? -eq 0 ]; then "
 				.. e("[Run] Executing Python file" .. (with_data and " (with input data)" or "") .. "...", C.cyan),
-			'time PYTHONUNBUFFERED=1 python3 "%"' .. data_redirect .. " | lolcat",
+			'time uv run --no-project python -B "%"' .. data_redirect .. "| lolcat; find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null",
 			e("[Done] Python finished", C.green),
 			"else " .. e("[Error] Syntax error! Fix your code", C.red),
 			"fi",
@@ -76,7 +76,7 @@ local function run_code(with_data)
 			return
 		end
 		local class_name = vim.fn.expand("%:t:r")
-		vim.cmd("split | terminal javac % && java " .. class_name .. " | lolcat; rm -f " .. class_name .. ".class")
+		vim.cmd("split | terminal javac % && java " .. class_name .. "; rm -f " .. class_name .. ".class")
 	elseif ft == "cmake" then
 		if with_data then
 			print("⚠️ CMake 暂不支持带数据运行")
@@ -254,7 +254,7 @@ keymap.set("n", "rd", function()
 	run_code(true)
 end, { desc = "rd：带输入数据运行代码（算法刷题）" })
 keymap.set("n", "rp", run_code_with_paste, { desc = "rp：粘贴剪贴板到 data 文件后带数据运行代码" })
-keymap.set("n", "dp", ":w<CR><C-w>v:terminal<CR>idp -k", { desc = "dp：保存并运行dp工具（-k参数）" })
+keymap.set("n", "dp", ":w<CR><C-w>v:terminal fish -l<CR>idp -k", { desc = "dp：保存并运行dp工具（-k参数）" })
 keymap.set("n", "cd", ":e ~/WorkSpace/Algorithm/data<CR>", { desc = "cd：快速打开算法输入数据文件" })
 keymap.set("n", "cp", paste_to_data, { desc = "cp：覆盖写入剪贴板内容到 data 文件" })
 keymap.set("n", "ct", ":e ~/Github/Template<CR>", { desc = "ct：快速打开算法模板文件" })
@@ -271,12 +271,12 @@ keymap.set("n", "N", "Nzz", { desc = "N：搜索上一个并居中显示" })
 -- ======================== 9. 编辑效率 ========================
 
 -- 9.1 常用工具启动
-keymap.set("n", "<C-g>", ":tabe<CR>:term lazygit<CR>i", { desc = "Ctrl+g：新建标签页并打开lazygit" })
-keymap.set("n", "<leader>t", ":w<CR><C-w>v:terminal<CR>i", { desc = "Leader+t：保存并新建垂直终端窗口" })
+keymap.set("n", "<C-g>", ":tabe<CR>:term fish -l -c lazygit<CR>i", { desc = "Ctrl+g：新建标签页并打开lazygit" })
+keymap.set("n", "<leader>t", ":w<CR><C-w>v:terminal fish -l<CR>i", { desc = "Leader+t：保存并新建垂直终端窗口（fish 登录模式）" })
 keymap.set(
 	"n",
 	"<leader>i",
-	":w<CR><C-w>v:terminal<CR>ireasonix<CR>",
+	":w<CR><C-w>v:terminal fish -l<CR>ireasonix<CR>",
 	{ desc = "Leader+i：保存并打开reasonix工具" }
 )
 keymap.set({ "n", "t" }, "<A-t>", "<Cmd>ToggleTerm<CR>", { desc = "Alt+t：切换 toggleterm 悬浮终端" })

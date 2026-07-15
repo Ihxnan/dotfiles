@@ -133,54 +133,10 @@
         ],
         "description": "Standard starter template for a tiny C++ program"
     },
-    "test something": {
-        "prefix": "test",
-        "body": [
-            "#include <debug>",
-            "",
-            "// #define int long long",
-            "",
-            "using namespace std;",
-            "",
-            "signed main()",
-            "{",
-            "    $0",
-            "    return 0;",
-            "}"
-        ]
-    },
-    "start a algorithm": {
-        "prefix": "st",
-        "body": [
-            "#include <iostream>",
-            "",
-            "// #define int long long",
-            "",
-            "using namespace std;",
-            "",
-            "void solve()",
-            "{",
-            "    $0",
-            "}",
-            "",
-            "signed main()",
-            "{",
-            "    ios::sync_with_stdio(false);",
-            "    cin.tie(nullptr);",
-            "    cout.tie(nullptr);",
-            "",
-            "    int t = 1;",
-            "    $1cin >> t;",
-            "    while (t--)",
-            "        solve();",
-            "",
-            "    return 0;",
-            "}"
-        ]
-    },
     "ACM Template": {
         "prefix": "acm",
         "body": [
+            "#include <bits/stdc++.h>",
             "/* ──▶  INCLUDE  ◀── */",
             "$1#define MULTIT",
             "#include <ihxnan>",

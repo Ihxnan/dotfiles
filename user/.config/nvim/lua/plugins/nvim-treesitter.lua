@@ -17,6 +17,9 @@ return {
                 "typescript",
                 "tsx",
                 "markdown",
+                "markdown_inline",  -- 用于 LaTeX 数学公式渲染
+                "latex",            -- render-markdown LaTeX 渲染
+                "yaml",             -- render-markdown YAML frontmatter
             },
             sync_install = true,
             auto_install = true,
