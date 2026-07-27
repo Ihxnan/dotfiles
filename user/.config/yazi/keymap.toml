@@ -225,7 +225,7 @@ keymap = [
   { on = [
     "g",
     "a",
-  ], run = "cd ~/WorkSpace/Algorithm", desc = "Go ~/WorkSpace/Algorithm" },
+  ], run = "cd ~/Github/Code", desc = "Go ~/Github/Code" },
   { on = [
     "g",
     "b",

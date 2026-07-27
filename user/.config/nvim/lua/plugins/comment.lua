@@ -1,25 +1,24 @@
 return {
     "numToStr/Comment.nvim",
-    -- 按键触发再加载
-    keys = { "gcc", "gc" },
-    -- 用 opts 替代手写 config，Lazy 更稳
+    keys = {
+        { "gc", mode = { "n", "v" }, desc = "Comment" },
+    },
     opts = {
-        -- 保持默认映射
         mappings = {
             basic = true,
             extra = true,
         },
     },
-    -- 显式依赖，避免被其他插件覆盖
-    dependencies = {
-        "nvim-telescope/telescope.nvim", -- 可选，根据你实际依赖
-    },
-    -- 可选：手动强映射（彻底解决映射被冲）
-    config = function()
-        -- 先调用 setup（opts 会自动传，但手动再调一次更稳）
-        require("Comment").setup()
-        -- 强制映射，覆盖一切
-        vim.keymap.set("n", "gcc", function() require("Comment.api").toggle.linewise.current() end, { noremap = true, desc = "Comment current line" })
-        vim.keymap.set("v", "gc", function() require("Comment.api").toggle.linewise(vim.fn.visualmode()) end, { noremap = true, desc = "Comment selection" })
+    config = function(_, opts)
+        require("Comment").setup(opts)
+        local ft = require("Comment.ft")
+        local fn_calc = ft.calculate
+        ft.calculate = function(ctx)
+            local ok, parser = pcall(vim.treesitter.get_parser, vim.api.nvim_get_current_buf())
+            if not ok or not parser then
+                return require("Comment.ft").get(vim.bo.filetype, ctx.ctype)
+            end
+            return fn_calc(ctx)
+        end
     end,
 }
