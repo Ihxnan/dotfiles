@@ -1,11 +1,98 @@
+# ==================================================
+# clang-format 配置文件
+# 基础风格: Microsoft (Allman 括号换行)
+# 定制: Lambda 表达式采用 Google 风格（不换行）
+# ==================================================
+
+# 以 Microsoft 风格为基础模板，后续覆盖定制
 BasedOnStyle: Microsoft
-BreakBeforeBraces: Allman
+
+# 大括号换行策略: Custom = 自定义细粒度控制
+# 配合下方的 BraceWrapping 子选项，可为不同结构分别指定是否换行
+BreakBeforeBraces: Custom
+
+# ========== 大括号换行行为 (BraceWrapping) ==========
+# true  = 该结构的大括号前换行（Allman 风格）
+# false = 不换行，跟在语句末尾（Google / Attach 风格）
+BraceWrapping:
+    # switch-case 标签后的大括号是否换行
+    AfterCaseLabel: true
+
+    # class 定义的大括号是否换行
+    AfterClass: true
+
+    # if/for/while/switch 等控制语句后的大括号是否换行
+    # Always = 总是换行; true/false 也可用
+    AfterControlStatement: Always
+
+    # enum 定义的大括号是否换行
+    AfterEnum: true
+
+    # 函数定义/声明的大括号是否换行（保持 Allman，true = 换行）
+    AfterFunction: true
+
+    # namespace 的大括号是否换行
+    AfterNamespace: true
+
+    # Objective-C 声明的大括号是否换行
+    AfterObjCDeclaration: true
+
+    # struct 定义的大括号是否换行
+    AfterStruct: true
+
+    # union 定义的大括号是否换行
+    AfterUnion: true
+
+    # extern "C" 块的大括号是否换行
+    AfterExternBlock: true
+
+    # catch 前的大括号是否换行
+    BeforeCatch: true
+
+    # else 前的大括号是否换行
+    BeforeElse: true
+
+    # ★ Lambda 表达式的大括号是否换行 ★
+    # false = 不换行，直接跟在捕获列表/参数后面 — Google 风格
+    # 这是本配置的核心定制点
+    BeforeLambdaBody: false
+
+    # do-while 中 while 前的大括号是否换行
+    BeforeWhile: true
+
+    # 空函数体是否合并为一行（false = 即使空也拆为两行）
+    SplitEmptyFunction: true
+
+    # 空 struct/class/union 体是否合并为一行
+    SplitEmptyRecord: false
+
+    # 空 namespace 体是否合并为一行
+    SplitEmptyNamespace: false
+
+# Lambda 体缩进方式
+# Signature  = 相对捕获列表 `[]` 的列位置缩进（更紧凑，Google 风格）
+# OuterScope = 相对外层作用域缩进（与函数体内的其他语句对齐）
+LambdaBodyIndentation: Signature
+
+# ========== 头文件排序 ==========
+
+# 是否对 #include 排序
 SortIncludes: true
+
+# Include 块合并策略
+# Merge = 合并同一优先级分组，不同优先级用空行分隔
 IncludeBlocks: Merge
+
+# 自定义 include 分组优先级（数值越小优先级越高，越先出现）
 IncludeCategories:
+    # 第 1 组: <ihxnan/...> 系统头文件风格，优先级最高
     - Regex: "<ihxnan>"
       Priority: -200
+
+    # 第 2 组: "ihxnan/..." 项目内部引用头文件
     - Regex: "ihxnan"
       Priority: -100
+
+    # 第 3 组: 其余所有头文件（标准库、第三方等）
     - Regex: ".*"
       Priority: 10

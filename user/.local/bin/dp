@@ -10,10 +10,14 @@ KEEP_FILES=0
 USE_O3=1
 CXX_STD="c++17"
 
+# comparison settings
+EPS=1e-6           # float comparison tolerance (auto mode)
+CMP_MODE="auto"    # auto: numeric compare by float tolerance | strict: byte-level
+
 # DIFF_FLAGS as array — no eval, no word-splitting surprises
 DIFF_FLAGS=(-u)
 
-# 源文件
+# source files
 ANS_SRC="ans.cpp"
 TEST_SRC="test.cpp"
 DATA_SRC="data.cpp"
@@ -23,37 +27,235 @@ ANS_FILE="ans.txt"
 TEST_FILE="test.txt"
 DIFF_CASE_FILE="diff_case.txt"
 
+# ── i18n ─────────────────────────────────────────────────────
+# Language selection (-l/--lang en|zh). Default: en.
+LANG_SETTING="en"
+
+# Terminal display width: ASCII=1 column, CJK/full-width=2 columns.
+disp_width() {
+    local s="$1" i w=0 c
+    local LC_COLLATE=C
+    for ((i = 0; i < ${#s}; i++)); do
+        c="${s:i:1}"
+        if [[ "$c" > $'\x7f' ]]; then
+            w=$((w + 2))
+        else
+            w=$((w + 1))
+        fi
+    done
+    echo "$w"
+}
+
+# Left-align $1 to display width $2.
+pad() {
+    local s="$1" w="$2" sw p
+    sw="$(disp_width "$s")"
+    p=$((w - sw))
+    ((p < 0)) && p=0
+    printf '%s%*s' "$s" "$p" ''
+}
+
+# One-line colored box: box_line <box_color> <text_color> <text>
+box_line() {
+    local box_c="$1" text_c="$2" text="$3"
+    local w; w="$(disp_width "$text")"
+    local total=$((w + 8))
+    local body; printf -v body '%*s' $((total - 2)) ''; body="${body// /─}"
+    printf "${box_c}┌%s┐${RESET}\n" "$body"
+    printf "${box_c}│${RESET}  ${text_c}%s${RESET}%*s  ${box_c}│${RESET}\n" "$text" $((total - w - 6)) ""
+    printf "${box_c}└%s┘${RESET}\n" "$body"
+}
+
+setup_i18n() {
+    if [[ "$LANG_SETTING" == "zh" ]]; then
+        MSG_USAGE="用法：%s [选项]"
+        MSG_OPTIONS_HEADER="选项："
+        MSG_EXAMPLES="示例："
+        MSG_TOOL_DESC="对拍程序：自动生成测试数据，对比 ans.cpp 与 test.cpp 的输出。"
+        MSG_OPT_ATTEMPTS="测试轮数（默认：$MAX_ATTEMPTS）"
+        MSG_OPT_KEEP="保留反例文件（默认：不保留）"
+        MSG_OPT_DIFF="diff 参数（默认：'${DIFF_FLAGS[*]}'）"
+        MSG_OPT_STD="C++ 标准（默认：$CXX_STD）"
+        MSG_OPT_EPS="浮点比较误差阈值（默认：$EPS）"
+        MSG_OPT_CMP="比较模式：auto | strict（默认：$CMP_MODE）"
+        MSG_OPT_ANS="参考答案源文件（默认：$ANS_SRC）"
+        MSG_OPT_TEST="被测程序源文件（默认：$TEST_SRC）"
+        MSG_OPT_GEN="数据生成器源文件（默认：$DATA_SRC）"
+        MSG_OPT_NOO3="编译时不加优化"
+        MSG_OPT_HELP="显示此帮助"
+        MSG_OPT_LANG="输出语言：en | zh（默认：$LANG_SETTING）"
+        MSG_EX_DIFF="diff 常用参数："
+        MSG_EX_WS_EDGES="忽略空白差异（行首尾 + 中间）"
+        MSG_EX_WS_ALL="忽略所有空白（含换行）"
+        MSG_EX_COMBINE="合并多个参数"
+        MSG_EX_OTHER="其他："
+        MSG_EX_FLOAT="浮点比较："
+        MSG_EX_LOOSEN="放宽误差（默认 1e-6）"
+        MSG_EX_STRICT="退回到字节级严格比较"
+        MSG_CMP_MODES="比较模式："
+        MSG_CMP_AUTO="数字 token 按浮点误差比较，其余严格按字符串比较（默认）"
+        MSG_CMP_STRICT="字节级严格比较，等价于原 cmp -s 行为"
+        MSG_COMPILING="正在编译：g++ %s ..."
+        MSG_COMPILE_FAIL="编译失败：%s"
+        MSG_COMPILE_FAIL_CMP="编译失败：比较器"
+        MSG_COMPILE_OK="全部程序编译成功！"
+        MSG_RUN="运行"
+        MSG_PRESS_CTRL_C="按 Ctrl+C 可随时中断。"
+        MSG_CRASHED="%s 崩溃"
+        MSG_CE_FOUND="发现反例！"
+        MSG_ATTEMPT="第 %d 轮"
+        MSG_CE_FOUND_TITLE="发现反例（第 %s 轮）"
+        MSG_TIME="时间"
+        MSG_MAX_ATTEMPTS="最大轮数"
+        MSG_KEEP_FILES="保留文件"
+        MSG_CMP_MODE="比较模式"
+        MSG_EPS="误差"
+        MSG_YES="是"
+        MSG_NO="否"
+        MSG_INPUT="输入"
+        MSG_EXPECTED="期望输出"
+        MSG_GOT="实际输出"
+        MSG_DIFF="差异"
+        MSG_SPACES_NOTE="[空格 → '.']"
+        MSG_COMPARATOR_REPORT="比较器报告："
+        MSG_DIFF_PREVIEW="Diff 预览（%s）："
+        MSG_FULL_REPORT="…（完整报告见 %s）"
+        MSG_INTERRUPT="检测到中断，正在清理……"
+        MSG_ALL_TEMP_DELETED="已删除全部临时文件。"
+        MSG_DIFF_PRESERVED="反例已保留：%s"
+        MSG_TEMP_DELETED="临时文件已删除。"
+        MSG_TEMP_CLEANED="临时文件已清理。"
+        MSG_USE_KEEP="使用 -k 可保留 diff 报告。"
+        MSG_DIFF_REPORT="Diff 报告：%s"
+        MSG_ALL_PASSED="全部 %s 轮测试通过。"
+        MSG_ERR_UNKNOWN_LONG="错误：未知的长选项 '--%s'"
+        MSG_ERR_UNKNOWN="错误：未知的选项 '-%s'"
+        MSG_ERR_REQUIRES="错误：选项 '-%s' 需要一个参数"
+        MSG_ERR_CMP_MODE="错误：无效的 --cmp 模式 '%s'（应为 'auto' 或 'strict'）"
+        MSG_ERR_LANG="错误：无效的 --lang 值 '%s'（应为 'en' 或 'zh'）"
+    else
+        MSG_USAGE="Usage: %s [options]"
+        MSG_OPTIONS_HEADER="Options:"
+        MSG_EXAMPLES="Examples:"
+        MSG_TOOL_DESC="Stress-test tool - auto-generates test data and compares output of ans.cpp vs test.cpp."
+        MSG_OPT_ATTEMPTS="Number of test rounds (default: $MAX_ATTEMPTS)"
+        MSG_OPT_KEEP="Keep counterexample files (default: no)"
+        MSG_OPT_DIFF="diff flags (default: '${DIFF_FLAGS[*]}')"
+        MSG_OPT_STD="C++ standard (default: $CXX_STD)"
+        MSG_OPT_EPS="Float comparison tolerance (default: $EPS)"
+        MSG_OPT_CMP="Comparison mode: auto | strict (default: $CMP_MODE)"
+        MSG_OPT_ANS="Reference solution source (default: $ANS_SRC)"
+        MSG_OPT_TEST="Tested program source (default: $TEST_SRC)"
+        MSG_OPT_GEN="Data generator source (default: $DATA_SRC)"
+        MSG_OPT_NOO3="Compile without optimization"
+        MSG_OPT_HELP="Show this help"
+        MSG_OPT_LANG="Output language: en | zh (default: $LANG_SETTING)"
+        MSG_EX_DIFF="common diff flags:"
+        MSG_EX_WS_EDGES="ignore whitespace differences (line edges + middle)"
+        MSG_EX_WS_ALL="ignore all whitespace (incl. newlines)"
+        MSG_EX_COMBINE="combine multiple flags"
+        MSG_EX_OTHER="other options:"
+        MSG_EX_FLOAT="floating-point comparison:"
+        MSG_EX_LOOSEN="loosen tolerance (default 1e-6)"
+        MSG_EX_STRICT="fall back to byte-level strict comparison"
+        MSG_CMP_MODES="Comparison modes:"
+        MSG_CMP_AUTO="numeric tokens compared by float tolerance, everything else strictly as strings (default)"
+        MSG_CMP_STRICT="byte-level strict comparison, equivalent to the old cmp -s behavior"
+        MSG_COMPILING="Compiling with: g++ %s ..."
+        MSG_COMPILE_FAIL="Compilation failed: %s"
+        MSG_COMPILE_FAIL_CMP="Compilation failed: comparator"
+        MSG_COMPILE_OK="All programs compiled successfully!"
+        MSG_RUN="Run"
+        MSG_PRESS_CTRL_C="Press Ctrl+C to interrupt."
+        MSG_CRASHED="%s crashed"
+        MSG_CE_FOUND="Counterexample found!"
+        MSG_ATTEMPT="Attempt %d"
+        MSG_CE_FOUND_TITLE="Counterexample Found - Attempt %s"
+        MSG_TIME="Time"
+        MSG_MAX_ATTEMPTS="Max attempts"
+        MSG_KEEP_FILES="Keep files"
+        MSG_CMP_MODE="Cmp mode"
+        MSG_EPS="Eps"
+        MSG_YES="Yes"
+        MSG_NO="No"
+        MSG_INPUT="Input"
+        MSG_EXPECTED="Expected"
+        MSG_GOT="Got"
+        MSG_DIFF="Diff"
+        MSG_SPACES_NOTE="[spaces → '.']"
+        MSG_COMPARATOR_REPORT="Comparator report:"
+        MSG_DIFF_PREVIEW="Diff preview (%s):"
+        MSG_FULL_REPORT="… (full report in %s)"
+        MSG_INTERRUPT="Interrupt detected, cleaning up..."
+        MSG_ALL_TEMP_DELETED="All temporary files deleted."
+        MSG_DIFF_PRESERVED="Diff case preserved: %s"
+        MSG_TEMP_DELETED="Temporary files deleted."
+        MSG_TEMP_CLEANED="Temporary files cleaned up."
+        MSG_USE_KEEP="Use -k to preserve the diff report."
+        MSG_DIFF_REPORT="Diff report: %s"
+        MSG_ALL_PASSED="All %s attempts passed."
+        MSG_ERR_UNKNOWN_LONG="Error: Unknown long option '--%s'"
+        MSG_ERR_UNKNOWN="Error: Unknown option '-%s'"
+        MSG_ERR_REQUIRES="Error: Option '-%s' requires an argument"
+        MSG_ERR_CMP_MODE="Error: invalid --cmp mode '%s' (expected 'auto' or 'strict')"
+        MSG_ERR_LANG="Error: invalid --lang '%s' (expected 'en' or 'zh')"
+    fi
+}
+
 # ── helpers ──────────────────────────────────────────────────
 
 usage() {
+    local me="$(basename "$0")"
+    setup_i18n
     cat <<EOF
-Usage: $(basename "$0") [options]
+$(printf "$MSG_USAGE" "$me")
 
-对拍程序 — 自动生成测试数据，对比 ans.cpp 与 test.cpp 的输出。
+$MSG_TOOL_DESC
 
-Options:
-  -n, --max-attempts <num>   测试轮数 (default: $MAX_ATTEMPTS)
-  -k, --keep-files           保留反例文件 (default: 自动删除)
-  -d, --diff-flags <flags>   diff 参数 (default: '-u')
-  -s, --std <standard>       C++ 标准 (default: $CXX_STD)
-  -a, --ans <file>           参考答案源文件 (default: $ANS_SRC)
-  -t, --test <file>          被测程序源文件 (default: $TEST_SRC)
-  -g, --gen <file>          数据生成器源文件 (default: $DATA_SRC)
-      --no-o3                编译时不加优化
-  -h, --help                 显示此帮助
+$MSG_OPTIONS_HEADER
+EOF
+    printf "  %-24s %s\n" \
+        "-n, --max-attempts <num>" "$MSG_OPT_ATTEMPTS" \
+        "-k, --keep-files"         "$MSG_OPT_KEEP" \
+        "-d, --diff-flags <flags>" "$MSG_OPT_DIFF" \
+        "-s, --std <standard>"     "$MSG_OPT_STD" \
+        "-e, --eps <num>"          "$MSG_OPT_EPS" \
+        "-c, --cmp <mode>"         "$MSG_OPT_CMP" \
+        "-a, --ans <file>"         "$MSG_OPT_ANS" \
+        "-t, --test <file>"        "$MSG_OPT_TEST" \
+        "-g, --gen <file>"         "$MSG_OPT_GEN" \
+        "-l, --lang <lang>"        "$MSG_OPT_LANG" \
+        "--no-o3"                  "$MSG_OPT_NOO3" \
+        "-h, --help"               "$MSG_OPT_HELP"
 
-Examples:
-  $(basename "$0")
-  $(basename "$0") -n 5000 -k
+    cat <<EOF
 
-  # diff 常用参数:
-  $(basename "$0") -d "-bB"              # 忽略空白差异 (行首尾 + 中间)
-  $(basename "$0") -d "-w"               # 忽略所有空白 (含换行)
-  $(basename "$0") -d "-u -bB"           # 合并多个参数
+$MSG_EXAMPLES
+  $me
+  $me -n 5000 -k
 
-  # 其他:
-  $(basename "$0") -a brute.cpp -t solve.cpp -g gen.cpp
-  $(basename "$0") -s c++20 --no-o3
+  # $MSG_EX_DIFF
+EOF
+    printf "  %-28s %s\n" \
+        "$me -d \"-bB\""    "# $MSG_EX_WS_EDGES" \
+        "$me -d \"-w\""     "# $MSG_EX_WS_ALL" \
+        "$me -d \"-u -bB\"" "# $MSG_EX_COMBINE"
+    cat <<EOF
+
+  # $MSG_EX_OTHER
+  $me -a brute.cpp -t solve.cpp -g gen.cpp
+  $me -s c++20 --no-o3
+
+  # $MSG_EX_FLOAT
+EOF
+    printf "  %-28s %s\n" \
+        "$me -e 1e-4"   "# $MSG_EX_LOOSEN" \
+        "$me -c strict" "# $MSG_EX_STRICT"
+    cat <<EOF
+
+$MSG_CMP_MODES
+  auto    $MSG_CMP_AUTO
+  strict  $MSG_CMP_STRICT
 EOF
     exit 0
 }
@@ -63,40 +265,75 @@ spaces_to_dots() { sed 's/ /./g'; }
 
 write_diff_report() {
     local attempt=$1
+    local cmp_detail=$2
 
     # Capture diff output once — reuse for preview and report
     local diff_out
     diff_out="$(diff "${DIFF_FLAGS[@]}" "$ANS_FILE" "$TEST_FILE" || true)"
 
+    # ── header box ─────────────────────────────────────────────
+    # Width is derived from the widest content line, measured in
+    # terminal display columns (CJK text is 2 columns), so the box
+    # stays aligned in both languages.
+    local title="$(printf "$MSG_CE_FOUND_TITLE" "$attempt")"
+    local t_line="$(printf '%s: %s' "$MSG_TIME" "$(date)")"
+    local m_line="$(printf '%s: %s    %s: %s' "$MSG_MAX_ATTEMPTS" "$MAX_ATTEMPTS" "$MSG_KEEP_FILES" "$([ $KEEP_FILES -eq 1 ] && echo "$MSG_YES" || echo "$MSG_NO")")"
+    local c_line="$(printf '%s: %s    %s: %s' "$MSG_CMP_MODE" "$CMP_MODE" "$MSG_EPS" "$EPS")"
+
+    local max_w=0 w line
+    for line in "$title" "$t_line" "$m_line" "$c_line"; do
+        w="$(disp_width "$line")"
+        ((w > max_w)) && max_w=$w
+    done
+
+    local content_w=$((max_w + 2))   # breathing room inside the walls
+    local box_w=$((content_w + 4))   # "│ " + content + " │"
+    local bar_body
+    printf -v bar_body '%*s' $((box_w - 2)) ''
+    bar_body="${bar_body// /─}"
+    local box_bar="┌${bar_body}┐"
+    local box_sep="├${bar_body}┤"
+    local box_bot="└${bar_body}┘"
+    local sep
+    printf -v sep '%*s' "$box_w" ''
+    sep="${sep// /─}"
+
     {
-        echo "┌───────────────────────────────────────────────────────┐"
-        printf "│  Counterexample Found — Attempt %-3d                      │\n" "$attempt"
-        echo "├───────────────────────────────────────────────────────┤"
-        printf "│  Time: %-42s │\n" "$(date)"
-        printf "│  Max attempts: %-10s  Keep files: %-3s              │\n" \
-            "$MAX_ATTEMPTS" "$([ $KEEP_FILES -eq 1 ] && echo 'Yes' || echo 'No')"
-        echo "└───────────────────────────────────────────────────────┘"
+        echo "$box_bar"
+        printf "│ %s │\n" "$(pad "$title" "$content_w")"
+        echo "$box_sep"
+        printf "│ %s │\n" "$(pad "$t_line" "$content_w")"
+        printf "│ %s │\n" "$(pad "$m_line" "$content_w")"
+        printf "│ %s │\n" "$(pad "$c_line" "$content_w")"
+        echo "$box_bot"
         echo ""
 
-        echo "Input  ($DATA_FILE):"
-        echo "─────────────────────────────────────────────────────────"
+        printf '%s (%s):\n' "$MSG_INPUT" "$DATA_FILE"
+        echo "$sep"
         cat "$DATA_FILE"
         echo ""
 
-        echo "Expected ($ANS_FILE)  [spaces → '.']:"
-        echo "─────────────────────────────────────────────────────────"
+        printf '%s (%s)  %s:\n' "$MSG_EXPECTED" "$ANS_FILE" "$MSG_SPACES_NOTE"
+        echo "$sep"
         spaces_to_dots < "$ANS_FILE"
         echo ""
 
-        echo "Got     ($TEST_FILE)  [spaces → '.']:"
-        echo "─────────────────────────────────────────────────────────"
+        printf '%s (%s)  %s:\n' "$MSG_GOT" "$TEST_FILE" "$MSG_SPACES_NOTE"
+        echo "$sep"
         spaces_to_dots < "$TEST_FILE"
         echo ""
 
-        echo "Diff (${DIFF_FLAGS[*]}):"
-        echo "─────────────────────────────────────────────────────────"
+        printf '%s (%s):\n' "$MSG_DIFF" "${DIFF_FLAGS[*]}"
+        echo "$sep"
         echo "$diff_out"
         echo ""
+
+        if [[ -n "$cmp_detail" ]]; then
+            echo "$MSG_COMPARATOR_REPORT"
+            echo "$sep"
+            echo "$cmp_detail"
+            echo ""
+        fi
     } > "$DIFF_CASE_FILE"
 
     # Also return diff text for preview
@@ -105,15 +342,15 @@ write_diff_report() {
 
 cleanup() {
     echo ""
-    echo "Interrupt detected, cleaning up..."
+    echo "$MSG_INTERRUPT"
     rm -f ./*.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
     if [[ $KEEP_FILES -eq 0 ]] && [[ -f "$DIFF_CASE_FILE" ]]; then
         rm -f "$DIFF_CASE_FILE"
-        echo "All temporary files deleted."
+        echo "$MSG_ALL_TEMP_DELETED"
     elif [[ -f "$DIFF_CASE_FILE" ]]; then
-        echo "Diff case preserved: $DIFF_CASE_FILE"
+        echo "$(printf "$MSG_DIFF_PRESERVED" "$DIFF_CASE_FILE")"
     else
-        echo "Temporary files deleted."
+        echo "$MSG_TEMP_DELETED"
     fi
     exit 1
 }
@@ -122,15 +359,20 @@ cleanup() {
 
 trap cleanup SIGINT
 
-while getopts "n:kd:a:t:g:s:h-:" opt; do
+setup_i18n
+
+while getopts "n:kd:a:t:g:s:e:c:hl:-:" opt; do
     case "$opt" in
     n) MAX_ATTEMPTS="$OPTARG" ;;
+    e) EPS="$OPTARG" ;;
+    c) CMP_MODE="$OPTARG" ;;
     k) KEEP_FILES=1 ;;
     d) read -ra DIFF_FLAGS <<< "$OPTARG" ;;
     s) CXX_STD="$OPTARG" ;;
     a) ANS_SRC="$OPTARG" ;;
     t) TEST_SRC="$OPTARG" ;;
     g) DATA_SRC="$OPTARG" ;;
+    l) LANG_SETTING="$OPTARG"; setup_i18n ;;
     h) usage ;;
     -)
         case "${OPTARG}" in
@@ -142,15 +384,28 @@ while getopts "n:kd:a:t:g:s:h-:" opt; do
         test)         TEST_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
         gen|data)     DATA_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
         no-o3)        USE_O3=0 ;;
+        eps)          EPS="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        cmp)          CMP_MODE="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
+        lang)         LANG_SETTING="${!OPTIND}"; OPTIND=$((OPTIND + 1)); setup_i18n ;;
         help)         usage ;;
-        *)            echo "Error: Unknown long option '--${OPTARG}'" >&2; usage ;;
+        *)            echo "$(printf "$MSG_ERR_UNKNOWN_LONG" "${OPTARG}")" >&2; usage ;;
         esac
         ;;
-    \?) echo "Error: Unknown option '-$OPTARG'" >&2; usage ;;
-    :)  echo "Error: Option '-$OPTARG' requires an argument" >&2; usage ;;
+    \?) echo "$(printf "$MSG_ERR_UNKNOWN" "$OPTARG")" >&2; usage ;;
+    :)  echo "$(printf "$MSG_ERR_REQUIRES" "$OPTARG")" >&2; usage ;;
     esac
 done
 shift $((OPTIND - 1))
+
+case "$CMP_MODE" in
+    auto|strict) ;;
+    *) echo "$(printf "$MSG_ERR_CMP_MODE" "$CMP_MODE")" >&2; exit 1 ;;
+esac
+
+case "$LANG_SETTING" in
+    en|zh) ;;
+    *) echo "$(printf "$MSG_ERR_LANG" "$LANG_SETTING")" >&2; exit 1 ;;
+esac
 
 # ── compilation (parallel) ───────────────────────────────────
 
@@ -158,12 +413,138 @@ OPT_FLAGS=""
 [[ $USE_O3 -eq 1 ]] && OPT_FLAGS="-O3"
 
 CXXFLAGS="-std=$CXX_STD $OPT_FLAGS"
-echo "Compiling with: g++ $CXXFLAGS ..."
+printf "$MSG_COMPILING\n" "$CXXFLAGS"
 
 compile_one() {
     local src="$1" out="$2"
     if ! g++ $CXXFLAGS "$src" -o "$out"; then
-        printf "${RED}  ✗ Compilation failed: %s${RESET}\n" "$src" >&2
+        printf "${RED}  ✗ %s${RESET}\n" "$(printf "$MSG_COMPILE_FAIL" "$src")" >&2
+        exit 1
+    fi
+}
+
+compile_cmp() {
+    # inline float comparator: compiled from stdin, no extra source file
+    if ! g++ $CXXFLAGS -x c++ -o cmp.out - <<'CMP_EOF'
+// Float-aware stress-test comparator: token-by-token
+//  - if both tokens parse as numbers, compare with tolerance (|a-b| <= eps * max(1,|a|,|b|))
+//  - otherwise compare strictly as strings
+// usage: cmp.out <ans_file> <test_file> [eps]
+#include <bits/stdc++.h>
+using namespace std;
+
+static double EPS = 1e-6;
+
+static bool zh() {
+    const char* l = getenv("DP_LANG");
+    return l && strcmp(l, "zh") == 0;
+}
+
+static const char* m(const char* en, const char* zh_) {
+    return zh() ? zh_ : en;
+}
+
+static bool isNum(const string& s) {
+    if (s.empty()) return false;
+    char* end = nullptr;
+    strtod(s.c_str(), &end);
+    return end == s.c_str() + s.size();
+}
+
+static double parse(const string& s) {
+    return strtod(s.c_str(), nullptr);
+}
+
+static vector<pair<string, int>> readTokens(istream& in) {
+    vector<pair<string, int>> v;
+    string line;
+    int lineNo = 0;
+    while (getline(in, line)) {
+        ++lineNo;
+        istringstream ss(line);
+        string t;
+        while (ss >> t) v.emplace_back(t, lineNo);
+    }
+    return v;
+}
+
+int main(int argc, char** argv) {
+    if (argc < 3) {
+        fprintf(stderr, "%s\n",
+                m("usage: cmp.out <ans_file> <test_file> [eps]",
+                  "用法：cmp.out <ans_file> <test_file> [eps]"));
+        return 2;
+    }
+    if (argc >= 4) EPS = atof(argv[3]);
+
+    ifstream fa(argv[1]), fb(argv[2]);
+    if (!fa.is_open() || !fb.is_open()) {
+        fprintf(stderr, "%s\n", m("error: cannot open input files",
+                                  "错误：无法打开输入文件"));
+        return 2;
+    }
+
+    auto a = readTokens(fa);
+    auto b = readTokens(fb);
+
+    if (a.size() != b.size()) {
+        cerr << m("token count mismatch: ", "token 数量不一致：")
+             << "ans=" << a.size() << " test=" << b.size() << "\n";
+        size_t n = min(a.size(), b.size()), i = 0;
+        while (i < n && a[i].first == b[i].first) ++i;
+        size_t lo = i >= 3 ? i - 3 : 0;
+        size_t hi = min(n, i + 4);
+        for (size_t j = lo; j < hi; ++j) {
+            cerr << "  token " << (j + 1) << ": ans=\"" << a[j].first
+                 << "\" test=\"" << b[j].first << "\"\n";
+        }
+        return 1;
+    }
+
+    for (size_t i = 0; i < a.size(); ++i) {
+        const string& x = a[i].first;
+        const string& y = b[i].first;
+        if (isNum(x) && isNum(y)) {
+            double dx = parse(x), dy = parse(y);
+            if (isnan(dx) || isnan(dy)) {
+                if (!(isnan(dx) && isnan(dy))) {
+                    cerr << m("numeric mismatch (token ", "数值不一致（token ")
+                         << (i + 1) << m(", line ", "，第 ")
+                         << a[i].second << m("): ans=", " 行）：ans=")
+                         << "\"" << x << "\" test=\"" << y << "\"\n";
+                    return 1;
+                }
+            } else {
+                double diff = fabs(dx - dy);
+                double scale = max(1.0, max(fabs(dx), fabs(dy)));
+                if (diff > EPS * scale) {
+                    cerr << setprecision(10)
+                         << m("numeric mismatch (token ", "数值不一致（token ")
+                         << (i + 1) << m(", line ", "，第 ")
+                         << a[i].second << m("):\n", " 行）：\n")
+                         << "  ans=\"" << x << "\"\n"
+                         << "  test=\"" << y << "\"\n"
+                         << "  " << m("abs error=", "绝对误差=") << diff
+                         << " " << m("rel error=", "相对误差=") << (diff / scale)
+                         << m(" > eps=", " > 阈值=") << EPS << "\n";
+                    return 1;
+                }
+            }
+        } else if (x != y) {
+            cerr << m("content mismatch (token ", "内容不一致（token ")
+                 << (i + 1) << m(", ans line ", "，ans 第 ")
+                 << a[i].second << m(", test line ", " 行，test 第 ")
+                 << b[i].second << m("):\n", " 行）：\n")
+                 << "  ans=\"" << x << "\"\n"
+                 << "  test=\"" << y << "\"\n";
+            return 1;
+        }
+    }
+    return 0;
+}
+CMP_EOF
+    then
+        printf "${RED}  ✗ %s${RESET}\n" "$MSG_COMPILE_FAIL_CMP" >&2
         exit 1
     fi
 }
@@ -171,9 +552,10 @@ compile_one() {
 compile_one "$DATA_SRC" data.out &
 compile_one "$ANS_SRC"  ans.out &
 compile_one "$TEST_SRC" test.out &
+[[ $CMP_MODE != "strict" ]] && compile_cmp &
 wait
 
-printf "  ${GREEN}✔ All programs compiled successfully!${RESET}\n"
+printf "  ${GREEN}✔ %s${RESET}\n" "$MSG_COMPILE_OK"
 echo ""
 
 # ── test loop ────────────────────────────────────────────────
@@ -195,16 +577,14 @@ draw_bar() {
     printf -v bar '%s%*s' "$bar" $(( BAR_WIDTH - filled )) ''
     bar="${bar// /░}"
 
-    printf "\033[2K\r  ${CYAN}Run${RESET}  [${CYAN}%s${RESET}]  %3d/%-3d  (%3d%%)" "$bar" "$current" "$total" "$pct"
+    printf "\033[2K\r  ${CYAN}%s${RESET}  [${CYAN}%s${RESET}]  %3d/%-3d  (%3d%%)" "$MSG_RUN" "$bar" "$current" "$total" "$pct"
 }
 
 # ── test loop ────────────────────────────────────────────────
 
-printf "${CYAN}┌──────────────────────────────────────┐${RESET}\n"
 line="M=$MAX_ATTEMPTS  K=$([ $KEEP_FILES -eq 1 ] && echo 'Y' || echo 'N')  O=${OPT_FLAGS:-(none)}  F=${DIFF_FLAGS[*]}"
-printf "${CYAN}│${RESET}  %s%*s ${CYAN}│${RESET}\n" "$line" $((35 - ${#line})) ""
-printf "${CYAN}└──────────────────────────────────────┘${RESET}\n"
-printf "  ${YELLOW}Press Ctrl+C to interrupt.${RESET}\n"
+box_line "$CYAN" "" "$line"
+printf "  ${YELLOW}%s${RESET}\n" "$MSG_PRESS_CTRL_C"
 echo ""
 
 count=0
@@ -215,34 +595,49 @@ while ((count < MAX_ATTEMPTS)); do
 
     # generate
     if ! ./data.out > "$DATA_FILE"; then
-        printf "${RED}\n  ✗ data.out crashed${RESET}\n"; exit 1
+        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "data.out")"; exit 1
     fi
 
     # reference & target run in sequence (need data.txt for both)
     if ! ./ans.out < "$DATA_FILE" > "$ANS_FILE"; then
-        printf "${RED}\n  ✗ ans.out crashed${RESET}\n"; exit 1
+        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "ans.out")"; exit 1
     fi
     if ! ./test.out < "$DATA_FILE" > "$TEST_FILE"; then
-        printf "${RED}\n  ✗ test.out crashed${RESET}\n"; exit 1
+        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "test.out")"; exit 1
     fi
 
-    # quick equality check with cmp (much cheaper than diff)
-    if ! cmp -s "$ANS_FILE" "$TEST_FILE"; then
-        found=1
+    # compare: auto mode uses the float comparator, strict mode uses byte-level cmp
+    cmp_detail=""
+    if [[ $CMP_MODE == "strict" ]]; then
+        if ! cmp -s "$ANS_FILE" "$TEST_FILE"; then
+            found=1
+        fi
+    else
+        if ! cmp_detail="$(DP_LANG="$LANG_SETTING" ./cmp.out "$ANS_FILE" "$TEST_FILE" "$EPS" 2>&1)"; then
+            found=1
+        fi
+    fi
+
+    if ((found)); then
         echo ""
         echo ""
-        printf "${RED}┌──────────────────────────────────────┐${RESET}\n"
-        printf "${RED}│${RESET}  ${BOLD}✗ Counterexample found!${RESET}  Attempt %-4d ${RED}│${RESET}\n" "$count"
-        printf "${RED}└──────────────────────────────────────┘${RESET}\n"
+        box_line "$RED" "$BOLD" "$(printf "$MSG_CE_FOUND")  $(printf "$MSG_ATTEMPT" "$count")"
         echo ""
 
+        if [[ -n "$cmp_detail" ]]; then
+            echo "$MSG_COMPARATOR_REPORT"
+            echo "─────────────────────────────────────────────────────────"
+            echo "$cmp_detail"
+            echo ""
+        fi
+
         # single diff call — captured into variable
-        diff_text="$(write_diff_report "$count")"
-        echo "Diff preview (${DIFF_FLAGS[*]}):"
+        diff_text="$(write_diff_report "$count" "$cmp_detail")"
+        echo "$(printf "$MSG_DIFF_PREVIEW" "${DIFF_FLAGS[*]}")"
         echo "─────────────────────────────────────────────────────────"
         head -20 <<< "$diff_text"
         if [[ $(wc -l <<< "$diff_text") -gt 20 ]]; then
-            echo "  … (full report in $DIFF_CASE_FILE)"
+            echo "  $(printf "$MSG_FULL_REPORT" "$DIFF_CASE_FILE")"
         fi
         echo "─────────────────────────────────────────────────────────"
         break
@@ -262,18 +657,16 @@ if ((found)); then
     if [[ $KEEP_FILES -eq 0 ]]; then
         rm -f "$DIFF_CASE_FILE"
         echo ""
-        echo "Temporary files cleaned up."
-        echo "Use -k to preserve the diff report."
+        echo "$MSG_TEMP_CLEANED"
+        echo "$MSG_USE_KEEP"
     else
         echo ""
-        echo "Diff report: $DIFF_CASE_FILE"
+        echo "$(printf "$MSG_DIFF_REPORT" "$DIFF_CASE_FILE")"
         clear
         cat "$DIFF_CASE_FILE"
     fi
 else
     echo ""
-    text="✓  All ${MAX_ATTEMPTS} attempts passed."
-    printf "${GREEN}┌──────────────────────────────────────┐${RESET}\n"
-    printf "${GREEN}│${RESET}  %s%*s ${GREEN}│${RESET}\n" "$text" $((35 - ${#text})) ""
-    printf "${GREEN}└──────────────────────────────────────┘${RESET}\n"
+    text="$(printf "$MSG_ALL_PASSED" "$MAX_ATTEMPTS")"
+    box_line "$GREEN" "" "$text"
 fi

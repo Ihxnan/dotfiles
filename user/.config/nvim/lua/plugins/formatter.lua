@@ -21,11 +21,7 @@ return {
 			},
 		},
 		opts = {
-			-- 保存时自动格式化
-			format_on_save = {
-			    timeout_ms = 500,
-			    lsp_format = "fallback", -- LSP 格式化兜底（可选 "fallback"|"prefer"|"never"）
-			},
+			-- 保存时自动格式化已禁用，仅保留手动格式化（<Tab> / <leader>f）
 
 			-- ========== 按文件类型配置格式化器 ==========
 			formatters_by_ft = {
