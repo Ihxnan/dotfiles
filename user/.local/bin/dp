@@ -5,9 +5,25 @@ set -euo pipefail
 RED='\033[31m';   GREEN='\033[32m'; YELLOW='\033[33m'
 CYAN='\033[36m';  BOLD='\033[1m';   RESET='\033[0m'
 
+# ── platform ─────────────────────────────────────────────────
+# Detect Windows (Git Bash / MSYS2 / Cygwin) vs Unix-like so the
+# executable suffix adapts automatically. Same script runs on both.
+PLATFORM="linux"
+case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*) PLATFORM="windows" ;;
+esac
+EXE=""
+[[ $PLATFORM == "windows" ]] && EXE=".exe"
+
+# compiled binaries (".exe" on Windows, no suffix on Linux)
+OUT_DATA="data$EXE"
+OUT_ANS="ans$EXE"
+OUT_TEST="test$EXE"
+OUT_CMP="cmp$EXE"
+
 MAX_ATTEMPTS=100
 KEEP_FILES=0
-USE_O3=1
+OPT_LEVEL=3
 CXX_STD="c++17"
 
 # comparison settings
@@ -81,7 +97,7 @@ setup_i18n() {
         MSG_OPT_ANS="参考答案源文件（默认：$ANS_SRC）"
         MSG_OPT_TEST="被测程序源文件（默认：$TEST_SRC）"
         MSG_OPT_GEN="数据生成器源文件（默认：$DATA_SRC）"
-        MSG_OPT_NOO3="编译时不加优化"
+        MSG_OPT_LEVEL="优化等级：-O0..-O3（默认：-O$OPT_LEVEL）"
         MSG_OPT_HELP="显示此帮助"
         MSG_OPT_LANG="输出语言：en | zh（默认：$LANG_SETTING）"
         MSG_EX_DIFF="diff 常用参数："
@@ -133,6 +149,7 @@ setup_i18n() {
         MSG_ERR_REQUIRES="错误：选项 '-%s' 需要一个参数"
         MSG_ERR_CMP_MODE="错误：无效的 --cmp 模式 '%s'（应为 'auto' 或 'strict'）"
         MSG_ERR_LANG="错误：无效的 --lang 值 '%s'（应为 'en' 或 'zh'）"
+        MSG_ERR_OPT="错误：无效的优化等级 '%s'（应为 0、1、2 或 3）"
     else
         MSG_USAGE="Usage: %s [options]"
         MSG_OPTIONS_HEADER="Options:"
@@ -147,7 +164,7 @@ setup_i18n() {
         MSG_OPT_ANS="Reference solution source (default: $ANS_SRC)"
         MSG_OPT_TEST="Tested program source (default: $TEST_SRC)"
         MSG_OPT_GEN="Data generator source (default: $DATA_SRC)"
-        MSG_OPT_NOO3="Compile without optimization"
+        MSG_OPT_LEVEL="Optimization level: -O0..-O3 (default: -O$OPT_LEVEL)"
         MSG_OPT_HELP="Show this help"
         MSG_OPT_LANG="Output language: en | zh (default: $LANG_SETTING)"
         MSG_EX_DIFF="common diff flags:"
@@ -199,6 +216,7 @@ setup_i18n() {
         MSG_ERR_REQUIRES="Error: Option '-%s' requires an argument"
         MSG_ERR_CMP_MODE="Error: invalid --cmp mode '%s' (expected 'auto' or 'strict')"
         MSG_ERR_LANG="Error: invalid --lang '%s' (expected 'en' or 'zh')"
+        MSG_ERR_OPT="Error: invalid optimization level '%s' (expected 0, 1, 2 or 3)"
     fi
 }
 
@@ -225,7 +243,7 @@ EOF
         "-t, --test <file>"        "$MSG_OPT_TEST" \
         "-g, --gen <file>"         "$MSG_OPT_GEN" \
         "-l, --lang <lang>"        "$MSG_OPT_LANG" \
-        "--no-o3"                  "$MSG_OPT_NOO3" \
+        "-O0..-O3"                "$MSG_OPT_LEVEL" \
         "-h, --help"               "$MSG_OPT_HELP"
 
     cat <<EOF
@@ -244,7 +262,7 @@ EOF
 
   # $MSG_EX_OTHER
   $me -a brute.cpp -t solve.cpp -g gen.cpp
-  $me -s c++20 --no-o3
+  $me -s c++20 -O2
 
   # $MSG_EX_FLOAT
 EOF
@@ -343,7 +361,7 @@ write_diff_report() {
 cleanup() {
     echo ""
     echo "$MSG_INTERRUPT"
-    rm -f ./*.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
+    rm -f ./*.out "$OUT_DATA" "$OUT_ANS" "$OUT_TEST" "$OUT_CMP" "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
     if [[ $KEEP_FILES -eq 0 ]] && [[ -f "$DIFF_CASE_FILE" ]]; then
         rm -f "$DIFF_CASE_FILE"
         echo "$MSG_ALL_TEMP_DELETED"
@@ -361,7 +379,7 @@ trap cleanup SIGINT
 
 setup_i18n
 
-while getopts "n:kd:a:t:g:s:e:c:hl:-:" opt; do
+while getopts "n:kd:a:t:g:s:e:c:hl:O:-:" opt; do
     case "$opt" in
     n) MAX_ATTEMPTS="$OPTARG" ;;
     e) EPS="$OPTARG" ;;
@@ -373,6 +391,7 @@ while getopts "n:kd:a:t:g:s:e:c:hl:-:" opt; do
     t) TEST_SRC="$OPTARG" ;;
     g) DATA_SRC="$OPTARG" ;;
     l) LANG_SETTING="$OPTARG"; setup_i18n ;;
+    O) OPT_LEVEL="$OPTARG" ;;
     h) usage ;;
     -)
         case "${OPTARG}" in
@@ -383,7 +402,7 @@ while getopts "n:kd:a:t:g:s:e:c:hl:-:" opt; do
         ans)          ANS_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
         test)         TEST_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
         gen|data)     DATA_SRC="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
-        no-o3)        USE_O3=0 ;;
+        O[0-3])       OPT_LEVEL="${OPTARG#O}" ;;
         eps)          EPS="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
         cmp)          CMP_MODE="${!OPTIND}"; OPTIND=$((OPTIND + 1)) ;;
         lang)         LANG_SETTING="${!OPTIND}"; OPTIND=$((OPTIND + 1)); setup_i18n ;;
@@ -407,10 +426,14 @@ case "$LANG_SETTING" in
     *) echo "$(printf "$MSG_ERR_LANG" "$LANG_SETTING")" >&2; exit 1 ;;
 esac
 
+case "$OPT_LEVEL" in
+    0|1|2|3) ;;
+    *) echo "$(printf "$MSG_ERR_OPT" "$OPT_LEVEL")" >&2; exit 1 ;;
+esac
+
 # ── compilation (parallel) ───────────────────────────────────
 
-OPT_FLAGS=""
-[[ $USE_O3 -eq 1 ]] && OPT_FLAGS="-O3"
+OPT_FLAGS="-O$OPT_LEVEL"
 
 CXXFLAGS="-std=$CXX_STD $OPT_FLAGS"
 printf "$MSG_COMPILING\n" "$CXXFLAGS"
@@ -425,7 +448,7 @@ compile_one() {
 
 compile_cmp() {
     # inline float comparator: compiled from stdin, no extra source file
-    if ! g++ $CXXFLAGS -x c++ -o cmp.out - <<'CMP_EOF'
+    if ! g++ $CXXFLAGS -x c++ -o "$OUT_CMP" - <<'CMP_EOF'
 // Float-aware stress-test comparator: token-by-token
 //  - if both tokens parse as numbers, compare with tolerance (|a-b| <= eps * max(1,|a|,|b|))
 //  - otherwise compare strictly as strings
@@ -549,9 +572,9 @@ CMP_EOF
     fi
 }
 
-compile_one "$DATA_SRC" data.out &
-compile_one "$ANS_SRC"  ans.out &
-compile_one "$TEST_SRC" test.out &
+compile_one "$DATA_SRC" "$OUT_DATA" &
+compile_one "$ANS_SRC"  "$OUT_ANS" &
+compile_one "$TEST_SRC" "$OUT_TEST" &
 [[ $CMP_MODE != "strict" ]] && compile_cmp &
 wait
 
@@ -594,16 +617,16 @@ while ((count < MAX_ATTEMPTS)); do
     ((++count))
 
     # generate
-    if ! ./data.out > "$DATA_FILE"; then
-        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "data.out")"; exit 1
+    if ! ./"$OUT_DATA" > "$DATA_FILE"; then
+        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "$OUT_DATA")"; exit 1
     fi
 
     # reference & target run in sequence (need data.txt for both)
-    if ! ./ans.out < "$DATA_FILE" > "$ANS_FILE"; then
-        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "ans.out")"; exit 1
+    if ! ./"$OUT_ANS" < "$DATA_FILE" > "$ANS_FILE"; then
+        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "$OUT_ANS")"; exit 1
     fi
-    if ! ./test.out < "$DATA_FILE" > "$TEST_FILE"; then
-        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "test.out")"; exit 1
+    if ! ./"$OUT_TEST" < "$DATA_FILE" > "$TEST_FILE"; then
+        printf "${RED}\n  ✗ %s${RESET}\n" "$(printf "$MSG_CRASHED" "$OUT_TEST")"; exit 1
     fi
 
     # compare: auto mode uses the float comparator, strict mode uses byte-level cmp
@@ -613,7 +636,7 @@ while ((count < MAX_ATTEMPTS)); do
             found=1
         fi
     else
-        if ! cmp_detail="$(DP_LANG="$LANG_SETTING" ./cmp.out "$ANS_FILE" "$TEST_FILE" "$EPS" 2>&1)"; then
+        if ! cmp_detail="$(DP_LANG="$LANG_SETTING" ./"$OUT_CMP" "$ANS_FILE" "$TEST_FILE" "$EPS" 2>&1)"; then
             found=1
         fi
     fi
@@ -651,7 +674,7 @@ echo ""
 
 # ── teardown ─────────────────────────────────────────────────
 
-rm -f ./*.out "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
+rm -f ./*.out "$OUT_DATA" "$OUT_ANS" "$OUT_TEST" "$OUT_CMP" "$DATA_FILE" "$ANS_FILE" "$TEST_FILE"
 
 if ((found)); then
     if [[ $KEEP_FILES -eq 0 ]]; then
