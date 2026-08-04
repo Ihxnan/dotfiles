@@ -229,7 +229,7 @@ keymap = [
   { on = [
     "g",
     "b",
-  ], run = "cd ~/Github/blog/src/content/posts/", desc = "Go ~/Github/blog/src/content/posts/" },
+  ], run = "cd ~/.local/bin", desc = "Go ~/.local/bin" },
   { on = [
     "g",
     "c",
