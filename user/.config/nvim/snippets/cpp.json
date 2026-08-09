@@ -136,19 +136,32 @@
     "ACM Template": {
         "prefix": "acm",
         "body": [
-            "#include <bits/stdc++.h>",
-            "/* ──▶  INCLUDE  ◀── */",
-            "$1#define MULTIT",
             "#include <ihxnan>",
-            "/* ──▶  /INCLUDE  ◀── */",
             "",
-            "/* ╔══════════ SOLVE ══════════╗ */",
+            "$1int init = [] { return cin >> t, 0; }();",
+            "",
             "void solve()",
             "{",
             "    $0",
-            "}",
-            "/* ╚══════════ /SOLVE ══════════╝ */"
+            "}"
         ],
         "description": "ACM Final Template with fast IO"
+    },
+    "DP": {
+        "prefix": "test",
+        "body": [
+            "#include <ihxnan>",
+            "#include <Generator>",
+            "",
+            "void solve()",
+            "{",
+            "    int t = g.rd(1, 1);",
+            "    cout << t << endl;",
+            "    while (t--)",
+            "    {",
+            "        $0",
+            "    }",
+            "}"
+        ]
     }
 }

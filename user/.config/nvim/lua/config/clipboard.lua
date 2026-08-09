@@ -31,7 +31,48 @@ keymap.set(
 -- 头文件搜索目录
 local INCLUDE_DIR = "/usr/local/include/"
 
+-- 常见 C/C++ 标准库头：单独 #include 时视为标准库，不参与内联
+local STD_HEADERS = {}
+for _, h in ipairs({
+	"algorithm", "array", "atomic", "bitset", "cassert", "cctype",
+	"cerrno", "cfenv", "cfloat", "chrono", "cinttypes", "climits",
+	"clocale", "cmath", "complex", "condition_variable", "csetjmp",
+	"csignal", "cstdarg", "cstdbool", "cstddef", "cstdint", "cstdio",
+	"cstdlib", "cstring", "ctgmath", "ctime", "cuchar", "cwchar",
+	"cwctype", "deque", "exception", "filesystem", "forward_list",
+	"fstream", "functional", "future", "initializer_list", "iomanip",
+	"ios", "iosfwd", "iostream", "istream", "iterator", "limits",
+	"list", "locale", "map", "memory", "mutex", "new", "numeric",
+	"optional", "ostream", "queue", "random", "ratio", "regex",
+	"scoped_allocator", "set", "shared_mutex", "sstream", "stack",
+	"stdexcept", "streambuf", "string", "string_view", "system_error",
+	"thread", "tuple", "type_traits", "typeindex", "typeinfo",
+	"unordered_map", "unordered_set", "utility", "valarray", "variant",
+	"vector",
+	"assert.h", "ctype.h", "errno.h", "float.h", "limits.h", "locale.h",
+	"math.h", "setjmp.h", "signal.h", "stdarg.h", "stddef.h", "stdio.h",
+	"stdlib.h", "string.h", "time.h", "wchar.h", "wctype.h", "complex.h",
+	"fenv.h", "inttypes.h", "iso646.h", "stdbool.h", "stdint.h",
+	"tgmath.h", "uchar.h",
+}) do
+	STD_HEADERS[h] = true
+end
+
+-- 判断 #include <Name> 是否为可内联的自定义头文件（位于 INCLUDE_DIR 且非标准库）
+local function is_custom_include(name)
+	if not name or name:match("/") or STD_HEADERS[name] then
+		return false -- 含路径（bits/stdc++.h）或标准库头：不内联
+	end
+	local f = io.open(INCLUDE_DIR .. name, "r")
+	if not f then
+		return false -- 文件不存在：不内联
+	end
+	f:close()
+	return true
+end
+
 -- Ctrl+a+Ctrl+i：解析 MACRO/TEMPLATE/INCLUDE/SOLVE 标签区域，内联后拼接完整竞赛代码
+-- 无标签时按「顶部自定义头文件内联」模式：所有行保留，#include <自定义头> 展开为完整代码
 local function copy_all_with_info()
 	local ft = vim.bo.filetype
 	if ft ~= "cpp" and ft ~= "c" then
@@ -62,6 +103,15 @@ local function copy_all_with_info()
 		return nil
 	end
 
+	-- 文件是否包含标签注释；无标签时启用「顶部自定义头文件内联」模式
+	local has_marker = false
+	for i = 1, last_line do
+		if check_marker(vim.fn.getline(i)) then
+			has_marker = true
+			break
+		end
+	end
+
 	local result_parts = {}
 	local include_pattern = '^%s*#include%s*[<"]([^>"]+)[>"]'
 	local included_count = 0
@@ -70,11 +120,29 @@ local function copy_all_with_info()
 
 	-- 带惰性空行的插入函数（区域有实际内容才插空行）
 	local function emit(text)
-		if need_separator then
+		if need_separator and text ~= "" then
 			table.insert(result_parts, "")
-			need_separator = false
 		end
+		need_separator = false
 		table.insert(result_parts, text)
+	end
+
+	-- 内联自定义头文件内容（不递归处理其内部 include）
+	local function inline_header(name)
+		local f = io.open(INCLUDE_DIR .. name, "r")
+		local code = f and f:read("*all")
+		if f then
+			f:close()
+		end
+		if not code then
+			return
+		end
+		for cline in code:gmatch("[^\r\n]+") do
+			emit(cline)
+		end
+		need_separator = true -- 与后续内容之间添加空行
+		included_count = included_count + 1
+		print("✅ 已内联 <" .. name .. "> (" .. #code .. " 字节)")
 	end
 
 	for i = 1, last_line do
@@ -91,35 +159,19 @@ local function copy_all_with_info()
 				state = "outside"
 			end
 		else
-			if state == "outside" then
-			-- 标签区外的行丢弃，不保留
-			elseif state == "SOLVE" then
+			if state == "SOLVE" then
 				-- solve：原样复制
 				emit(line)
-			elseif state == "INCLUDE" then
-				-- include：将 #include <Name> 内联为 /usr/local/include/<Name> 的代码
+			elseif state == "INCLUDE" or not has_marker then
+				-- INCLUDE 区域 / 无标签文件：自定义头文件内联为完整代码，其余行原样保留
 				local name = line:match(include_pattern)
-				if name then
-					local filepath = INCLUDE_DIR .. name
-					local f = io.open(filepath, "r")
-					if f then
-						local code = f:read("*all")
-						f:close()
-						-- 直接插入代码，不加注释标记
-						for cline in code:gmatch("[^\r\n]+") do
-							emit(cline)
-						end
-						need_separator = true -- 不同内联模板之间添加空行
-						included_count = included_count + 1
-						print("✅ 已内联 <" .. name .. "> (" .. #code .. " 字节)")
-					else
-						-- 文件不存在，保留原始 include 行
-						emit(line)
-					end
+				if name and is_custom_include(name) then
+					inline_header(name)
 				else
 					emit(line)
 				end
 			end
+			-- state == "outside"（仅存在于有标签文件）：标签区外的行丢弃
 		end
 	end
 
