@@ -274,6 +274,10 @@ keymap = [
     "g",
     "f",
   ], run = "follow", desc = "Follow hovered symlink" },
+  { on = [
+    "g",
+    "/",
+  ], run = "cd /", desc = "Go /" },
 
   # Tabs
   { on = [

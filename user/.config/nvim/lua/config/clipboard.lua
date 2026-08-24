@@ -31,6 +31,9 @@ keymap.set(
 -- 头文件搜索目录
 local INCLUDE_DIR = "/usr/local/include/"
 
+-- Python 竞赛模板文件（ihxnan 模块源码，pip 安装位置）
+local PY_INCLUDE_FILE = "/home/ihxnan/.local/lib/python3.14/site-packages/ihxnan.py"
+
 -- 常见 C/C++ 标准库头：单独 #include 时视为标准库，不参与内联
 local STD_HEADERS = {}
 for _, h in ipairs({
@@ -71,12 +74,69 @@ local function is_custom_include(name)
 	return true
 end
 
+-- 判断行是否为 from ihxnan import * 模板导入
+local function is_python_template_import(line)
+	return line:match("^%s*from%s+ihxnan%s+import%s+%*%s*$") ~= nil
+end
+
+-- Ctrl+a+Ctrl+i：Python 版本
+-- 将 from ihxnan import * 替换为模板完整源码，其余行原样复制到底部
+local function copy_python_with_info()
+	local save_pos = vim.fn.getpos(".")
+	local last_line = vim.fn.line("$")
+
+	local f = io.open(PY_INCLUDE_FILE, "r")
+	local code = f and f:read("*all")
+	if f then
+		f:close()
+	end
+
+	local result_parts = {}
+	local replaced = false
+
+	for i = 1, last_line do
+		local line = vim.fn.getline(i)
+		if not replaced and is_python_template_import(line) then
+			if code then
+				for cline in code:gmatch("[^\r\n]+") do
+					table.insert(result_parts, cline)
+				end
+				replaced = true
+				if i < last_line then
+					table.insert(result_parts, "") -- 模板与后续内容之间加空行分隔
+				end
+				print("✅ 已内联 ihxnan 模板 (" .. #code .. " 字节)")
+			else
+				table.insert(result_parts, line)
+				print("⚠️ 未找到模板文件 " .. PY_INCLUDE_FILE .. "，保留原 import 行")
+			end
+		else
+			table.insert(result_parts, line)
+		end
+	end
+
+	vim.fn.setpos(".", save_pos)
+
+	local full = table.concat(result_parts, "\n")
+	vim.fn.setreg("+", full)
+	vim.fn.setreg('"', full)
+	print("✅ 已复制 Python 竞赛代码 (" .. #full .. " 字节)")
+end
+
 -- Ctrl+a+Ctrl+i：解析 MACRO/TEMPLATE/INCLUDE/SOLVE 标签区域，内联后拼接完整竞赛代码
 -- 无标签时按「顶部自定义头文件内联」模式：所有行保留，#include <自定义头> 展开为完整代码
 local function copy_all_with_info()
 	local ft = vim.bo.filetype
+	if ft == "python" then
+		copy_python_with_info()
+		return
+	end
 	if ft ~= "cpp" and ft ~= "c" then
-		print("❌ 当前文件类型为 " .. ft .. "，仅支持 C/C++ 文件使用此快捷键喵～")
+		-- 非 C/C++ 文件：退化为复制全部内容（等价于 Ctrl+a+Ctrl+c）
+		vim.cmd('normal! gg"+yG``')
+		local lines = vim.fn.line("$")
+		local bytes = #vim.fn.getreg("+")
+		print("✅ 已复制全部 " .. lines .. " 行 (" .. bytes .. " 字节) 到系统剪贴板")
 		return
 	end
 
@@ -192,3 +252,8 @@ keymap.set(
 	copy_all_with_info,
 	{ desc = "Ctrl+a+Ctrl+i：内联模板引用并复制完整竞赛代码" }
 )
+
+-- 导出供其他模块（如 keymaps.lua 的 rc 运行后自动复制）调用
+return {
+	copy_all_with_info = copy_all_with_info,
+}

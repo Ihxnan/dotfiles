@@ -163,5 +163,26 @@
             "    }",
             "}"
         ]
+    },
+    "CHECK": {
+        "prefix": "check",
+        "body": [
+            "#include <bits/stdc++.h>",
+            "",
+            "using namespace std;",
+            "",
+            "int a, b, c, d, m, n, r, s, t, u, v, w, x, y, z;",
+            "",
+            "int main(int argc, char *argv[])",
+            "{",
+            "    ifstream in(argv[1]);",
+            "    ifstream ia(argv[2]);",
+            "    ifstream it(argv[3]);",
+            "",
+            "    $0",
+            "",
+            "    return 0;",
+            "}"
+        ]
     }
 }

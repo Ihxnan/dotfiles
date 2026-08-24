@@ -19,7 +19,7 @@ BraceWrapping:
     AfterCaseLabel: true
 
     # class 定义的大括号是否换行
-    AfterClass: true
+    AfterClass: false
 
     # if/for/while/switch 等控制语句后的大括号是否换行
     # Always = 总是换行; true/false 也可用
@@ -38,7 +38,7 @@ BraceWrapping:
     AfterObjCDeclaration: true
 
     # struct 定义的大括号是否换行
-    AfterStruct: true
+    AfterStruct: false
 
     # union 定义的大括号是否换行
     AfterUnion: true
@@ -58,7 +58,7 @@ BraceWrapping:
     BeforeLambdaBody: false
 
     # do-while 中 while 前的大括号是否换行
-    BeforeWhile: true
+    BeforeWhile: false
 
     # 空函数体是否合并为一行（false = 即使空也拆为两行）
     SplitEmptyFunction: true

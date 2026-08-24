@@ -56,8 +56,9 @@ return {
 					"  Snippets",
 					"<cmd>Telescope find_files search_dirs=" .. snippet_dir .. "<cr>"
 				),
-				dashboard.button("tc", "  C++ test", "<cmd>e ~/WorkSpace/Algorithm/cpp/test.cpp<cr>"),
-				dashboard.button("tp", "  Python test", "<cmd>e ~/WorkSpace/Algorithm/python/test.py<cr>"),
+				dashboard.button("tc", "  C++", "<cmd>e ~/WorkSpace/CPP/test.cpp<cr>"),
+				dashboard.button("tp", "  Python", "<cmd>e ~/WorkSpace/Python/test.py<cr>"),
+				dashboard.button("td", "  MarkDown", "<cmd>e ~/WorkSpace/MD/tmp.md<cr>"),
 				dashboard.button("l", "󰒲  Lazy", "<cmd>Lazy<cr>"),
 				dashboard.button("q", "  Quit", "<cmd>qa<cr>"),
 			}

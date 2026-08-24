@@ -178,6 +178,26 @@ return {
                 },
             }
 
+            -- ========== clangd：C++20 fallback 配置（同步到官方 YAML） ==========
+            -- clangd 22 已移除 --fallback-flags 命令行参数（传了会 exit 1），
+            -- 改用官方 YAML 配置：全局生效，无 compile_commands.json（fallback）时按 C++20 解析，
+            -- 解决 std::source_location 等 C++20 类型的误报。
+            -- 注意：CompileFlags.Add 也会附加到 compile_commands.json 提供的命令上。
+            -- 每次启动幂等同步到 ~/.config/clangd/config.yaml（纳入 dotfiles 管理）。
+            local clangd_cfg_body = [==[
+# 由 nvim 配置自动生成（lua/plugins/mason.lua）
+# 全局生效：所有项目按 C++20 解析（无 compile_commands.json 时尤其必要）
+CompileFlags:
+  Add: -std=gnu++20
+]==]
+            local clangd_cfg_path = vim.fn.expand("~/.config/clangd/config.yaml")
+            local exists = vim.fn.filereadable(clangd_cfg_path) == 1
+            local same = exists and vim.fn.join(vim.fn.readfile(clangd_cfg_path), "\n") == clangd_cfg_body
+            if not same then
+                vim.fn.mkdir(vim.fn.fnamemodify(clangd_cfg_path, ":h"), "p")
+                vim.fn.writefile(vim.split(clangd_cfg_body, "\n", { plain = true }), clangd_cfg_path)
+            end
+
             -- ✅ 新版启动方式（无废弃警告）
             for name, config in pairs(servers) do
                 vim.lsp.config(name, config)

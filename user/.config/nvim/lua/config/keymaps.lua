@@ -11,7 +11,7 @@
 -- ======================== 1. 基础配置 ========================
 vim.g.mapleader = " " -- 设置<leader>键为空格（自定义快捷键的前缀）
 local keymap = vim.keymap -- 简化按键映射函数的调用（:help vim.keymap）
-require("config.clipboard")
+local clipboard = require("config.clipboard")
 
 -- ======================== 2. 自定义函数 ========================
 
@@ -36,19 +36,21 @@ local function term_cmd(cmds)
 end
 
 -- 2.2 多语言代码通用运行
---- 运行代码（可选带输入数据重定向）
-local function run_code(with_data)
+--- 运行代码（可选带输入数据重定向；with_macro 为 true 时编译加本地调试宏 -DIHXNAN）
+local function run_code(with_data, with_macro)
 	vim.cmd("w")
 	local ft = vim.bo.filetype
 	local data_label = with_data and "（带数据）" or ""
-	local data_redirect = with_data and " < $HOME/WorkSpace/Algorithm/data" or ""
+	local data_redirect = with_data and " < /tmp/data" or ""
 
 	print("🚀 正在运行 " .. ft .. data_label .. " ...")
 
 	if ft == "cpp" or ft == "c" then
+		-- with_macro 为 true 时（rl/rd/rp）编译加本地调试宏 -DIHXNAN；rc 不加
+		local macro = with_macro and " -DIHXNAN" or ""
 		local cmds = {
 			e("[Compile] Starting C++ compilation...", C.blue),
-			'g++ -O2 -fsanitize=address,undefined,leak "%" -o a.out -DIHXNAN 2>&1',
+			'g++ -O2 -fsanitize=address,undefined,leak "%" -o a.out' .. macro .. ' 2>&1',
 			"if [ $? -eq 0 ]; then " .. e("[Run] Program output:", C.cyan),
 			"time ./a.out" .. data_redirect,
 			e("[Clean] Removing temporary file a.out", C.yellow),
@@ -61,10 +63,10 @@ local function run_code(with_data)
 	elseif ft == "python" then
 		local cmds = {
 			e("[Check] Syntax checking...", C.blue),
-			'uv run --no-project python -B -m py_compile "%" 2>&1',
+			'python3 -B -m py_compile "%" 2>&1',
 			"if [ $? -eq 0 ]; then "
 				.. e("[Run] Executing Python file" .. (with_data and " (with input data)" or "") .. "...", C.cyan),
-			'time uv run --no-project python -B "%"' .. data_redirect .. "| lolcat; find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null",
+			'time python3 -B "%"' .. data_redirect .. "| lolcat; find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null",
 			e("[Done] Python finished", C.green),
 			"else " .. e("[Error] Syntax error! Fix your code", C.red),
 			"fi",
@@ -102,7 +104,33 @@ local function run_code(with_data)
 	end
 end
 
--- 2.3 CUDA/C/C++ 运行
+-- 2.3 本地调试运行（C/C++ 带 -DIHXNAN 宏）
+local run_local = function()
+	vim.cmd("w")
+	local ft = vim.bo.filetype
+
+	-- 仅 C/C++ 使用带 -DIHXNAN 的编译方式（启用本地调试宏）
+	if ft == "cpp" or ft == "c" then
+		print("🚀 正在运行 " .. ft .. "（本地调试模式）...")
+		local cmds = {
+			e("[Compile] Starting C++ compilation (local debug)...", C.blue),
+			'g++ -O2 -fsanitize=address,undefined,leak "%" -o a.out -DIHXNAN 2>&1',
+			"if [ $? -eq 0 ]; then " .. e("[Run] Program output:", C.cyan),
+			"time ./a.out",
+			e("[Clean] Removing temporary file a.out", C.yellow),
+			"rm -f a.out",
+			e("[Done] All operations completed", C.green),
+			"else " .. e("[Error] Compilation failed! Please fix your code and try again", C.red),
+			"fi",
+		}
+		vim.cmd(term_cmd(cmds))
+	else
+		-- 其他文件类型回退到普通运行
+		run_code(false)
+	end
+end
+
+-- 2.4 CUDA/C/C++ 运行
 local run_cuda = function()
 	vim.cmd("w") -- 执行前先保存当前文件，避免运行旧代码
 
@@ -122,7 +150,7 @@ local run_cuda = function()
 	end
 end
 
--- 2.4 HTML 实时预览 & 关闭
+-- 2.5 HTML 实时预览 & 关闭
 local preview_code = function()
 	vim.cmd("w") -- 保存文件
 	local filetype = vim.bo.filetype
@@ -145,7 +173,7 @@ local close_code = function()
 	end
 end
 
--- 2.5 剪贴板工具
+-- 2.6 剪贴板工具
 --- 粘贴剪贴板内容到 data 文件
 local paste_to_data = function()
 	local content = vim.fn.getreg("+")
@@ -153,7 +181,7 @@ local paste_to_data = function()
 		print("⚠️ 剪贴板为空，跳过写入")
 		return
 	end
-	local file = io.open(vim.fn.expand("~/WorkSpace/Algorithm/data"), "w")
+	local file = io.open("/tmp/data", "w")
 	if file then
 		-- 确保末尾有换行符，避免 C++ 的 gc() 读到 EOF 后死循环
 		local to_write = content
@@ -176,7 +204,7 @@ local run_code_with_paste = function()
 	vim.cmd("w")
 	paste_to_data()
 	vim.defer_fn(function()
-		run_code(true)
+		run_code(true, true)
 	end, 50)
 end
 
@@ -247,15 +275,19 @@ keymap.set("n", "gbo", ":BufferLineCloseOthers<CR>", { desc = "gbo：关闭其�
 
 -- ======================== 6. 代码运行快捷键 ========================
 keymap.set("n", "rc", function()
-	run_code(false)
-end, { desc = "rc：运行当前代码（多语言通用）" })
+	-- 1. 剪贴板内容写入 data；2. 复制完整代码到剪贴板；3. 带数据运行（不加 -DIHXNAN）
+	paste_to_data()
+	clipboard.copy_all_with_info()
+	run_code(true, false)
+end, { desc = "rc：剪贴板→data，复制完整代码，带数据运行（无宏）" })
+keymap.set("n", "rl", run_local, { desc = "rl：本地调试运行C/C++代码（带 -DIHXNAN 宏）" })
 keymap.set("n", "ru", run_cuda, { desc = "ru：运行CUDA/C/C++代码" })
 keymap.set("n", "rd", function()
-	run_code(true)
-end, { desc = "rd：带输入数据运行代码（算法刷题）" })
-keymap.set("n", "rp", run_code_with_paste, { desc = "rp：粘贴剪贴板到 data 文件后带数据运行代码" })
+	run_code(true, true)
+end, { desc = "rd：带数据运行代码（算法刷题，带 -DIHXNAN）" })
+keymap.set("n", "rp", run_code_with_paste, { desc = "rp：粘贴剪贴板到 data 后带数据运行代码（带 -DIHXNAN）" })
 keymap.set("n", "dp", ":w<CR><C-w>v:terminal fish -l<CR>idp", { desc = "dp：保存并运行dp工具（-k参数）" })
-keymap.set("n", "cd", ":e ~/WorkSpace/Algorithm/data<CR>", { desc = "cd：快速打开算法输入数据文件" })
+keymap.set("n", "cd", ":e /tmp/data<CR>", { desc = "cd：快速打开算法输入数据文件" })
 keymap.set("n", "cp", paste_to_data, { desc = "cp：覆盖写入剪贴板内容到 data 文件" })
 keymap.set("n", "ct", ":e ~/Github/Template<CR>", { desc = "ct：快速打开算法模板文件" })
 
@@ -273,6 +305,7 @@ keymap.set("n", "N", "Nzz", { desc = "N：搜索上一个并居中显示" })
 -- 9.1 常用工具启动
 keymap.set("n", "<C-g>", ":tabe<CR>:term fish -l -c lazygit<CR>i", { desc = "Ctrl+g：新建标签页并打开lazygit" })
 keymap.set("n", "<leader>t", ":w<CR><C-w>v:terminal fish -l<CR>i", { desc = "Leader+t：保存并新建垂直终端窗口（fish 登录模式）" })
+keymap.set("n", "<leader>s", ":w<CR><C-w>s:terminal fish -l<CR>i", { desc = "Leader+t：保存并新建水平终端窗口（fish 登录模式）" })
 keymap.set(
 	"n",
 	"<leader>i",

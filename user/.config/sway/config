@@ -84,7 +84,8 @@ default_dim_inactive 0.15
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
 # output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
-output eDP-1 mode 2560x1600@240.000Hz
+output eDP-1 mode 2560x1600@240.000Hz position 0,0
+output HDMI-A-1 mode 1920x1080 position 2560,0
 #
 # Example configuration:
 #
