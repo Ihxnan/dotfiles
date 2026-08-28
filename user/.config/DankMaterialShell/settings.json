@@ -31,6 +31,8 @@
       "cursorHideTimeout": 0
     }
   },
+  "notepadFontSize": 18,
+  "notepadShowLineNumbers": true,
   "batteryCriticalNotificationType": 0,
   "dockAutoHide": true,
   "dockUseOverlayLayer": true,

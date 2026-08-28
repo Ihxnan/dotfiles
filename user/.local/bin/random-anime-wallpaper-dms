@@ -7,28 +7,48 @@ export DISPLAY="${DISPLAY:-:0}"
 export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
 
 # =============================================================================
-# 功能描述: 
+# 功能描述:
 #   从指定 API 获取随机壁纸，强制转换为 PNG 格式，并使用 dms IPC 协议设置为桌面壁纸。
-# 
+#
 # 核心特性:
 #   1. 异步下载与长耗时心跳通知。
 #   2. 健壮性检查：校验文件大小与 MIME 类型，剔除损坏/无效文件。
 #   3. 格式转换：自动将下载的图片(无论原格式)转换为 dms 支持的 PNG 格式。
 #   4. 资源自清洁：根据配置自动清理历史壁纸，保持存储整洁。
 #   5. 解耦设计：更新完毕后触发异步的系统 UI 更新钩子 (matugen, niri等)。
-# 
+#
 # 选项:
 #   -k: 保留模式，不清理旧壁纸
 #   -s: 静默模式，关闭桌面通知
 #   -h: 显示帮助信息
-# 
+#
 # 依赖:
 #   curl, file, dms, ImageMagick (magick 或 convert)
 # =============================================================================
 
 # ================= 默认配置 =================
-# CATEGORIES=(ycy moe pc ysz ys)
-CATEGORIES=(pc)
+# CATEGORIES=(
+#
+# ycy：二次元自适应
+# moez：萌版自适应
+# ai：AI自适应
+# ysz：原神自适应
+# pc：PC横图
+# moe：萌版横图
+# fj：风景横图
+# bd：白底横图
+# ys：原神横图
+# acg：ACG动图
+# mp：移动竖图
+# moemp：萌版竖图
+# ysmp：原神竖图
+# aimp：AI竖图
+# tx：头像方图
+# lai：七濑胡桃
+# xhl：小狐狸
+#
+# )
+CATEGORIES=(moe)
 API_URL="https://t.alcy.cc/${CATEGORIES[$RANDOM % ${#CATEGORIES[@]}]}"
 SAVE_DIR="$HOME/Pictures/Wallpapers/api-random-download"
 
@@ -49,12 +69,12 @@ usage() {
 }
 
 while getopts "ksh" opt; do
-  case $opt in
-    k) ENABLE_CLEANUP=false ;;
-    s) SILENT_MODE=true ;;
-    h) usage ;;
-    *) usage ;;
-  esac
+    case $opt in
+        k) ENABLE_CLEANUP=false ;;
+        s) SILENT_MODE=true ;;
+        h) usage ;;
+        *) usage ;;
+    esac
 done
 
 # ================= 辅助函数 =================
@@ -79,7 +99,7 @@ if [ "$SILENT_MODE" = false ]; then
     (
         sleep 8
         while true; do
-            dms notify "Wallpaper" "Downloading is still in progress..." --expire-time=5000 --icon=drive-harddisk --replace-id=999 || true
+            dms notify "Wallpaper" "Downloading is still in progress..." --timeout 5000 --icon=drive-harddisk --replace-id=999 || true
             sleep 8
         done
     ) &
@@ -88,7 +108,7 @@ else
     NOTIFY_PID=""
 fi
 
-send_notify "Wallpaper" "Downloading from Alcy..." "--expire-time=5000"
+send_notify "Wallpaper" "Downloading from Alcy..." "--timeout 5000"
 
 USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -105,7 +125,7 @@ if [ -n "${NOTIFY_PID:-}" ]; then
 fi
 
 # 校验文件 (大小)
-if [ ! -f "$RAW_PATH" ] || [ "$(wc -c < "$RAW_PATH")" -lt 20480 ]; then
+if [ ! -f "$RAW_PATH" ] || [ "$(wc -c <"$RAW_PATH")" -lt 20480 ]; then
     send_notify "Wallpaper Error" "Download failed (File too small/Invalid)"
     rm -f "$RAW_PATH"
     exit 1
@@ -122,19 +142,19 @@ fi
 # --- 2. 格式转换模块 (转为 PNG) ---
 
 # 检查 ImageMagick 是否存在 (兼容新版 magick 和旧版 convert)
-if command -v magick > /dev/null 2>&1; then
+if command -v magick >/dev/null 2>&1; then
     IMG_TOOL="magick"
-elif command -v convert > /dev/null 2>&1; then
+elif command -v convert >/dev/null 2>&1; then
     IMG_TOOL="convert"
 else
-    send_notify "Wallpaper Error" "ImageMagick not found. Please install it." 
+    send_notify "Wallpaper Error" "ImageMagick not found. Please install it."
     rm -f "$RAW_PATH"
     exit 1
 fi
 
 # 执行转换
 if ! $IMG_TOOL "$RAW_PATH" "$FINAL_PATH"; then
-    send_notify "Wallpaper Error" "Failed to convert image to PNG format" 
+    send_notify "Wallpaper Error" "Failed to convert image to PNG format"
     rm -f "$RAW_PATH" "$FINAL_PATH"
     exit 1
 fi
@@ -149,15 +169,15 @@ dms ipc call wallpaper set "$FINAL_PATH"
 # --- 4. 钩子与清理 ---
 (
     if [ -x "$HOME/.config/scripts/matugen-update.sh" ]; then
-        "$HOME/.config/scripts/matugen-update.sh" "$FINAL_PATH" > /dev/null || true
+        "$HOME/.config/scripts/matugen-update.sh" "$FINAL_PATH" >/dev/null || true
     fi
-    
+
     sleep 0.5
-    
+
     if [ -x "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" ]; then
-        "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" > /dev/null || true
+        "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" >/dev/null || true
     fi
-    
+
     # 动态清理逻辑
     if [ "$ENABLE_CLEANUP" = true ]; then
         DELETE_START=$((KEEP_COUNT + 1))
