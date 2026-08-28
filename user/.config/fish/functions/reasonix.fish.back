@@ -1,0 +1,3 @@
+function reasonix --wraps='npx reasonix code' --description 'alias reasonix npx reasonix code'
+    npx reasonix code $argv
+end
