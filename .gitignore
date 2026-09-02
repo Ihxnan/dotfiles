@@ -18,6 +18,7 @@ user/.config/niri/dms/colors.kdl
 user/.config/starship.toml
 user/.config/yazi/theme.toml
 user/.config/mpd/log
+user/.config/nvim/nvim.log
 
 # opencode
 user/.config/opencode/node_modules/
