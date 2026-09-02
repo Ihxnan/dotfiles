@@ -30,7 +30,7 @@ exec fcitx5
 exec udiskie
 
 # always
-# exec_always autotiling
+exec_always autotiling
 
 # SwayFX effects
 gaps inner 10
@@ -311,6 +311,8 @@ bindsym $mod+r mode "resize"
     bindsym --locked XF86MonBrightnessUp exec dms ipc call brightness increment 5 backlight:intel_backlight
     # Special key to take a screenshot with grim
     bindsym Print exec flameshot gui
+    # Mod+Print 长截图（wl-longshot）
+    bindsym $mod+Print exec wl-longshot
 
     # Dynamic wallpaper
     bindsym $mod+F10 exec random-anime-wallpaper-dms

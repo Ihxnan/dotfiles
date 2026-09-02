@@ -257,7 +257,7 @@ is_running() {
   local pid; read -r pid <"$PIDFILE" 2>/dev/null || return 1
   [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
 }
-notify() { has dms && dms notify "wf-recorder" "$1" || true; }
+notify() { has notify-send && notify-send "wf-recorder" "$1" || true; }
 
 signal_waybar() {
   local pids

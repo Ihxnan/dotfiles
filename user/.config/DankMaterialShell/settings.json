@@ -8,7 +8,6 @@
   "controlCenterShowMicPercent": true,
   "showWorkspaceIndex": true,
   "showWorkspaceApps": true,
-  "maxWorkspaceIcons": 0,
   "groupWorkspaceApps": false,
   "workspaceFocusedBorderEnabled": true,
   "focusedWindowShowIcon": false,
@@ -37,6 +36,7 @@
   "dockAutoHide": true,
   "dockUseOverlayLayer": true,
   "dockLauncherEnabled": true,
+  "lockScreenNotificationMode": 2,
   "osdPowerProfileEnabled": true,
   "powerMenuActions": [
     "reboot",
@@ -70,7 +70,11 @@
       "centerWidgets": [
         "music",
         "clock",
-        "weather"
+        "weather",
+        {
+          "id": "network_speed_monitor",
+          "enabled": true
+        }
       ],
       "rightWidgets": [
         {
@@ -187,6 +191,9 @@
     },
     "dms_clipboard_search": {
       "trigger": "cb"
+    },
+    "dms_qr_generator": {
+      "trigger": "qrg"
     }
   },
   "configVersion": 16

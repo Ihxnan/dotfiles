@@ -4,7 +4,7 @@ if status is-interactive
     bind \cy accept-autosuggestion
 end
 set fish_greeting ""
-set -p PATH ~/.local/bin ~/.npm-global/bin ~/.local/share/pnpm/bin
+fish_add_path ~/.local/bin ~/.npm-global/bin ~/.local/share/pnpm/bin
 starship init fish | source
 zoxide init fish --cmd cd | source
 # 111
@@ -17,16 +17,20 @@ function jk
 	rm -f -- "$tmp"
 end
 
-function cat 
-	command bat $argv
+function cat
+	command bat --theme="base16" -- $argv
 end
+
 function ls
-	# command eza --icons $argv
-	command lsi $argv
+	command eza --icons=auto -- $argv
 end
 
 function lt
-	command eza --icons --tree $argv
+	command eza --icons=auto --tree -- $argv
+end
+
+function la
+	command eza -l --icons=auto -- $argv
 end
 # grub
 abbr grub 'LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 sudo grub-mkconfig -o /boot/grub/grub.cfg'
@@ -44,31 +48,3 @@ end
 function raw
 	command ~/.local/bin/random-anime-wallpaper-dms $argv
 end
-
-function 安装
-	command yay -S $argv
-end
-
-function 卸载
-	command yay -Rns $argv
-end 
-
-set -x PAC_OPENCODE_MODEL "deepseek/deepseek-v4-pro"
-
-# OpenClaw Completion
-test -f "/home/ihxnan/.openclaw/completions/openclaw.fish"; and source "/home/ihxnan/.openclaw/completions/openclaw.fish"
-
-# OpenCode API config
-set -x ANTHROPIC_BASE_URL https://api.deepseek.com/anthropic
-set -x ANTHROPIC_AUTH_TOKEN sk-a8cc5dc2a0c44811b7dfe3fcbd3ba77b
-set -x ANTHROPIC_MODEL deepseek-v4-pro
-set -x ANTHROPIC_DEFAULT_OPUS_MODEL deepseek-v4-pro
-set -x ANTHROPIC_DEFAULT_SONNET_MODEL deepseek-v4-pro
-set -x ANTHROPIC_DEFAULT_HAIKU_MODEL deepseek-v4-flash
-set -x CLAUDE_CODE_SUBAGENT_MODEL deepseek-v4-flash
-set -x CLAUDE_CODE_EFFORT_LEVEL max
-
-# Added by LM Studio CLI (lms)
-set -gx PATH $PATH /home/ihxnan/.lmstudio/bin
-# End of LM Studio CLI section
-
