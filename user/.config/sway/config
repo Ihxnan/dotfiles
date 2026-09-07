@@ -314,9 +314,11 @@ bindsym $mod+r mode "resize"
     # Mod+Print 长截图（wl-longshot）
     bindsym $mod+Print exec wl-longshot
 
-    # Dynamic wallpaper
-    bindsym $mod+F10 exec random-anime-wallpaper-dms
-    bindsym $mod+F11 exec random-local-wallpaper
+    # Dynamic wallpaper (unified via wp)
+    bindsym $mod+F10 exec wp img random
+    bindsym $mod+F11 exec wp img local
+    bindsym $mod+Shift+F10 exec wp video random
+    bindsym $mod+Shift+F11 exec wp video local
 
 for_window [title="termfilechooser"] floating enable, resize set 900 600, move position center
 for_window [app_id="floatkitty"] floating enable, resize set 1200 800, move position center

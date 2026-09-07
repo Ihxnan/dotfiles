@@ -1,0 +1,288 @@
+#!/bin/bash
+# wp - 统一壁纸管理器（静态图 + 视频，本地 + API，DMS/matugen/mpvpaper 联动）
+#
+# 用法:
+#   wp img local [目录]        从本地顶层随机选图片设壁纸
+#   wp img random [分类]       从 API 随机下载图片设壁纸
+#   wp video local             从本地顶层随机选视频壁纸
+#   wp video random            从 API 随机下载视频壁纸
+#   wp video start <文件>      播放指定视频壁纸
+#   wp stop                    停止视频壁纸 / 恢复
+#   wp frame                   从当前视频重新抽帧刷新配色
+#   wp -s ...                  静默模式（不发送桌面通知）
+set -euo pipefail
+
+OUTPUT="${WP_OUTPUT:-eDP-1}"
+FRAME_DIR="$HOME/.cache/video-wallpaper"
+FRAME_FILE="$FRAME_DIR/frame.png"
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+DOWNLOAD_DIR="$WALLPAPER_DIR/api-random-download"
+IMAGE_API_URL="https://t.alcy.cc"          # 图片 API 根
+VIDEO_API_URL="${WP_VIDEO_API:-https://t.alcy.cc/acg}"
+KEEP_IMAGES=40
+SILENT_MODE=false
+
+# ================= 通知 =================
+notify() {
+    echo "[wp] $*"
+    if [ "$SILENT_MODE" = false ]; then
+        # DMS 环境优先走 dms notify，fallback 到 notify-send
+        dms notify "Wallpaper" "$*" 2>/dev/null || notify-send "Wallpaper" "$*" --expire-time=5000 2>/dev/null || true
+    fi
+}
+
+notify_err() {
+    echo "[wp 错误] $*" >&2
+    if [ "$SILENT_MODE" = false ]; then
+        dms notify "Wallpaper Error" "$*" 2>/dev/null || notify-send "Wallpaper Error" "$*" --expire-time=5000 --urgency=critical 2>/dev/null || true
+    fi
+}
+
+usage() {
+    cat <<'EOF'
+用法: wp [-s] <分类> <动作> [参数]
+
+分类:
+  img                 静态图片壁纸
+    local [目录]        从本地顶层随机选图片（默认 ~/Pictures/Wallpapers）
+    random [分类]       从 Alcy API 下载随机图片
+  video               视频壁纸
+    local               从本地顶层随机选视频
+    random              从 API 下载随机视频
+    start <文件>        播放指定视频
+  stop                停止视频壁纸
+  frame               从当前视频重新抽帧刷新配色
+
+选项:
+  -s   静默模式（不发送桌面通知）
+EOF
+    exit 0
+}
+
+# ================= 参数解析 =================
+while getopts "sh" opt; do
+    case $opt in
+        s) SILENT_MODE=true ;;
+        h) usage ;;
+        *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+[ $# -lt 1 ] && usage
+CATEGORY="${1:-}"; shift || true
+
+# ================= 核心切换函数 =================
+
+# 切到图片模式：必须停掉视频壁纸，否则 mpvpaper 会盖住图片
+stop_video() {
+    pkill -f mpvpaper 2>/dev/null || true
+}
+
+# ================= 图片功能 =================
+img_local() {
+    local dir="${1:-$WALLPAPER_DIR}"
+    if [ ! -d "$dir" ]; then
+        notify_err "目录 $dir 不存在"
+        return 1
+    fi
+    local wall
+    wall=$(find "$dir" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \) 2>/dev/null | shuf -n1 || true)
+    if [ -z "$wall" ]; then
+        notify_err "在 $dir 没找到图片"
+        return 1
+    fi
+    # 切图片模式：先停掉视频壁纸，避免盖在图片上
+    stop_video
+    dms ipc call wallpaper set "$wall" 2>/dev/null || true
+    notify "已切换本地壁纸: $(basename "$wall")"
+    run_hooks "$wall"
+}
+
+# API 图片分类（Alcy）：ycy/moe/ai/ysz/pc/moe/fj/bd/ys/acg/mp/moemp/ysmp/aimp/tx/lai/xhl
+img_random() {
+    local category="${1:-ycy}"
+    local api="$IMAGE_API_URL/$category"
+    mkdir -p "$DOWNLOAD_DIR" "$FRAME_DIR"
+    local ts raw final
+    ts=$(date +%s)
+    raw="$DOWNLOAD_DIR/wall_${ts}_raw.tmp"
+    final="$DOWNLOAD_DIR/wall_${ts}.png"
+
+    notify "正在从 Alcy($category) 下载图片..."
+    local ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+    if ! curl -L -s -A "$ua" --connect-timeout 10 -m 120 -o "$raw" "$api"; then
+        notify_err "图片下载失败"
+        rm -f "$raw"
+        return 1
+    fi
+    if [ ! -s "$raw" ] || [ "$(wc -c < "$raw")" -lt 20480 ]; then
+        notify_err "下载文件过小/无效"
+        rm -f "$raw"
+        return 1
+    fi
+    local ftype
+    ftype=$(file --mime-type -b "$raw" 2>/dev/null || echo "unknown")
+    if [[ "$ftype" != image/* ]]; then
+        notify_err "不是图片文件 ($ftype)"
+        rm -f "$raw"
+        return 1
+    fi
+    if command -v magick >/dev/null 2>&1; then
+        magick "$raw" "$final" 2>/dev/null || { notify_err "图片转换失败"; rm -f "$raw"; return 1; }
+    elif command -v convert >/dev/null 2>&1; then
+        convert "$raw" "$final" 2>/dev/null || { notify_err "图片转换失败"; rm -f "$raw"; return 1; }
+    else
+        notify_err "未安装 ImageMagick"
+        rm -f "$raw"
+        return 1
+    fi
+    rm -f "$raw"
+
+    # 切图片模式：先停视频
+    stop_video
+    dms ipc call wallpaper set "$final" 2>/dev/null || true
+    notify "已应用 API 壁纸: $(basename "$final")"
+    run_hooks "$final"
+
+    # 清理旧图
+    cd "$DOWNLOAD_DIR" 2>/dev/null && ls -t 2>/dev/null | tail -n +"$((KEEP_IMAGES + 1))" | xargs -r rm -- 2>/dev/null || true
+}
+
+# 钩子：matugen / niri 模糊背景
+run_hooks() {
+    local img="$1"
+    (
+        if [ -x "$HOME/.config/scripts/matugen-update.sh" ]; then
+            "$HOME/.config/scripts/matugen-update.sh" "$img" >/dev/null 2>&1 || true
+        fi
+        sleep 0.5
+        if [ -x "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" ]; then
+            "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" >/dev/null 2>&1 || true
+        fi
+    ) &
+}
+
+# ================= 视频功能 =================
+extract_frame() {
+    local video="$1"
+    mkdir -p "$FRAME_DIR"
+    local dur t
+    dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$video" 2>/dev/null | head -1)
+    t=1
+    if [ -n "$dur" ] && [ "$(echo "$dur > 3" | bc 2>/dev/null || echo 1)" = "1" ]; then
+        t=$(echo "$dur * 0.3" | bc 2>/dev/null | cut -d. -f1)
+        [ -z "$t" ] || [ "$t" -lt 1 ] && t=1
+    fi
+    ffmpeg -y -ss "$t" -i "$video" -frames:v 1 -vf "scale=2560:-1" "$FRAME_FILE" 2>/dev/null
+    echo "$FRAME_FILE"
+}
+
+apply_frame_to_matugen() {
+    local frame="$1"
+    dms ipc call wallpaper set "$frame" 2>/dev/null || {
+        matugen image "$frame" -t scheme-tonal-spot --prefer dark 2>/dev/null || true
+    }
+}
+
+video_start() {
+    local video="${1:-}"
+    [ -z "$video" ] && { usage; return 1; }
+    [ -f "$video" ] || { notify_err "文件不存在: $video"; return 1; }
+    # 杀掉旧视频壁纸
+    stop_video
+    sleep 0.3
+    # 注意顺序：mpvpaper 在 bottom 层，会盖住 DMS 的 background 层，
+    # 所以先启动 mpvpaper，等它显示后再 clear 底层 DMS，避免中间露空白。
+    # 若当前是图片模式，DMS 壁纸继续显示作为过渡背景。
+    mpvpaper -f -l bottom -o "loop no-audio panscan=1.0" "$OUTPUT" "$video"
+    notify "视频壁纸已启动: $(basename "$video")"
+    # 等 mpvpaper 首帧显示后再清掉 DMS 静态层（约 1 秒）
+    sleep 1
+    dms ipc call wallpaper clear 2>/dev/null || true
+    local frame
+    frame=$(extract_frame "$video")
+    apply_frame_to_matugen "$frame"
+    notify "已从视频抽帧刷新配色"
+}
+
+video_random() {
+    mkdir -p "$FRAME_DIR" "$DOWNLOAD_DIR"
+    local tmp="$DOWNLOAD_DIR/video_$(date +%s).mp4"
+    notify "正在下载随机视频壁纸..."
+    if ! curl -sL -m 60 -o "$tmp" "$VIDEO_API_URL"; then
+        notify_err "视频下载失败"
+        rm -f "$tmp"
+        return 1
+    fi
+    if [ ! -s "$tmp" ]; then
+        notify_err "视频下载内容为空"
+        rm -f "$tmp"
+        return 1
+    fi
+    local ftype
+    ftype=$(file --mime-type -b "$tmp" 2>/dev/null || echo "unknown")
+    if [[ "$ftype" != video/* ]]; then
+        notify_err "下载的不是视频 ($ftype)"
+        rm -f "$tmp"
+        return 1
+    fi
+    notify "视频下载完成，正在应用..."
+    video_start "$tmp"
+}
+
+video_local() {
+    local video
+    video=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) 2>/dev/null | shuf -n1 || true)
+    if [ -z "$video" ]; then
+        notify "本地顶层没有视频，自动转 API 下载"
+        video_random
+        return $?
+    fi
+    notify "选中本地视频: $(basename "$video")"
+    video_start "$video"
+}
+
+refresh_frame() {
+    local video
+    video=$(ps aux | grep 'mpvpaper' | grep -v grep | grep -oE '/[^ ]+\.(mp4|webm|mkv)' | head -1 || true)
+    if [ -z "$video" ]; then
+        notify_err "没有正在播放的视频"
+        return 1
+    fi
+    local frame
+    frame=$(extract_frame "$video")
+    apply_frame_to_matugen "$frame"
+    notify "已刷新配色"
+}
+
+# ================= 主入口 =================
+case "$CATEGORY" in
+    img)
+        action="${1:-}"; shift || true
+        case "$action" in
+            local)  img_local "${1:-}" ;;
+            random) img_random "${1:-}" ;;
+            *) usage ;;
+        esac
+        ;;
+    video)
+        action="${1:-}"; shift || true
+        case "$action" in
+            local)  video_local ;;
+            random) video_random ;;
+            start)  video_start "${1:-}" ;;
+            *) usage ;;
+        esac
+        ;;
+    stop)
+        stop_video
+        notify "视频壁纸已停止"
+        ;;
+    frame)
+        refresh_frame
+        ;;
+    *)
+        usage
+        ;;
+esac
