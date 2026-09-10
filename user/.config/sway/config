@@ -28,9 +28,13 @@ set $env SDL_IM_MODULE fcitx
 exec dms run
 exec fcitx5
 exec udiskie
+# exec awww-daemon
+# 每次启动随机一张本地图片壁纸（img local，awww 设置；不恢复上次壁纸、不含 webp）
+# exec sh -c 'sleep 2; wp -s img local'
 
 # always
 exec_always autotiling
+exec_always node /home/ihxnan/Github/Code/server.js --edit
 
 # SwayFX effects
 gaps inner 10
@@ -88,8 +92,8 @@ default_dim_inactive 0.15
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
 # output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
-output eDP-1 mode 2560x1600@240.000Hz position 0,0
-output HDMI-A-1 mode 1920x1080 position 2560,0
+output eDP-1 mode 2560x1600@240.002Hz position 0,0 scale 1
+output HDMI-A-1 mode 1920x1080@59.934Hz position 2560,0 scale 1
 #
 # Example configuration:
 #
@@ -318,7 +322,7 @@ bindsym $mod+r mode "resize"
     bindsym $mod+F10 exec wp img random
     bindsym $mod+F11 exec wp img local
     bindsym $mod+Shift+F10 exec wp video random
-    bindsym $mod+Shift+F11 exec wp video local
+    bindsym $mod+Shift+F11 exec wp webp local
 
 for_window [title="termfilechooser"] floating enable, resize set 900 600, move position center
 for_window [app_id="floatkitty"] floating enable, resize set 1200 800, move position center

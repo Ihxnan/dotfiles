@@ -70,11 +70,7 @@
       "centerWidgets": [
         "music",
         "clock",
-        "weather",
-        {
-          "id": "network_speed_monitor",
-          "enabled": true
-        }
+        "weather"
       ],
       "rightWidgets": [
         {

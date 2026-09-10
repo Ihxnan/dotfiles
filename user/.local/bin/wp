@@ -1,26 +1,95 @@
 #!/bin/bash
-# wp - 统一壁纸管理器（静态图 + 视频，本地 + API，DMS/matugen/mpvpaper 联动）
+# wp - 统一壁纸管理器
+#   - 显示：静态图 / webp 用 awww，mp4 视频用 mpvpaper（不使用 DMS 内置壁纸）
+#   - 来源：本地顶层随机（~/Pictures/Wallpapers）或 Alcy API 下载
+#   - 配色：matugen（run_hooks）+ DMS 取色；取色帧统一 第一帧 / 1280 宽 / 无 alpha
 #
 # 用法:
-#   wp img local [目录]        从本地顶层随机选图片设壁纸
-#   wp img random [分类]       从 API 随机下载图片设壁纸
-#   wp video local             从本地顶层随机选视频壁纸
-#   wp video random            从 API 随机下载视频壁纸
+#   wp img local [目录]        从本地顶层随机选图片（png/jpg/jpeg/bmp，不含 webp）
+#   wp img random [分类]       从 Alcy API 下载随机图片
+#   wp webp local [目录]       从本地随机选 webp（awww 设置；动画内存/耗时自负）
+#   wp video local             从本地顶层随机选 mp4 视频壁纸
+#   wp video random            从 API 下载随机视频壁纸
 #   wp video start <文件>      播放指定视频壁纸
-#   wp stop                    停止视频壁纸 / 恢复
+#   wp mp42webp <mp4文件>      mp4 → webp（ffmpeg -quality 80 -r 30，输出同目录）
+#   wp restore                 手动恢复上一次用 wp 设置的壁纸（含配色）
+#   wp stop                    停止壁纸（mpvpaper / awww daemon）
 #   wp frame                   从当前视频重新抽帧刷新配色
-#   wp -s ...                  静默模式（不发送桌面通知）
+#
+# 选项:
+#   -o <输出>                  指定输出设备（默认 ALL=所有显示器，如 eDP-1）
+#   -s                         静默模式（不发送桌面通知）
+#   -h, --help                 显示本帮助
 set -euo pipefail
 
-OUTPUT="${WP_OUTPUT:-eDP-1}"
+# ================= 配置 =================
+OUTPUT="${WP_OUTPUT:-ALL}" # 输出目标：默认 ALL（所有显示器）；-o 或 WP_OUTPUT 可覆盖
 FRAME_DIR="$HOME/.cache/video-wallpaper"
-FRAME_FILE="$FRAME_DIR/frame.png"
+LAST_STATE="$FRAME_DIR/last-wallpaper" # 最后一次成功设置的壁纸（kind + 路径）
 WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
 DOWNLOAD_DIR="$WALLPAPER_DIR/api-random-download"
-IMAGE_API_URL="https://t.alcy.cc"          # 图片 API 根
+IMAGE_API_URL="https://t.alcy.cc"
 VIDEO_API_URL="${WP_VIDEO_API:-https://t.alcy.cc/acg}"
-KEEP_IMAGES=40
+KEEP_IMAGES=40 # 下载目录保留的图片数量
 SILENT_MODE=false
+
+# awww 会把缩放后的图像写入其缓存目录；写磁盘会带来数秒系统开销（实测 5s → 0.3s），
+# 故默认把 awww 缓存指向 tmpfs（内存盘 /dev/shm），并定期清理旧文件控制内存占用。
+# 可用 WP_AWWW_CACHE 覆盖；该目录不可写时自动退回默认磁盘缓存。
+AWWW_CACHE_DIR="${WP_AWWW_CACHE:-/dev/shm/awww-cache}"
+AWWW_CACHE_MAX_MB="${WP_AWWW_CACHE_MAX_MB:-512}" # tmpfs 缓存上限（MB），超出从最旧清理
+
+# ================= 颜色 =================
+# 仅终端输出彩色；遵循 NO_COLOR，可用 WP_COLOR=always 强制（便于管道/测试）
+if { [ -t 1 ] || [ "${WP_COLOR:-}" = "always" ]; } && [ -z "${NO_COLOR:-}" ]; then
+    C_RESET=$'\033[0m'
+    C_TITLE=$'\033[1;36m' # 标题 / 分组
+    C_CMD=$'\033[1;32m'   # 命令
+    C_ARG=$'\033[33m'     # 参数
+    C_DIM=$'\033[2m'      # 次要说明
+else
+    C_RESET=""
+    C_TITLE=""
+    C_CMD=""
+    C_ARG=""
+    C_DIM=""
+fi
+
+# 显示宽度：非 ASCII（CJK 等）按 2 列计
+_dwidth() {
+    local s="$1" w=0 i ch
+    for ((i = 0; i < ${#s}; i++)); do
+        ch="${s:i:1}"
+        if [[ "$ch" == [![:ascii:]] ]]; then
+            w=$((w + 2))
+        else
+            w=$((w + 1))
+        fi
+    done
+    printf '%s' "$w"
+}
+
+# ================= 帮助排版 =================
+_CMD_W=26
+
+# 一行帮助：命令(绿) [参数](黄)  描述
+_usage_row() {
+    local name="$1" arg="${2:-}" desc="${3:-}" w
+    w=$(_dwidth "$name")
+    printf '  %s%s%s' "$C_CMD" "$name" "$C_RESET"
+    if [ -n "$arg" ]; then
+        printf ' %s%s%s' "$C_ARG" "$arg" "$C_RESET"
+        w=$((w + 1 + $(_dwidth "$arg")))
+    fi
+    printf '%*s  %s\n' "$((_CMD_W - w))" "" "$desc"
+}
+
+# 分组标题
+_usage_section() {
+    printf '\n%s%s%s' "$C_TITLE" "$1" "$C_RESET"
+    [ -n "${2:-}" ] && printf ' %s%s%s' "$C_DIM" "$2" "$C_RESET"
+    printf '\n'
+}
 
 # ================= 通知 =================
 notify() {
@@ -39,117 +108,215 @@ notify_err() {
 }
 
 usage() {
-    cat <<'EOF'
-用法: wp [-s] <分类> <动作> [参数]
+    local code="${1:-0}"
+    printf '%s用法%s: %swp%s %s[选项]%s <分类> <动作> [参数]  %s（-h 查看本帮助）%s\n' \
+        "$C_TITLE" "$C_RESET" "$C_CMD" "$C_RESET" "$C_ARG" "$C_RESET" "$C_DIM" "$C_RESET"
 
-分类:
-  img                 静态图片壁纸
-    local [目录]        从本地顶层随机选图片（默认 ~/Pictures/Wallpapers）
-    random [分类]       从 Alcy API 下载随机图片
-  video               视频壁纸
-    local               从本地顶层随机选视频
-    random              从 API 下载随机视频
-    start <文件>        播放指定视频
-  stop                停止视频壁纸
-  frame               从当前视频重新抽帧刷新配色
+    _usage_section "静态图片" "用 awww 设置"
+    _usage_row "wp img local" "[目录]" "从本地顶层随机选图片（png/jpg/jpeg/bmp，不含 webp）"
+    _usage_row "wp img random" "[分类]" "从 Alcy API 下载随机图片"
 
-选项:
-  -s   静默模式（不发送桌面通知）
-EOF
-    exit 0
+    _usage_section "webp 壁纸" "用 awww 设置（动画内存自负）"
+    _usage_row "wp webp local" "[目录]" "从本地随机选 webp；配色取首帧"
+
+    _usage_section "视频壁纸" "用 mpvpaper 播放"
+    _usage_row "wp video local" "" "从本地顶层随机选 mp4 视频"
+    _usage_row "wp video random" "" "从 API 下载随机视频"
+    _usage_row "wp video start" "<文件>" "播放指定视频"
+
+    _usage_section "工具"
+    _usage_row "wp mp42webp" "<mp4文件>" "mp4 转 webp（-quality 80 -r 30，输出到同目录同名 .webp）"
+    _usage_row "wp restore" "" "手动恢复上一次用 wp 设置的壁纸（含配色）"
+    _usage_row "wp stop" "" "停止壁纸（mpvpaper / awww daemon）"
+    _usage_row "wp frame" "" "从当前视频重新抽帧刷新配色"
+
+    _usage_section "选项"
+    _usage_row "-o" "<输出>" "指定输出设备（默认 ALL=全部；awww 支持逗号分隔多个）"
+    _usage_row "-s" "" "静默模式（不发送桌面通知）"
+    _usage_row "-h, --help" "" "显示本帮助"
+
+    _usage_section "示例"
+    _usage_row "wp img local" "" "随机应用一张本地图片壁纸"
+    _usage_row "wp webp local" "" "随机应用一张 webp 壁纸（awww）"
+    _usage_row "wp video local" "" "随机播放本地视频壁纸（mpvpaper）"
+    _usage_row "wp mp42webp a.mp4" "" "把 a.mp4 转成同目录的 a.webp"
+
+    printf '\n%s提示%s: %s-o <输出>%s 或 %sWP_OUTPUT%s 指定输出（默认 ALL=所有显示器）；%sWP_COLOR=always%s 强制彩色；%sNO_COLOR=1%s 禁用彩色；%sWP_AWWW_CACHE(_MAX_MB)%s 调整 awww 缓存\n\n' \
+        "$C_TITLE" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET"
+    exit "$code"
 }
 
 # ================= 参数解析 =================
-while getopts "sh" opt; do
+# 长选项 --help（getopts 不支持）
+if [ "${1:-}" = "--help" ]; then
+    usage 0
+fi
+
+while getopts ":sho:" opt; do
     case $opt in
         s) SILENT_MODE=true ;;
-        h) usage ;;
-        *) usage ;;
+        h) usage 0 ;;
+        o) OUTPUT="$OPTARG" ;;
+        :)
+            printf '%s选项 -%s 缺少参数%s（用法: -o <输出>，如 -o eDP-1）\n' "$C_TITLE" "$OPTARG" "$C_RESET" >&2
+            usage 1
+            ;;
+        *)
+            printf '%s未知选项%s: -%s\n' "$C_TITLE" "$C_RESET" "$OPTARG" >&2
+            usage 1
+            ;;
     esac
 done
 shift $((OPTIND - 1))
 
-[ $# -lt 1 ] && usage
-CATEGORY="${1:-}"; shift || true
+[ $# -lt 1 ] && usage 1
+CATEGORY="${1:-}"
+shift || true
 
-# ================= 核心切换函数 =================
+# ================= 基础设施：进程与 awww daemon =================
 
 # 切到图片模式：必须停掉视频壁纸，否则 mpvpaper 会盖住图片
 stop_video() {
     pkill -f mpvpaper 2>/dev/null || true
 }
 
-# ================= 图片功能 =================
-img_local() {
-    local dir="${1:-$WALLPAPER_DIR}"
-    if [ ! -d "$dir" ]; then
-        notify_err "目录 $dir 不存在"
-        return 1
-    fi
-    local wall
-    wall=$(find "$dir" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.webp" -o -iname "*.bmp" \) 2>/dev/null | shuf -n1 || true)
-    if [ -z "$wall" ]; then
-        notify_err "在 $dir 没找到图片"
-        return 1
-    fi
-    # 切图片模式：先停掉视频壁纸，避免盖在图片上
-    stop_video
-    dms ipc call wallpaper set "$wall" 2>/dev/null || true
-    notify "已切换本地壁纸: $(basename "$wall")"
-    run_hooks "$wall"
+# mpvpaper 是否在运行（精确匹配进程名，避免匹配到命令行里含 "mpvpaper" 的其它进程）
+mpvpaper_running() {
+    pgrep -x mpvpaper >/dev/null 2>&1
 }
 
-# API 图片分类（Alcy）：ycy/moe/ai/ysz/pc/moe/fj/bd/ys/acg/mp/moemp/ysmp/aimp/tx/lai/xhl
-img_random() {
-    local category="${1:-ycy}"
-    local api="$IMAGE_API_URL/$category"
-    mkdir -p "$DOWNLOAD_DIR" "$FRAME_DIR"
-    local ts raw final
-    ts=$(date +%s)
-    raw="$DOWNLOAD_DIR/wall_${ts}_raw.tmp"
-    final="$DOWNLOAD_DIR/wall_${ts}.png"
+# awww 需 layer-shell 常驻 daemon 才能设壁纸：
+# 图片模式用前自动启动，视频(mpvpaper)/stop 时自动关闭，避免残留层与内存占用
 
-    notify "正在从 Alcy($category) 下载图片..."
-    local ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
-    if ! curl -L -s -A "$ua" --connect-timeout 10 -m 120 -o "$raw" "$api"; then
-        notify_err "图片下载失败"
-        rm -f "$raw"
-        return 1
+# 健康检查：以“socket 能否连通”为准（进程存在≠可用：daemon 被 OOM/强杀后
+# 会留下残留 socket，此时连接被拒 Connection refused，pgrep 判据会误认为正常）
+awww_daemon_ready() {
+    awww query >/dev/null 2>&1
+}
+
+# 默认 daemon socket 路径（残留清理用）
+awww_socket_path() {
+    printf '%s/%s-awww-daemon.sock' "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" "${WAYLAND_DISPLAY:-wayland-1}"
+}
+
+awww_daemon_stop() {
+    pkill -x awww-daemon 2>/dev/null || true
+}
+
+# 启动并等待“真正可连接”；若当前不可用，先清理残留进程/socket 与旧缓存再重启
+awww_daemon_start() {
+    command -v awww-daemon >/dev/null 2>&1 || return 1
+    awww_daemon_ready && return 0
+    # 不可用：清掉可能半死的进程与残留 socket
+    awww_daemon_stop
+    local sock
+    sock=$(awww_socket_path)
+    [ -S "$sock" ] && rm -f "$sock"
+    # 清掉 daemon 的磁盘缓存：否则冷启动会自动恢复它缓存的“上次显示”（闪现旧壁纸，
+    # 与你当前屏幕内容不一致）；该缓存还会随动画 webp 膨胀（实测可达 10G+），
+    # 且对 awww img 没有加速作用（连续同一张图耗时不变），清除无损失
+    awww clear-cache >/dev/null 2>&1 || true
+    awww-daemon >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+    # 等 daemon 真正可连接（最多约 15s；冷启动首次要加载缓存，可能较慢）
+    local i
+    for i in $(seq 1 150); do
+        awww_daemon_ready && return 0
+        sleep 0.1
+    done
+    return 1
+}
+
+# ================= 基础设施：awww 客户端缓存 =================
+
+# 控制 tmpfs 缓存占用：先删 30 分钟前的，再按上限从最旧开始清理
+cleanup_awww_cache() {
+    local d="$AWWW_CACHE_DIR" max=$((AWWW_CACHE_MAX_MB * 1024)) size oldest
+    [ -d "$d" ] || return 0
+    find "$d" -type f -mmin +30 -delete 2>/dev/null || true
+    size=$(du -sk "$d" 2>/dev/null | cut -f1)
+    [ -n "$size" ] || return 0
+    while [ "$size" -gt "$max" ]; do
+        oldest=$(find "$d" -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | head -1 | cut -d' ' -f2-)
+        [ -n "$oldest" ] || break
+        rm -f "$oldest" || break
+        size=$(du -sk "$d" 2>/dev/null | cut -f1)
+        [ -n "$size" ] || break
+    done
+}
+
+# awww img 包装：缓存指向 tmpfs（避免写磁盘的数秒开销），并在后台清理缓存
+awww_img() {
+    if mkdir -p "$AWWW_CACHE_DIR" 2>/dev/null && [ -w "$AWWW_CACHE_DIR" ]; then
+        XDG_CACHE_HOME="$AWWW_CACHE_DIR" awww img "$@" || return $?
+        ( cleanup_awww_cache ) &
+        disown 2>/dev/null || true
+        return 0
     fi
-    if [ ! -s "$raw" ] || [ "$(wc -c < "$raw")" -lt 20480 ]; then
-        notify_err "下载文件过小/无效"
-        rm -f "$raw"
-        return 1
-    fi
-    local ftype
-    ftype=$(file --mime-type -b "$raw" 2>/dev/null || echo "unknown")
-    if [[ "$ftype" != image/* ]]; then
-        notify_err "不是图片文件 ($ftype)"
-        rm -f "$raw"
-        return 1
-    fi
+    awww img "$@"
+}
+
+# daemon 冷启动时不会显示任何图（缓存已清）→ awww 层是黑色，会盖住 DMS 壁纸。
+# 用 DMS 当前壁纸占位，使加载新壁纸期间屏幕保持你原本看到的画面，加载完再切换。
+awww_placeholder_current() {
+    command -v dms >/dev/null 2>&1 || return 0
+    local cur
+    cur=$(dms ipc call wallpaper get 2>/dev/null | head -1)
+    [ -n "$cur" ] && [ -f "$cur" ] || return 0
+    awww_img "$cur" >/dev/null 2>&1 || true
+}
+
+# ================= 基础设施：图像与取色 =================
+
+# ImageMagick 转换封装（magick / convert 任一；额外参数放在 dst 之前）
+img_convert() {
+    local src="$1" dst="$2"
+    shift 2
     if command -v magick >/dev/null 2>&1; then
-        magick "$raw" "$final" 2>/dev/null || { notify_err "图片转换失败"; rm -f "$raw"; return 1; }
+        magick "$src" "$@" "$dst" 2>/dev/null && return 0
     elif command -v convert >/dev/null 2>&1; then
-        convert "$raw" "$final" 2>/dev/null || { notify_err "图片转换失败"; rm -f "$raw"; return 1; }
-    else
-        notify_err "未安装 ImageMagick"
-        rm -f "$raw"
-        return 1
+        convert "$src" "$@" "$dst" 2>/dev/null && return 0
     fi
-    rm -f "$raw"
-
-    # 切图片模式：先停视频
-    stop_video
-    dms ipc call wallpaper set "$final" 2>/dev/null || true
-    notify "已应用 API 壁纸: $(basename "$final")"
-    run_hooks "$final"
-
-    # 清理旧图
-    cd "$DOWNLOAD_DIR" 2>/dev/null && ls -t 2>/dev/null | tail -n +"$((KEEP_IMAGES + 1))" | xargs -r rm -- 2>/dev/null || true
+    return 1
 }
 
-# 钩子：matugen / niri 模糊背景
+# 抽第一帧为取色帧：1280 宽、无 alpha（DMS 无法解码带 alpha 的 PNG，会回退默认配色）
+# ffmpeg 优先（对动画 webp 只解第一帧）；ImageMagick 兜底（会整段解码，4K 动画可能失败）
+frame_png() {
+    local src="$1" dst="$2"
+    if command -v ffmpeg >/dev/null 2>&1; then
+        ffmpeg -y -loglevel error -i "$src" -frames:v 1 -vf "scale=1280:-2" -pix_fmt rgb24 "$dst" 2>/dev/null && return 0
+    fi
+    img_convert "$src" "$dst" -alpha off -background black -flatten -resize "1280x>" || return 1
+}
+
+# DMS 的 dynamic 主题靠“壁纸取色”驱动：把取色源交给它即可刷新 DMS 界面配色
+# （DMS 内置壁纸已禁用，此调用只用于取色，不会重新显示壁纸）
+# 注意：DMS 以壁纸“路径”判断是否需要重新取色，固定文件名会让它第二次起直接跳过，
+# 故所有取色帧都按源文件名区分路径。
+sync_dms_theme() {
+    local src="${1:-}"
+    [ -n "$src" ] || return 1
+    command -v dms >/dev/null 2>&1 || return 0
+    # DMS 无法解码带 alpha 的 PNG：对 png 检测，带 alpha 就先生成无 alpha 副本
+    case "${src,,}" in
+        *.png)
+            if command -v identify >/dev/null 2>&1 &&
+                [[ "$(identify -format '%[type]' "$src" 2>/dev/null)" == *Alpha* ]]; then
+                local fixed="$FRAME_DIR/dms-src-$(basename "${src%.*}").png"
+                mkdir -p "$FRAME_DIR"
+                img_convert "$src" "$fixed" -alpha off -background black -flatten && src="$fixed"
+            fi
+            ;;
+    esac
+    if dms ipc call wallpaper set "$src" >/dev/null 2>&1; then
+        notify "已同步 DMS 配色"
+    else
+        notify_err "DMS 配色刷新失败（不影响壁纸）"
+    fi
+}
+
+# 配色钩子：matugen 主题 + niri 模糊背景（后台执行，不阻塞命令返回）
 run_hooks() {
     local img="$1"
     (
@@ -163,126 +330,354 @@ run_hooks() {
     ) &
 }
 
+# 记录最后一次成功设置的壁纸（供 wp restore 使用）
+remember_wallpaper() {
+    local kind="$1" path="$2"
+    [ -n "$path" ] || return 0
+    mkdir -p "$FRAME_DIR"
+    printf '%s\n%s\n' "$kind" "$path" > "$LAST_STATE" 2>/dev/null || true
+}
+
+# ================= 基础设施：随机选择与下载 =================
+
+# 在目录顶层随机取一个匹配文件并输出路径；找不到时报错
+# 用法: find_pick <目录> <描述> [find 条件...]
+find_pick() {
+    local dir="$1" desc="$2"
+    shift 2
+    local f
+    f=$(find "$dir" -maxdepth 1 -type f "$@" 2>/dev/null | shuf -n1 || true)
+    if [ -z "$f" ]; then
+        notify_err "在 $dir 没找到$desc"
+        return 1
+    fi
+    printf '%s' "$f"
+}
+
+# 下载并校验：失败/过小/类型不符时报错并清理
+# 用法: download_checked <url> <输出文件> <mime 前缀> <名称> [最小字节数]
+download_checked() {
+    local url="$1" out="$2" prefix="$3" label="$4" min_size="${5:-1}"
+    local ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+    if ! curl -L -s -A "$ua" --connect-timeout 10 -m 120 -o "$out" "$url"; then
+        notify_err "$label 下载失败"
+        rm -f "$out"
+        return 1
+    fi
+    local size
+    size=$(wc -c <"$out" 2>/dev/null || echo 0)
+    if [ ! -s "$out" ] || [ "$size" -lt "$min_size" ]; then
+        notify_err "$label 内容无效（${size}B）"
+        rm -f "$out"
+        return 1
+    fi
+    local ftype
+    ftype=$(file --mime-type -b "$out" 2>/dev/null || echo unknown)
+    if [[ "$ftype" != "$prefix"* ]]; then
+        notify_err "$label 类型不符（$ftype）"
+        rm -f "$out"
+        return 1
+    fi
+}
+
+# 只保留下载目录中最近 KEEP_IMAGES 张 wall_*.png
+prune_downloads() {
+    [ -d "$DOWNLOAD_DIR" ] || return 0
+    find "$DOWNLOAD_DIR" -maxdepth 1 -type f -name 'wall_*.png' -printf '%T@ %p\n' 2>/dev/null |
+        sort -rn | tail -n +"$((KEEP_IMAGES + 1))" | cut -d' ' -f2- |
+        xargs -r rm -f 2>/dev/null || true
+}
+
+# ================= 壁纸设置（awww） =================
+# 用 awww 设置静态壁纸（png/jpg/jpeg/webp），并用第一帧刷新配色（matugen + DMS 主题）
+awww_wallpaper() {
+    local img="${1:-}"
+    [ -n "$img" ] || {
+        notify_err "awww_wallpaper: 缺少图片参数"
+        return 1
+    }
+    # 切图片模式：先停视频，避免 mpvpaper 盖在上面
+    stop_video
+    # daemon 之前没在运行 = 冷启动：启动后会清缓存（无旧图），但 awww 层会是黑色，
+    # 需要用 DMS 当前壁纸占位，避免加载新壁纸期间出现黑屏/旧图
+    local cold_start=0
+    awww_daemon_ready || cold_start=1
+    # awww 需要常驻 daemon：确保可连通（内部会清理残留 socket 与旧缓存并等待就绪）
+    awww_daemon_start || true
+    [ "$cold_start" = 1 ] && awww_placeholder_current
+    # -o 指定输出；ALL（默认）时交给 awww 自行作用于所有输出
+    local -a aargs=()
+    if [ "$OUTPUT" != "ALL" ]; then
+        aargs=(-o "$OUTPUT")
+    fi
+    local out ok=1
+    if out=$(awww_img "${aargs[@]}" "$img" 2>&1); then
+        ok=0
+    else
+        # 自愈：daemon 可能半死/残留 socket，重启后重试一次
+        notify_err "awww 设置壁纸失败，重启 daemon 后重试: $out"
+        if awww_daemon_start; then
+            out=$(awww_img "${aargs[@]}" "$img" 2>&1) && ok=0
+        fi
+    fi
+    if [ "$ok" = 0 ]; then
+        notify "已用 awww 设置壁纸: $(basename "$img")"
+        local kind=img
+        case "${img,,}" in *.webp) kind=webp ;; esac
+        remember_wallpaper "$kind" "$img"
+    else
+        notify_err "awww 设置壁纸仍失败: $out"
+    fi
+    # 配色与显示解耦：无论 awww 是否成功都刷新配色
+    # 静态图（png/jpg/jpeg/bmp）直接用原图作取色源；webp 先抽第一帧（动画会被整段解码）
+    local png="$FRAME_DIR/color-src-$(basename "${img%.*}").png"
+    local color_src="$img"
+    mkdir -p "$FRAME_DIR"
+    case "${img,,}" in
+        *.webp)
+            if frame_png "$img" "$png" && [ -s "$png" ]; then
+                color_src="$png"
+            fi
+            ;;
+    esac
+    sync_dms_theme "$color_src"
+    run_hooks "$color_src"
+    [ "$ok" = 0 ] || return 1
+}
+
+# ================= 图片功能 =================
+img_local() {
+    local dir="${1:-$WALLPAPER_DIR}"
+    if [ ! -d "$dir" ]; then
+        notify_err "目录 $dir 不存在"
+        return 1
+    fi
+    local wall
+    # 仅静态图（不含 webp，webp 由 wp webp local 负责）
+    wall=$(find_pick "$dir" "图片" \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.bmp" \)) || return 1
+    awww_wallpaper "$wall"
+}
+
+# API 图片分类（Alcy）：ycy/moe/ai/ysz/pc/moe/fj/bd/ys/acg/mp/moemp/ysmp/aimp/tx/lai/xhl
+img_random() {
+    local category="${1:-ycy}"
+    local ts raw final
+    mkdir -p "$DOWNLOAD_DIR" "$FRAME_DIR"
+    ts=$(date +%s)
+    raw="$DOWNLOAD_DIR/wall_${ts}_raw.tmp"
+    final="$DOWNLOAD_DIR/wall_${ts}.png"
+
+    notify "正在从 Alcy($category) 下载图片..."
+    download_checked "$IMAGE_API_URL/$category" "$raw" image/ "图片" 20480 || return 1
+    if ! img_convert "$raw" "$final"; then
+        notify_err "图片转换失败（需要 ImageMagick）"
+        rm -f "$raw"
+        return 1
+    fi
+    rm -f "$raw"
+
+    awww_wallpaper "$final"
+    prune_downloads
+}
+
+# ================= webp 功能 =================
+# 只从本地顶层随机选 webp（显式排除 API 下载目录），交 awww 显示
+webp_local() {
+    local dir="${1:-$WALLPAPER_DIR}"
+    if [ ! -d "$dir" ]; then
+        notify_err "目录 $dir 不存在"
+        return 1
+    fi
+    local wall
+    wall=$(find_pick "$dir" "webp 文件（已排除 $DOWNLOAD_DIR）" -iname '*.webp' ! -path "$DOWNLOAD_DIR/*") || return 1
+    notify "选中本地 webp: $(basename "$wall")"
+    awww_wallpaper "$wall"
+}
+
 # ================= 视频功能 =================
+# 抽视频第一帧为取色帧（按视频名区分路径，见 sync_dms_theme 的说明）
 extract_frame() {
     local video="$1"
     mkdir -p "$FRAME_DIR"
-    local dur t
-    dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$video" 2>/dev/null | head -1)
-    t=1
-    if [ -n "$dur" ] && [ "$(echo "$dur > 3" | bc 2>/dev/null || echo 1)" = "1" ]; then
-        t=$(echo "$dur * 0.3" | bc 2>/dev/null | cut -d. -f1)
-        [ -z "$t" ] || [ "$t" -lt 1 ] && t=1
-    fi
-    ffmpeg -y -ss "$t" -i "$video" -frames:v 1 -vf "scale=2560:-1" "$FRAME_FILE" 2>/dev/null
-    echo "$FRAME_FILE"
-}
-
-apply_frame_to_matugen() {
-    local frame="$1"
-    dms ipc call wallpaper set "$frame" 2>/dev/null || {
-        matugen image "$frame" -t scheme-tonal-spot --prefer dark 2>/dev/null || true
-    }
+    local out="$FRAME_DIR/frame-$(basename "${video%.*}").png"
+    frame_png "$video" "$out"
+    printf '%s' "$out"
 }
 
 video_start() {
     local video="${1:-}"
-    [ -z "$video" ] && { usage; return 1; }
-    [ -f "$video" ] || { notify_err "文件不存在: $video"; return 1; }
-    # 杀掉旧视频壁纸
-    stop_video
-    sleep 0.3
-    # 注意顺序：mpvpaper 在 bottom 层，会盖住 DMS 的 background 层，
-    # 所以先启动 mpvpaper，等它显示后再 clear 底层 DMS，避免中间露空白。
-    # 若当前是图片模式，DMS 壁纸继续显示作为过渡背景。
-    mpvpaper -f -l bottom -o "loop no-audio panscan=1.0" "$OUTPUT" "$video"
-    notify "视频壁纸已启动: $(basename "$video")"
-    # 等 mpvpaper 首帧显示后再清掉 DMS 静态层（约 1 秒）
-    sleep 1
-    dms ipc call wallpaper clear 2>/dev/null || true
+    if [ -z "$video" ]; then
+        usage 1
+        return 1
+    fi
+    if [ ! -f "$video" ]; then
+        notify_err "文件不存在: $video"
+        return 1
+    fi
+    local sock="$FRAME_DIR/mpv.sock"
+    # 视频模式与 awww 互斥：先关掉 awww daemon（若在跑）
+    awww_daemon_stop
+    if [ -S "$sock" ] && mpvpaper_running; then
+        # mpvpaper 已在跑：loadfile 换源 → 无缝无闪烁（保留 loop 属性）
+        notify "视频切换中: $(basename "$video")"
+        echo 'set loop-file inf' | socat - "$sock" 2>/dev/null || true
+        echo "loadfile '$video'" | socat - "$sock" 2>/dev/null || true
+    else
+        # 首次启动：带 IPC socket。
+        # 注意 mpvpaper 前台常驻（命令会保持运行直到 mpvpaper 退出），属预期行为
+        pkill -f mpvpaper 2>/dev/null || true
+        sleep 0.3
+        # cuda-copy 硬解：NVIDIA 卡在 Wayland 下最稳定的硬解方式，避免 CPU 软解 4K 卡顿
+        mpvpaper -p -f -l bottom -o "input-ipc-server=$sock loop no-audio panscan=1.0 hwdec=cuda-copy" "$OUTPUT" "$video"
+        notify "视频壁纸已启动: $(basename "$video")"
+    fi
+    # 等视频开始播放再抽帧（socket 换源约需 0.5s）
+    sleep 0.5
     local frame
     frame=$(extract_frame "$video")
-    apply_frame_to_matugen "$frame"
+    sync_dms_theme "$frame"
+    run_hooks "$frame"
+    remember_wallpaper video "$video"
     notify "已从视频抽帧刷新配色"
 }
 
 video_random() {
+    local tmp
     mkdir -p "$FRAME_DIR" "$DOWNLOAD_DIR"
-    local tmp="$DOWNLOAD_DIR/video_$(date +%s).mp4"
+    tmp="$DOWNLOAD_DIR/video_$(date +%s).mp4"
     notify "正在下载随机视频壁纸..."
-    if ! curl -sL -m 60 -o "$tmp" "$VIDEO_API_URL"; then
-        notify_err "视频下载失败"
-        rm -f "$tmp"
-        return 1
-    fi
-    if [ ! -s "$tmp" ]; then
-        notify_err "视频下载内容为空"
-        rm -f "$tmp"
-        return 1
-    fi
-    local ftype
-    ftype=$(file --mime-type -b "$tmp" 2>/dev/null || echo "unknown")
-    if [[ "$ftype" != video/* ]]; then
-        notify_err "下载的不是视频 ($ftype)"
-        rm -f "$tmp"
-        return 1
-    fi
+    download_checked "$VIDEO_API_URL" "$tmp" video/ "视频" || return 1
     notify "视频下载完成，正在应用..."
     video_start "$tmp"
 }
 
 video_local() {
     local video
-    video=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' \) 2>/dev/null | shuf -n1 || true)
-    if [ -z "$video" ]; then
+    video=$(find_pick "$WALLPAPER_DIR" "mp4 视频") || {
         notify "本地顶层没有视频，自动转 API 下载"
         video_random
         return $?
-    fi
+    }
     notify "选中本地视频: $(basename "$video")"
     video_start "$video"
 }
 
 refresh_frame() {
-    local video
-    video=$(ps aux | grep 'mpvpaper' | grep -v grep | grep -oE '/[^ ]+\.(mp4|webm|mkv)' | head -1 || true)
-    if [ -z "$video" ]; then
+    local pid video
+    # 精确取 mpvpaper 进程，再从它自己的 cmdline 里取视频路径
+    pid=$(pgrep -x mpvpaper 2>/dev/null | head -1)
+    if [ -z "$pid" ]; then
         notify_err "没有正在播放的视频"
+        return 1
+    fi
+    video=$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -oE '/[^ ]+\.mp4' | head -1 || true)
+    if [ -z "$video" ]; then
+        notify_err "无法从 mpvpaper 命令行解析视频路径"
         return 1
     fi
     local frame
     frame=$(extract_frame "$video")
-    apply_frame_to_matugen "$frame"
+    sync_dms_theme "$frame"
+    run_hooks "$frame"
     notify "已刷新配色"
+}
+
+# ================= 工具 =================
+# 手动恢复上一次用 wp 设置的壁纸（img/webp/video），并刷新配色
+restore_wallpaper() {
+    if [ ! -s "$LAST_STATE" ]; then
+        notify_err "没有记录最后一次壁纸，无法恢复"
+        return 1
+    fi
+    local kind path
+    kind=$(sed -n 1p "$LAST_STATE")
+    path=$(sed -n 2p "$LAST_STATE")
+    if [ -z "$path" ] || [ ! -f "$path" ]; then
+        notify_err "记录的壁纸不存在: ${path:-（空）}"
+        return 1
+    fi
+    notify "恢复上次壁纸（$kind）: $(basename "$path")"
+    case "$kind" in
+        video) video_start "$path" ;;
+        *) awww_wallpaper "$path" ;;
+    esac
+}
+
+# mp4 → webp（-quality 80 -r 30），输出到 mp4 同目录同名 .webp
+mp42webp() {
+    local file="${1:-}"
+    if [ -z "$file" ]; then
+        notify_err "缺少 mp4 文件参数"
+        usage 1
+        return 1
+    fi
+    if [ ! -f "$file" ]; then
+        notify_err "文件不存在: $file"
+        return 1
+    fi
+    local out="${file%.*}.webp"
+    notify "转换中: $(basename "$file") → $(basename "$out")"
+    if ! ffmpeg -y -i "$file" -quality 80 -r 30 "$out" 2>/dev/null; then
+        notify_err "ffmpeg 转换失败: $file"
+        return 1
+    fi
+    notify "已转换: $out"
 }
 
 # ================= 主入口 =================
 case "$CATEGORY" in
     img)
-        action="${1:-}"; shift || true
+        action="${1:-}"
+        shift || true
         case "$action" in
-            local)  img_local "${1:-}" ;;
+            local) img_local "${1:-}" ;;
             random) img_random "${1:-}" ;;
-            *) usage ;;
+            *)
+                printf '%simg 未知动作%s: %s（可用: local, random）\n' "$C_TITLE" "$C_RESET" "$action" >&2
+                usage 1
+                ;;
+        esac
+        ;;
+    webp)
+        action="${1:-}"
+        shift || true
+        case "$action" in
+            local) webp_local "${1:-}" ;;
+            *)
+                printf '%swebp 未知动作%s: %s（可用: local）\n' "$C_TITLE" "$C_RESET" "$action" >&2
+                usage 1
+                ;;
         esac
         ;;
     video)
-        action="${1:-}"; shift || true
+        action="${1:-}"
+        shift || true
         case "$action" in
-            local)  video_local ;;
+            local) video_local ;;
             random) video_random ;;
-            start)  video_start "${1:-}" ;;
-            *) usage ;;
+            start) video_start "${1:-}" ;;
+            *)
+                printf '%svideo 未知动作%s: %s（可用: local, random, start）\n' "$C_TITLE" "$C_RESET" "$action" >&2
+                usage 1
+                ;;
         esac
+        ;;
+    mp42webp)
+        mp42webp "${1:-}"
+        ;;
+    restore)
+        restore_wallpaper
         ;;
     stop)
         stop_video
-        notify "视频壁纸已停止"
+        awww_daemon_stop
+        notify "壁纸已停止（mpvpaper / awww）"
         ;;
     frame)
         refresh_frame
         ;;
     *)
-        usage
+        printf '%s未知分类%s: %s（可用: img, webp, video, mp42webp, restore, stop, frame）\n' "$C_TITLE" "$C_RESET" "$CATEGORY" >&2
+        usage 1
         ;;
 esac
