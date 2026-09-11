@@ -11,7 +11,7 @@
 #   wp video local             从本地顶层随机选 mp4 视频壁纸
 #   wp video random            从 API 下载随机视频壁纸
 #   wp video start <文件>      播放指定视频壁纸
-#   wp mp42webp <mp4文件>      mp4 → webp（ffmpeg -quality 80 -r 30，输出同目录）
+#   wp mp42webp <mp4文件>      mp4 → webp（ffmpeg -quality 100 -r 30，输出同目录）
 #   wp restore                 手动恢复上一次用 wp 设置的壁纸（含配色）
 #   wp stop                    停止壁纸（mpvpaper / awww daemon）
 #   wp frame                   从当前视频重新抽帧刷新配色
@@ -125,7 +125,7 @@ usage() {
     _usage_row "wp video start" "<文件>" "播放指定视频"
 
     _usage_section "工具"
-    _usage_row "wp mp42webp" "<mp4文件>" "mp4 转 webp（-quality 80 -r 30，输出到同目录同名 .webp）"
+    _usage_row "wp mp42webp" "<mp4文件>" "mp4 转 webp（-quality 100 -r 30，输出到同目录同名 .webp）"
     _usage_row "wp restore" "" "手动恢复上一次用 wp 设置的壁纸（含配色）"
     _usage_row "wp stop" "" "停止壁纸（mpvpaper / awww daemon）"
     _usage_row "wp frame" "" "从当前视频重新抽帧刷新配色"
@@ -603,7 +603,7 @@ restore_wallpaper() {
     esac
 }
 
-# mp4 → webp（-quality 80 -r 30），输出到 mp4 同目录同名 .webp
+# mp4 → webp（-quality 100 -r 30），输出到 mp4 同目录同名 .webp
 mp42webp() {
     local file="${1:-}"
     if [ -z "$file" ]; then
@@ -617,7 +617,7 @@ mp42webp() {
     fi
     local out="${file%.*}.webp"
     notify "转换中: $(basename "$file") → $(basename "$out")"
-    if ! ffmpeg -y -i "$file" -quality 80 -r 30 "$out" 2>/dev/null; then
+    if ! ffmpeg -y -i "$file" -quality 100 -r 30 "$out" 2>/dev/null; then
         notify_err "ffmpeg 转换失败: $file"
         return 1
     fi

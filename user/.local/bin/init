@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+import argparse
+from pathlib import Path
+
+parser = argparse.ArgumentParser(
+    description="刷题生成多个模板文件", formatter_class=argparse.RawDescriptionHelpFormatter
+)
+parser.add_argument("-n", type=int, default=5, help="生成文件数量, 默认为 5")
+parser.add_argument(
+    "-t", "--type", default="cpp", choices=["cpp", "py"], help="生成文件类型，默认为 cpp"
+)
+parser.add_argument(
+    "-k", "--kind", default="alp", choices=["alp", "num"], help="生成题目的序号，默认为 alp"
+)
+args = parser.parse_args()
+
+index = [chr(i + ord("A")) if args.kind == "alp" else str(i + 1) for i in range(args.n)]
+
+files = []
+
+for idx in index:
+    if args.type == "cpp":
+        idx += ".cpp"
+    else:
+        idx += ".py"
+    files.append(Path(idx))
+
+cpp_tmpl = """#include <ihxnan>
+
+int init = [] { return cin >> t, 0; }();
+
+void solve()
+{
+    
+}"""
+
+py_tmpl = """from ihxnan import *"""
+
+for file in files:
+    if args.type == "cpp":
+        file.write_text(cpp_tmpl)
+    else:
+        file.write_text(py_tmpl)
+
