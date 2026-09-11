@@ -141,12 +141,48 @@ usage() {
     _usage_row "wp video local" "" "随机播放本地视频壁纸（mpvpaper）"
     _usage_row "wp mp42webp a.mp4" "" "把 a.mp4 转成同目录的 a.webp"
 
-    printf '\n%s提示%s: %s-o <输出>%s 或 %sWP_OUTPUT%s 指定输出（默认 ALL=所有显示器）；%sWP_COLOR=always%s 强制彩色；%sNO_COLOR=1%s 禁用彩色；%sWP_AWWW_CACHE(_MAX_MB)%s 调整 awww 缓存\n\n' \
-        "$C_TITLE" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET"
+    printf '\n%s提示%s: 选项可写在命令任意位置（如 %swp img local -o eDP-1%s）；%s-o <输出>%s 或 %sWP_OUTPUT%s 指定输出（默认 ALL=所有显示器）；%sWP_COLOR=always%s 强制彩色；%sNO_COLOR=1%s 禁用彩色；%sWP_AWWW_CACHE(_MAX_MB)%s 调整 awww 缓存\n\n' \
+        "$C_TITLE" "$C_RESET" \
+        "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" \
+        "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET"
     exit "$code"
 }
 
 # ================= 参数解析 =================
+# 允许选项写在任意位置（GNU 风格）：getopts 一遇到首个非选项参数就停止解析，
+# 会把 `wp webp local -o eDP-1` 里的 `-o eDP-1` 当位置参数（目录变成 "-o"）。
+# 故先把选项重排到最前面，位置参数保持原序。
+_OPTS=()
+_POS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -o)
+            _OPTS+=("-o")
+            if [ $# -ge 2 ]; then
+                _OPTS+=("$2")
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        -s | -h | --help)
+            _OPTS+=("$1")
+            shift
+            ;;
+        --)
+            shift
+            _POS+=("$@")
+            break
+            ;;
+        *)
+            _POS+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${_OPTS[@]}" "${_POS[@]}"
+unset _OPTS _POS
+
 # 长选项 --help（getopts 不支持）
 if [ "${1:-}" = "--help" ]; then
     usage 0
