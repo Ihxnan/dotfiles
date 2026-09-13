@@ -14,17 +14,20 @@ local keymap = vim.keymap
 
 -- ======================== 系统剪贴板快捷键 ========================
 -- 兼容 Windows 系统剪贴板 + 黑洞寄存器
-keymap.set("n", "<C-x>", '"+dd', { desc = "Ctrl+x：剪切当前行到系统剪贴板" })
-keymap.set("n", "<C-c>", '"+yy', { desc = "Ctrl+c：复制当前行到系统剪贴板" })
-keymap.set("n", "<C-a><C-c>", 'gg"+yG``', { desc = "Ctrl+a+Ctrl+c：复制全部到系统剪贴板" })
-keymap.set("n", "<C-a><C-x>", 'gg"+dG', { desc = "Ctrl+a+Ctrl+x：剪切全部到系统剪贴板" })
-keymap.set("n", "<C-v>", '"+P', { desc = "Ctrl+v：从系统剪贴板粘贴" })
-keymap.set(
-	"n",
-	"<C-a><C-v>",
-	'ggVG"_d"+P',
-	{ desc = "Ctrl+a+Ctrl+v：全选→黑洞删除→粘贴系统剪贴板覆盖" }
-)
+-- 由 keymaps.lua（普通 Neovim）显式调用；VSCode 分支不注册这些，保留 VSCode 原生 Ctrl+C/V/X
+local function setup_system_clipboard()
+	keymap.set("n", "<C-x>", '"+dd', { desc = "Ctrl+x：剪切当前行到系统剪贴板" })
+	keymap.set("n", "<C-c>", '"+yy', { desc = "Ctrl+c：复制当前行到系统剪贴板" })
+	keymap.set("n", "<C-a><C-c>", 'gg"+yG``', { desc = "Ctrl+a+Ctrl+c：复制全部到系统剪贴板" })
+	keymap.set("n", "<C-a><C-x>", 'gg"+dG', { desc = "Ctrl+a+Ctrl+x：剪切全部到系统剪贴板" })
+	keymap.set("n", "<C-v>", '"+P', { desc = "Ctrl+v：从系统剪贴板粘贴" })
+	keymap.set(
+		"n",
+		"<C-a><C-v>",
+		'ggVG"_d"+P',
+		{ desc = "Ctrl+a+Ctrl+v：全选→黑洞删除→粘贴系统剪贴板覆盖" }
+	)
+end
 
 -- ======================== 竞赛模板一键复制 ========================
 
@@ -246,14 +249,21 @@ local function copy_all_with_info()
 	print("✅ 已复制 " .. included_count .. " 个模板 (" .. total .. " 字节)")
 end
 
-keymap.set(
-	"n",
-	"<C-a><C-i>",
-	copy_all_with_info,
-	{ desc = "Ctrl+a+Ctrl+i：内联模板引用并复制完整竞赛代码" }
-)
+-- 模板内联复制映射（普通 Neovim 与 VSCode 分支都会注册）
+local function setup_template_copy()
+	keymap.set(
+		"n",
+		"<C-a><C-i>",
+		copy_all_with_info,
+		{ desc = "Ctrl+a+Ctrl+i：内联模板引用并复制完整竞赛代码" }
+	)
+end
 
--- 导出供其他模块（如 keymaps.lua 的 rc 运行后自动复制）调用
+-- 导出供其他模块调用：
+--   keymaps.lua —— 普通 Neovim，注册全部剪贴板映射
+--   vscode.lua  —— VSCode 分支，只注册 <C-a><C-i>
 return {
 	copy_all_with_info = copy_all_with_info,
+	setup_system_clipboard = setup_system_clipboard,
+	setup_template_copy = setup_template_copy,
 }

@@ -12,6 +12,8 @@
 vim.g.mapleader = " " -- 设置<leader>键为空格（自定义快捷键的前缀）
 local keymap = vim.keymap -- 简化按键映射函数的调用（:help vim.keymap）
 local clipboard = require("config.clipboard")
+clipboard.setup_system_clipboard() -- 系统剪贴板快捷键（VSCode 分支不注册，保留 VSCode 原生 Ctrl+C/V/X）
+clipboard.setup_template_copy()    -- <C-a><C-i>：内联模板并复制完整竞赛代码
 
 -- ======================== 2. 自定义函数 ========================
 
