@@ -16,6 +16,32 @@
 #   wp stop                    停止壁纸（mpvpaper / awww daemon）
 #   wp frame                   从当前视频重新抽帧刷新配色
 #
+# 过渡效果（切换图片壁纸时的动画；对 img / webp / restore 生效，video 用 mpvpaper 不受影响）:
+#   -t, --transition-type <类型>  过渡类型（默认 grow），可选值及效果：
+#                                   none   硬切，无动画（等价 simple + step 255，瞬间完成）
+#                                   simple 整屏渐变（awww 内置默认；忽略 -d，只受 -S 控制）
+#                                   fade   渐变，进度由 -b 缓动曲线控制
+#                                   left   从屏幕左侧开始、向右推进
+#                                   right  从屏幕右侧开始、向左推进
+#                                   top    从屏幕顶部开始、向下推进
+#                                   bottom 从屏幕底部开始、向上推进
+#                                   wipe   类似 left，但扫过方向由 -a 角度指定
+#                                   wave   波浪形扫过，波的大小由 -w 指定
+#                                   grow   圆形扩散展开，圆心由 -p 指定
+#                                   center 同 grow，圆心固定在屏幕中心
+#                                   outer  同 grow，但圆形收缩（反向动画）
+#                                   any    同 grow，圆心随机
+#                                   random 每次随机挑一种效果
+#   -d, --duration <秒>           过渡总时长（simple 类型会忽略此项）
+#   -F, --fps <帧率>              过渡帧率（注意：awww 的 -f 是缩放滤镜 filter，故此处用大写 -F）
+#   -S, --step <0-255>            每帧推进量：越大越快越硬，255 = 瞬间完成
+#   -a, --angle <角度>            wipe/wave 的角度：0=从右到左，90=从上到下
+#   -p, --pos <位置>              grow/outer/any 的圆心：0.5,0.5=屏幕中心；整数=像素（y 自底部算）；
+#                                 也支持别名 center/top/left/right/bottom/top-left/top-right/...
+#   -b, --bezier <x1,y1,x2,y2>    缓动曲线（取值参考 https://cubic-bezier.com）
+#   -w, --wave <宽,高>            wave 类型每道波的尺寸
+#   -Y, --invert-y                反转 -p 的 y 方向（改成从顶部算）
+#
 # 选项:
 #   -o <输出>                  指定输出设备（默认 ALL=所有显示器，如 eDP-1）
 #   -s                         静默模式（不发送桌面通知）
@@ -32,6 +58,16 @@ IMAGE_API_URL="https://t.alcy.cc"
 VIDEO_API_URL="${WP_VIDEO_API:-https://t.alcy.cc/acg}"
 KEEP_IMAGES=40 # 下载目录保留的图片数量
 SILENT_MODE=false
+
+# ================= 过渡效果默认值 =================
+# 这些是 wp 自己的默认过渡效果：不传任何 -t/-d/... 时使用（命令行选项可逐个覆盖）。
+# 之所以不用 awww 内置默认：awww 默认是 `simple` 且 --transition-step=2，淡入极慢，观感像卡住。
+# 想默认硬切：把 DEF_TRANS_TYPE 改成 none，或临时用 `wp img local -t none`。
+DEF_TRANS_TYPE="grow"     # 从左下角圆形展开
+DEF_TRANS_DURATION="1.2"  # 过渡总时长（秒）
+DEF_TRANS_FPS="60"        # 过渡帧率
+DEF_TRANS_POS="0.75,0.75" # 圆心：屏幕宽度 50%、底部（y 自底部算）
+# 其余参数（step / angle / bezier / wave / invert-y）默认留空 = 不传给 awww，用 awww 内置默认值
 
 # awww 会把缩放后的图像写入其缓存目录；写磁盘会带来数秒系统开销（实测 5s → 0.3s），
 # 故默认把 awww 缓存指向 tmpfs（内存盘 /dev/shm），并定期清理旧文件控制内存占用。
@@ -70,7 +106,8 @@ _dwidth() {
 }
 
 # ================= 帮助排版 =================
-_CMD_W=26
+# 帮助文本中 "命令 + 参数" 列的最小宽度（需容纳 -t, --transition-type 这类长选项）
+_CMD_W=34
 
 # 一行帮助：命令(绿) [参数](黄)  描述
 _usage_row() {
@@ -131,48 +168,161 @@ usage() {
     _usage_row "wp frame" "" "从当前视频重新抽帧刷新配色"
 
     _usage_section "选项"
-    _usage_row "-o" "<输出>" "指定输出设备（默认 ALL=全部；awww 支持逗号分隔多个）"
-    _usage_row "-s" "" "静默模式（不发送桌面通知）"
+    _usage_row "-o, --output" "<输出>" "指定输出设备（默认 ALL=全部；awww 支持逗号分隔多个）"
+    _usage_row "-s, --silent" "" "静默模式（不发送桌面通知）"
     _usage_row "-h, --help" "" "显示本帮助"
 
+    _usage_section "过渡效果" "（图片壁纸切换动画；img / webp / restore 生效；可写在命令任意位置）"
+    _usage_row "-t, --transition-type" "<类型>" "none|simple|fade|left|right|top|bottom|wipe|wave|grow|center|outer|any|random（默认 grow）"
+    _usage_row "-d, --duration" "<秒>" "过渡总时长（默认 1.2；simple 类型会忽略此项）"
+    _usage_row "-F, --fps" "<帧率>" "过渡帧率（默认 60；awww 的 -f 是缩放滤镜，故此处用大写 -F）"
+    _usage_row "-S, --step" "<0-255>" "每帧推进量：越大越快越硬，255=瞬间完成（默认不传，用 awww 值）"
+    _usage_row "-a, --angle" "<角度>" "wipe/wave 的角度：0=从右到左，90=从上到下（默认不传，awww 用 45）"
+    _usage_row "-p, --pos" "<位置>" "grow/outer/any 的圆心：0.5,0.5=中心；整数=像素（y 自底部）；支持 center/top-left 等别名（默认 0.5,1.0）"
+    _usage_row "-b, --bezier" "<x1,y1,x2,y2>" "缓动曲线，取值见 cubic-bezier.com（默认不传，用 awww 值）"
+    _usage_row "-w, --wave" "<宽,高>" "wave 类型每道波的尺寸（默认不传，awww 用 20,20）"
+    _usage_row "-Y, --invert-y" "" "反转 -p 的 y 方向（改成从顶部算）"
+
     _usage_section "示例"
-    _usage_row "wp img local" "" "随机应用一张本地图片壁纸"
-    _usage_row "wp webp local" "" "随机应用一张 webp 壁纸（awww）"
-    _usage_row "wp video local" "" "随机播放本地视频壁纸（mpvpaper）"
+    _usage_row "wp img local" "" "随机应用一张本地图片壁纸（默认 grow 圆形展开）"
+    _usage_row "wp img local -t none" "" "硬切，无过渡动画"
+    _usage_row "wp img local -t wipe -a 45" "" "45° 斜向擦除"
+    _usage_row "wp webp local -t outer -p center" "" "webp 壁纸从中心圆形收缩切入"
+    _usage_row "wp video local" "" "随机播放本地视频壁纸（mpvpaper，不受过渡选项影响）"
     _usage_row "wp mp42webp a.mp4" "" "把 a.mp4 转成同目录的 a.webp"
 
-    printf '\n%s提示%s: 选项可写在命令任意位置（如 %swp img local -o eDP-1%s）；%s-o <输出>%s 或 %sWP_OUTPUT%s 指定输出（默认 ALL=所有显示器）；%sWP_COLOR=always%s 强制彩色；%sNO_COLOR=1%s 禁用彩色；%sWP_AWWW_CACHE(_MAX_MB)%s 调整 awww 缓存\n\n' \
-        "$C_TITLE" "$C_RESET" \
+    printf '\n%s提示%s: 选项可写在命令任意位置（如 %swp img local -o eDP-1%s）；%s-o <输出>%s 或 %sWP_OUTPUT%s 指定输出（默认 ALL=所有显示器）；%sWP_COLOR=always%s 强制彩色；%sNO_COLOR=1%s 禁用彩色；%sWP_AWWW_CACHE(_MAX_MB)%s 调整 awww 缓存；过渡默认 %sgrow 1.2s/60fps%s（%swp img local -t none%s 硬切）\n\n' \
+        "$C_TITLE" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" \
         "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" \
         "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET"
     exit "$code"
 }
 
-# ================= 参数解析 =================
-# 允许选项写在任意位置（GNU 风格）：getopts 一遇到首个非选项参数就停止解析，
-# 会把 `wp webp local -o eDP-1` 里的 `-o eDP-1` 当位置参数（目录变成 "-o"）。
-# 故先把选项重排到最前面，位置参数保持原序。
-_OPTS=()
+# ================= 选项解析 =================
+# 手写解析（替代原来的 getopts）：getopts 既不支持长选项，也会在遇到首个非选项参数时停止解析，
+# 把 `wp webp local -o eDP-1` 里的 `-o eDP-1` 当成位置参数（目录变成 "-o"）。
+# 这里从左到右扫描：选项就地消费（因此可写在命令任意位置），非选项按原序收集到 _POS。
 _POS=()
+
+# 过渡效果：初值取文件顶部"过渡效果默认值"区的 DEF_*，随后由命令行选项逐个覆盖。
+# 空字符串 = 该项不传给 awww，改用 awww 自己的默认值。
+TRANS_TYPE="$DEF_TRANS_TYPE"
+TRANS_DURATION="$DEF_TRANS_DURATION"
+TRANS_FPS="$DEF_TRANS_FPS"
+TRANS_STEP=""
+TRANS_ANGLE=""
+TRANS_POS="$DEF_TRANS_POS"
+TRANS_BEZIER=""
+TRANS_WAVE=""
+TRANS_INVERT_Y=false
+
+# 最终追加到 `awww img` 之后的过渡参数（由 build_trans_args 组装，见本段末尾）
+AWWW_TRANS_ARGS=()
+
+# awww 支持的过渡类型（wp 侧用这个列表校验 -t，并出现在帮助文本里）：
+#   none    = 硬切（等价于 simple + step 255，瞬间完成）
+#   simple  = 整屏渐变（awww 的默认值；此类型下 --transition-duration 无效，只受 step 控制）
+#   fade    = 渐变，进度由 --transition-bezier 控制
+#   left / right / top / bottom = 从该方向推向对侧
+#   wipe    = 类似 left，但扫过方向由 --transition-angle 指定
+#   wave    = 波浪形扫过，波的尺寸由 --transition-wave 指定
+#   grow    = 圆形扩散展开，圆心由 --transition-pos 指定
+#   center  = grow 且圆心固定为屏幕中心
+#   outer   = grow 的反向：圆形收缩
+#   any     = grow 且圆心随机
+#   random  = 每次随机挑一种效果
+TRANS_TYPES="none simple fade left right top bottom wipe wave grow center outer any random"
+
+# 选项缺少参数时的统一报错（$1 = 选项名，可附带用法提示）
+_need_value() {
+    printf '%s选项 %s 缺少参数%s\n' "$C_TITLE" "${1:-}" "$C_RESET" >&2
+    usage 1
+}
+
+# 在 wp 侧先校验过渡类型：比把错误抛给 awww 更易读（错误信息里直接列出全部可用值）
+_check_trans_type() {
+    case " $TRANS_TYPES " in
+        *" $1 "*) return 0 ;;
+    esac
+    printf '%s无效的过渡类型%s: %s\n可用类型: %s\n' "$C_TITLE" "$C_RESET" "$1" "$TRANS_TYPES" >&2
+    usage 1
+}
+
 while [ $# -gt 0 ]; do
     case "$1" in
-        -o)
-            _OPTS+=("-o")
-            if [ $# -ge 2 ]; then
-                _OPTS+=("$2")
-                shift 2
-            else
-                shift
-            fi
+        # ---------------- wp 自身选项 ----------------
+        -o | --output)
+            [ $# -ge 2 ] || _need_value "$1（用法: -o <输出>，如 -o eDP-1）"
+            OUTPUT="$2"
+            shift 2
             ;;
-        -s | -h | --help)
-            _OPTS+=("$1")
+        -s | --silent)
+            SILENT_MODE=true
             shift
+            ;;
+        -h | --help)
+            usage 0
             ;;
         --)
             shift
             _POS+=("$@")
             break
+            ;;
+        -)
+            # 单独的 `-` 不是选项（awww 用它表示从 stdin 读图），按位置参数处理
+            _POS+=("$1")
+            shift
+            ;;
+        # ---------------- 过渡效果选项（原样透传给 awww img） ----------------
+        # 长选项名与 awww 完全一致，方便在两个命令之间互相搬参数；短选项见文件顶部用法注释。
+        -t | --transition-type)
+            [ $# -ge 2 ] || _need_value "$1"
+            _check_trans_type "$2"
+            TRANS_TYPE="$2"
+            shift 2
+            ;;
+        -d | --duration | --transition-duration)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_DURATION="$2"
+            shift 2
+            ;;
+        -F | --fps | --transition-fps)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_FPS="$2"
+            shift 2
+            ;;
+        -S | --step | --transition-step)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_STEP="$2"
+            shift 2
+            ;;
+        -a | --angle | --transition-angle)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_ANGLE="$2"
+            shift 2
+            ;;
+        -p | --pos | --transition-pos)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_POS="$2"
+            shift 2
+            ;;
+        -b | --bezier | --transition-bezier)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_BEZIER="$2"
+            shift 2
+            ;;
+        -w | --wave | --transition-wave)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_WAVE="$2"
+            shift 2
+            ;;
+        -Y | --invert-y)
+            TRANS_INVERT_Y=true
+            shift
+            ;;
+        -*)
+            printf '%s未知选项%s: %s\n' "$C_TITLE" "$C_RESET" "$1" >&2
+            usage 1
             ;;
         *)
             _POS+=("$1")
@@ -180,30 +330,45 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
-set -- "${_OPTS[@]}" "${_POS[@]}"
-unset _OPTS _POS
+set -- "${_POS[@]}"
 
-# 长选项 --help（getopts 不支持）
-if [ "${1:-}" = "--help" ]; then
-    usage 0
-fi
+# 把上面的过渡变量组装成 awww 的参数数组：只追加"已被设置"的项（空值 = 不传，用 awww 默认）
+build_trans_args() {
+    # `-t none` 是硬切，其它过渡参数对它没有意义：只传 -t none，避免出现误导性的参数组合
+    if [ "$TRANS_TYPE" = "none" ]; then
+        AWWW_TRANS_ARGS=(-t none)
+        return 0
+    fi
+    AWWW_TRANS_ARGS=(-t "$TRANS_TYPE")
+    if [ -n "$TRANS_DURATION" ]; then
+        AWWW_TRANS_ARGS+=(--transition-duration "$TRANS_DURATION")
+    fi
+    if [ -n "$TRANS_FPS" ]; then
+        AWWW_TRANS_ARGS+=(--transition-fps "$TRANS_FPS")
+    fi
+    if [ -n "$TRANS_STEP" ]; then
+        AWWW_TRANS_ARGS+=(--transition-step "$TRANS_STEP")
+    fi
+    if [ -n "$TRANS_ANGLE" ]; then
+        AWWW_TRANS_ARGS+=(--transition-angle "$TRANS_ANGLE")
+    fi
+    if [ -n "$TRANS_POS" ]; then
+        AWWW_TRANS_ARGS+=(--transition-pos "$TRANS_POS")
+    fi
+    if [ -n "$TRANS_BEZIER" ]; then
+        AWWW_TRANS_ARGS+=(--transition-bezier "$TRANS_BEZIER")
+    fi
+    if [ -n "$TRANS_WAVE" ]; then
+        AWWW_TRANS_ARGS+=(--transition-wave "$TRANS_WAVE")
+    fi
+    if [ "$TRANS_INVERT_Y" = true ]; then
+        AWWW_TRANS_ARGS+=(--invert-y)
+    fi
+    return 0
+}
 
-while getopts ":sho:" opt; do
-    case $opt in
-        s) SILENT_MODE=true ;;
-        h) usage 0 ;;
-        o) OUTPUT="$OPTARG" ;;
-        :)
-            printf '%s选项 -%s 缺少参数%s（用法: -o <输出>，如 -o eDP-1）\n' "$C_TITLE" "$OPTARG" "$C_RESET" >&2
-            usage 1
-            ;;
-        *)
-            printf '%s未知选项%s: -%s\n' "$C_TITLE" "$C_RESET" "$OPTARG" >&2
-            usage 1
-            ;;
-    esac
-done
-shift $((OPTIND - 1))
+# 解析结束后立即组装（此时 -t/-d/-F/... 都已是最终值）
+build_trans_args
 
 [ $# -lt 1 ] && usage 1
 CATEGORY="${1:-}"
@@ -281,15 +446,22 @@ cleanup_awww_cache() {
     done
 }
 
-# awww img 包装：缓存指向 tmpfs（避免写磁盘的数秒开销），并在后台清理缓存
+# awww img 包装：缓存指向 tmpfs（避免写磁盘的数秒开销），并在后台清理缓存。
+# 过渡效果参数由 build_trans_args 组装在 AWWW_TRANS_ARGS 里，这里统一插到 `awww img` 之后，
+# 因此所有调用点（换壁纸、冷启动占位图）都自动带上动画，无需各自重复传参。
 awww_img() {
+    local -a targs=("${AWWW_TRANS_ARGS[@]}")
+    # 个别调用点需要"瞬间显示、不要动画"（如冷启动占位图）：调用前设 AWWW_IMG_NO_TRANSITION=1 即可
+    if [ -n "${AWWW_IMG_NO_TRANSITION:-}" ]; then
+        targs=(-t none)
+    fi
     if mkdir -p "$AWWW_CACHE_DIR" 2>/dev/null && [ -w "$AWWW_CACHE_DIR" ]; then
-        XDG_CACHE_HOME="$AWWW_CACHE_DIR" awww img "$@" || return $?
-        ( cleanup_awww_cache ) &
+        XDG_CACHE_HOME="$AWWW_CACHE_DIR" awww img "${targs[@]}" "$@" || return $?
+        (cleanup_awww_cache) &
         disown 2>/dev/null || true
         return 0
     fi
-    awww img "$@"
+    awww img "${targs[@]}" "$@"
 }
 
 # daemon 冷启动时不会显示任何图（缓存已清）→ awww 层是黑色，会盖住 DMS 壁纸。
@@ -299,7 +471,8 @@ awww_placeholder_current() {
     local cur
     cur=$(dms ipc call wallpaper get 2>/dev/null | head -1)
     [ -n "$cur" ] && [ -f "$cur" ] || return 0
-    awww_img "$cur" >/dev/null 2>&1 || true
+    # 占位的目的是"立刻"显示你原本看到的画面、遮住 daemon 冷启动时的黑屏，所以强制硬切、不做动画
+    AWWW_IMG_NO_TRANSITION=1 awww_img "$cur" >/dev/null 2>&1 || true
 }
 
 # ================= 基础设施：图像与取色 =================
@@ -371,7 +544,7 @@ remember_wallpaper() {
     local kind="$1" path="$2"
     [ -n "$path" ] || return 0
     mkdir -p "$FRAME_DIR"
-    printf '%s\n%s\n' "$kind" "$path" > "$LAST_STATE" 2>/dev/null || true
+    printf '%s\n%s\n' "$kind" "$path" >"$LAST_STATE" 2>/dev/null || true
 }
 
 # ================= 基础设施：随机选择与下载 =================
