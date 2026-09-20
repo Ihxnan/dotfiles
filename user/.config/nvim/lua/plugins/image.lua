@@ -9,7 +9,9 @@ return {
 		--   "kitty"    — Kitty 终端（推荐，性能最好）
 		--   "ueberzug" — Überzug++，任何终端可用
 		--   "sixel"    — 支持 Sixel 的终端
-		backend = "kitty",
+		-- Windows 适配：Windows 上没有 Kitty，默认用 sixel（Windows Terminal 1.22+ / WezTerm 支持）；
+		-- 若终端不支持 sixel，改成 "ueberzug"（需自装 Überzug++ for Windows），或把本插件注释掉。
+		backend = vim.fn.has("win32") == 1 and "sixel" or "kitty",
 		-- 图片处理方式
 		--   "magick_cli" — shell 调用 convert/identify（需安装 ImageMagick）
 		--   "magick_rock" — Lua FFI 绑定（需 luarocks install magick）

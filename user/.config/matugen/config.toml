@@ -47,3 +47,8 @@ input_path = '~/.config/matugen/templates/sway-colors.sh'
 output_path = '~/.cache/matugen/sway-colors.sh'
 post_hook = 'bash ~/.cache/matugen/sway-colors.sh'
 
+[templates.qutebrowser]
+input_path = '~/.config/matugen/templates/qutebrowser-colors.py'
+output_path = '~/.config/qutebrowser/matugen_colors.py'
+post_hook = 'bash ~/.config/scripts/qute-reload.sh &'
+

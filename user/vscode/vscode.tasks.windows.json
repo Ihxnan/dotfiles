@@ -1,0 +1,85 @@
+{
+  // ==========================================================================
+  // vscode-neovim 在 Windows 上的运行任务
+  // 对应 lua/config/vscode.lua 里的 TASKS 表（label 必须逐字一致）
+  //
+  // 放置位置：Windows 上复制/覆盖到
+  //   %APPDATA%\Code\User\tasks.json
+  //   （即 C:\Users\<你>\AppData\Roaming\Code\User\tasks.json）
+  //
+  // 依赖前提：
+  //   * pwsh 7 已装且在 PATH —— 任务显式用 pwsh.exe 执行，
+  //     因为 Windows PowerShell 5.1 不支持 && 链式操作符
+  //   * MinGW-w64 g++ 在 PATH（模板刻意不加 -fsanitize：MinGW-w64 不带 libasan/libubsan）
+  //   * ${file} / ${fileDirname} 由 VSCode 替换为当前活动编辑器（即 nvim 当前 buffer）
+  //
+  // 数据文件与 nvim 侧保持一致：stdpath("data")/data → %LOCALAPPDATA%\nvim-data\data
+  // 注意：若你在 Windows 上另行设置了 XDG_DATA_HOME，nvim 侧会跟随该变量，而这里的路径写的是
+  //       默认值；此时请把 $env:LOCALAPPDATA\nvim-data\data 换成 `:lua= vim.fn.stdpath("data")` 的实际结果。
+  // PowerShell 没有 `<` 输入重定向，统一用 `Get-Content -Raw <file> | <exe>`；
+  // 调用带路径的可执行文件需要 `&` 调用运算符。
+  // ==========================================================================
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "nvim: run cpp (data)",
+      "type": "shell",
+      "command": "g++ -O2 -Wall -Wextra '${file}' -o '${fileDirname}\\a.exe' && Get-Content -Raw \"$env:LOCALAPPDATA\\nvim-data\\data\" | & '${fileDirname}\\a.exe'; Remove-Item -ErrorAction SilentlyContinue '${fileDirname}\\a.exe'",
+      "options": {
+        "shell": { "executable": "pwsh.exe", "args": ["-NoLogo", "-NoProfile", "-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "nvim: run cpp (data + macro)",
+      "type": "shell",
+      "command": "g++ -O2 -Wall -Wextra -DIHXNAN '${file}' -o '${fileDirname}\\a.exe' && Get-Content -Raw \"$env:LOCALAPPDATA\\nvim-data\\data\" | & '${fileDirname}\\a.exe'; Remove-Item -ErrorAction SilentlyContinue '${fileDirname}\\a.exe'",
+      "options": {
+        "shell": { "executable": "pwsh.exe", "args": ["-NoLogo", "-NoProfile", "-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "nvim: run cpp (macro)",
+      "type": "shell",
+      "command": "g++ -O2 -Wall -Wextra -DIHXNAN '${file}' -o '${fileDirname}\\a.exe' && & '${fileDirname}\\a.exe'; Remove-Item -ErrorAction SilentlyContinue '${fileDirname}\\a.exe'",
+      "options": {
+        "shell": { "executable": "pwsh.exe", "args": ["-NoLogo", "-NoProfile", "-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "nvim: run python",
+      "type": "shell",
+      "command": "python -B '${file}'",
+      "options": {
+        "shell": { "executable": "pwsh.exe", "args": ["-NoLogo", "-NoProfile", "-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "nvim: run python (data)",
+      "type": "shell",
+      "command": "Get-Content -Raw \"$env:LOCALAPPDATA\\nvim-data\\data\" | python -B '${file}'",
+      "options": {
+        "shell": { "executable": "pwsh.exe", "args": ["-NoLogo", "-NoProfile", "-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "nvim: run cuda",
+      "type": "shell",
+      "command": "nvcc -arch=sm_89 '${file}' -o '${fileDirname}\\a.exe' && & '${fileDirname}\\a.exe'; Remove-Item -ErrorAction SilentlyContinue '${fileDirname}\\a.exe'",
+      "options": {
+        "shell": { "executable": "pwsh.exe", "args": ["-NoLogo", "-NoProfile", "-Command"] }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    }
+  ]
+}

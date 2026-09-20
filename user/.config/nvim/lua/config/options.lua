@@ -77,3 +77,14 @@ opt.foldexpr = 'nvim_treesitter#foldexpr()' -- 折叠表达式：用TreeSitter�
 opt.foldlevel = 50                          -- 折叠级别：50（几乎不折叠，仅深层代码折叠）
 opt.foldlevelstart = 50                     -- 打开文件时默认不折叠：避免代码被隐藏
 opt.foldcolumn = '1'                        -- 显示折叠列：宽度1字符（显示±符号，方便操作）
+
+-- ======================== Windows 适配（仅 win32 生效） ========================
+-- 目的：让 :! 与 :terminal 走 PowerShell（本配置的 Windows 分支按 pwsh 7 语法编写）。
+-- 说明：仅 vim.fn.has("win32") 为真时执行；Linux / macOS 的 &shell 保持原样，不做任何修改。
+if vim.fn.has("win32") == 1 then
+    -- 优先 PowerShell 7（pwsh，支持 && 与 ||）；只有 Windows PowerShell 5.1 时回退 powershell
+    vim.o.shell = vim.fn.executable("pwsh") == 1 and "pwsh" or "powershell"
+    vim.o.shellcmdflag = "-NoLogo -NoProfile -Command"
+    vim.o.shellquote = '"'
+    vim.o.shellxquote = ""
+end

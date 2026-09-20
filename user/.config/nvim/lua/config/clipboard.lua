@@ -31,11 +31,50 @@ end
 
 -- ======================== 竞赛模板一键复制 ========================
 
--- 头文件搜索目录
-local INCLUDE_DIR = "/usr/local/include/"
+-- ======================== 平台相关路径（Windows 适配） ========================
+-- 两个路径都可用环境变量覆盖（Linux / Windows 通用）：
+--   IHXNAN_INCLUDE_DIR —— 自定义头文件搜索目录
+--   IHXNAN_TEMPLATE_PY —— ihxnan 竞赛模板源码（ihxnan.py）路径
+local is_win = vim.fn.has("win32") == 1
+
+-- 头文件搜索目录：判断 #include <xxx> 能否内联时使用
+--   * 未设环境变量时：Windows 默认 MinGW-w64 的 include 目录；Linux/macOS 沿用原值
+local INCLUDE_DIR = (function()
+	local env = os.getenv("IHXNAN_INCLUDE_DIR")
+	if env and env ~= "" then
+		return (env:gsub("[/\\]+$", "")) .. "/"
+	end
+	if is_win then
+		-- MinGW-w64（MSYS2）默认位置；用 scoop / 独立解压的自行改或用环境变量覆盖
+		return "C:/msys64/mingw64/include/"
+	end
+	return "/usr/local/include/"
+end)()
 
 -- Python 竞赛模板文件（ihxnan 模块源码，pip 安装位置）
-local PY_INCLUDE_FILE = "/home/ihxnan/.local/lib/python3.14/site-packages/ihxnan.py"
+--   * 未设环境变量时：Windows 在常见 Python 安装位置里查找；Linux/macOS 沿用原值
+local PY_INCLUDE_FILE = (function()
+	local env = os.getenv("IHXNAN_TEMPLATE_PY")
+	if env and env ~= "" then
+		return env
+	end
+	if is_win then
+		-- 官方安装器（用户级 / 全局）、Store 版、pip --user、scoop 的常见位置
+		for _, pattern in ipairs({
+			"~/AppData/Local/Programs/Python/Python*/Lib/site-packages/ihxnan.py",
+			"~/AppData/Roaming/Python/Python*/site-packages/ihxnan.py",
+			"~/AppData/Local/Packages/PythonSoftwareFoundation.Python.*/LocalCache/local-packages/Python*/site-packages/ihxnan.py",
+			"~/scoop/apps/python/current/Lib/site-packages/ihxnan.py",
+		}) do
+			local hit = vim.fn.glob(vim.fn.expand(pattern), true, true)[1]
+			if hit and hit ~= "" then
+				return hit
+			end
+		end
+		return vim.fn.expand("~/AppData/Local/Programs/Python/Python314/Lib/site-packages/ihxnan.py")
+	end
+	return "/home/ihxnan/.local/lib/python3.14/site-packages/ihxnan.py"
+end)()
 
 -- 常见 C/C++ 标准库头：单独 #include 时视为标准库，不参与内联
 local STD_HEADERS = {}
@@ -266,4 +305,7 @@ return {
 	copy_all_with_info = copy_all_with_info,
 	setup_system_clipboard = setup_system_clipboard,
 	setup_template_copy = setup_template_copy,
+	-- 仅供调试 / 平台验证：暴露解析后的平台路径（调用方不用，不影响现有行为）
+	INCLUDE_DIR = INCLUDE_DIR,
+	PY_INCLUDE_FILE = PY_INCLUDE_FILE,
 }

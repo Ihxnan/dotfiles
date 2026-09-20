@@ -98,6 +98,7 @@ create_symlink "$DOTFILES_DIR/user/.config/pip" "$HOME/.config/pip"
 create_symlink "$DOTFILES_DIR/user/.config/qt6ct" "$HOME/.config/qt6ct"
 create_symlink "$DOTFILES_DIR/user/.config/scripts" "$HOME/.config/scripts"
 create_symlink "$DOTFILES_DIR/user/.config/systemd" "$HOME/.config/systemd"
+create_symlink "$DOTFILES_DIR/user/.config/qutebrowser" "$HOME/.config/qutebrowser"
 
 echo ""
 echo "========================================="

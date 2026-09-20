@@ -6,6 +6,9 @@ return {
         config = function()
             local builtin = require("telescope.builtin")
 
+            -- Windows 适配：Telescope 需要 PATH 里有 ripgrep（rg）与 fd；
+            -- Windows 上先装好再重启终端，例如：
+            --   winget install BurntSushi.ripgrep.MSVC   /   scoop install fd ripgrep
             vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
 
             -- 搜索界面透明背景

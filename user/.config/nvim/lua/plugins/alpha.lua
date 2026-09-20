@@ -35,6 +35,8 @@ return {
 			dashboard.section.header.val = vim.split(logo, "\n")
 
 			-- 常用操作按钮
+			-- Windows 适配说明：下面 ~/WorkSpace/... 的写法跨平台可用（:e 会展开 ~），
+			-- 只需在 Windows 的 %USERPROFILE% 下建好同样的 WorkSpace/CPP、WorkSpace/Python、WorkSpace/MD 目录。
 			dashboard.section.buttons.val = {
 				dashboard.button("f", "  Find file", "<cmd>Telescope find_files<cr>"),
 				dashboard.button("r", "  Recent files", "<cmd>Telescope oldfiles<cr>"),

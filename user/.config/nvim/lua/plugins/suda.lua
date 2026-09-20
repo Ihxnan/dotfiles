@@ -17,7 +17,11 @@ return {
     init = function()
         -- smart_edit：打开不可读/不可写的文件时，自动切换到 suda:// 前缀
         -- 这样 :w 就直接通过 sudo 写入，无需手动 :SudaWrite
-        vim.g.suda_smart_edit = true
+        -- Windows 适配：Windows 没有 sudo / doas，suda 无法提权写入，
+        -- 关掉 smart_edit 以免打开只读文件时被自动切成 suda:// 前缀、导致 :w 失败。
+        -- Linux / macOS 保持原值 true。
+        local is_win = vim.fn.has("win32") == 1
+        vim.g.suda_smart_edit = not is_win
         -- 可选：不交互（无密码 sudo 时启用）
         -- vim.g["suda#noninteractive"] = true
         -- 可选：自定义 sudo 密码提示文字（默认英文 "Password: "）

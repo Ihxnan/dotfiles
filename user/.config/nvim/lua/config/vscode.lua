@@ -110,7 +110,11 @@ clipboard.setup_template_copy()
 -- ======================== 代码运行（转发到 VSCode 任务） ========================
 -- vscode-neovim 不支持 nvim 内置 :terminal，因此改为调用 VSCode 任务，
 -- 任务定义在 ~/.config/Code/User/tasks.json，使用 ${file}/${fileDirname} 指向当前文件。
-local DATA = "/tmp/data"
+-- Windows 适配：Windows 无 /tmp，数据文件改用 stdpath("data")/data
+--（Windows 下即 %LOCALAPPDATA%\nvim-data\data，与 Windows 版 tasks 模板保持一致）；
+-- Linux/macOS 下 DATA 恒为 "/tmp/data"，与原有硬编码值逐字相同。
+local is_win = vim.fn.has("win32") == 1
+local DATA = is_win and (vim.fn.stdpath("data") .. "/data") or "/tmp/data"
 local TASKS = {
     cpp_data = "nvim: run cpp (data)",
     cpp_data_macro = "nvim: run cpp (data + macro)",
@@ -195,10 +199,18 @@ keymap.set("n", "dp", function()
         dir = vim.fn.getcwd()
     end
     notify("workbench.action.terminal.focus")
-    notify("workbench.action.terminal.sendSequence", { text = "cd '" .. dir .. "' && dp" })
+    if is_win then
+        -- Windows：VSCode 集成终端默认 profile 为 PowerShell 时用 Set-Location（路径用单引号包住）。
+        -- 若默认 profile 是 cmd.exe：改用 cmd 风格（cd /d "<目录>" && dp）。
+        notify("workbench.action.terminal.sendSequence", {
+            text = "Set-Location -LiteralPath '" .. dir .. "'; dp",
+        })
+    else
+        notify("workbench.action.terminal.sendSequence", { text = "cd '" .. dir .. "' && dp" })
+    end
 end, { desc = "打开集成终端并预填 dp（手动回车执行）" })
 keymap.set("n", "cp", paste_to_data, { desc = "粘贴剪贴板到 data" })
-keymap.set("n", "cd", function() vim.cmd("edit " .. DATA) end, { desc = "打开 data 文件" })
+keymap.set("n", "cd", function() vim.cmd.edit({ args = { DATA } }) end, { desc = "打开 data 文件" })
 keymap.set("n", "ct", function() vim.cmd("edit ~/Github/Template") end, { desc = "打开算法模板" })
 
 -- 说明：LSP（重命名 / 代码动作 / 诊断）与格式化（<leader>f）均由 VSCode 原生提供，

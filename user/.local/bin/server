@@ -23,6 +23,7 @@ usage() {
   mount          通过 sshfs 挂载到本地
   umount         卸载 sshfs 挂载
   sync           同步本地目录到远程
+  push           推送单个文件到远程
   deploy         构建并重新部署 blog
   status         查看运行状态
   start          启动虚拟机
@@ -45,6 +46,19 @@ sync 参数:
     server sync              # 同步 blog 默认目录
     server sync ~/Pictures
     server sync ~/Github/blog /srv/blog
+
+push 参数:
+  用法: server push <本地文件> [远端路径]
+
+  推送单个文件到云服务器（目录请用 sync）
+  强制覆盖远端同名文件（--ignore-times，不比较时间戳/大小）
+  不指定远端路径时与本地路径相同
+  远端路径以 / 结尾视为目录，文件放入该目录；
+  否则视为目标文件的完整路径（可借此改名）
+  示例:
+    server push ~/Github/blog/some.md
+    server push ~/Github/blog/some.md ~/Github/blog/notes/
+    server push ~/.config/foo.toml /etc/foo.toml
 
 deploy 参数:
   用法: server deploy
@@ -229,6 +243,52 @@ cmd_sync() {
     echo "✓ 同步完成"
 }
 
+cmd_push() {
+    if $USE_VM; then
+        echo "错误: push 仅支持云服务器" >&2
+        exit 1
+    fi
+
+    local src="${1:-}" dst="${2:-}"
+
+    if [[ -z "$src" ]]; then
+        echo "错误: 缺少本地文件参数" >&2
+        echo "用法: server push <本地文件> [远端路径]" >&2
+        exit 1
+    fi
+
+    # 去掉末尾斜杠，避免文件被当作目录
+    src="${src%/}"
+
+    if [[ ! -e "$src" ]]; then
+        echo "错误: 本地路径不存在: $src" >&2
+        exit 1
+    fi
+    if [[ -d "$src" ]]; then
+        echo "错误: $src 是目录，请使用 server sync" >&2
+        exit 1
+    fi
+    if [[ ! -f "$src" ]]; then
+        echo "错误: $src 不是普通文件" >&2
+        exit 1
+    fi
+
+    # 远端路径: 不指定则与本地相同
+    if [[ -z "$dst" ]]; then
+        dst="$src"
+    fi
+
+    echo "推送: $src → ${CLOUD_USER}@${CLOUD_IP}:${dst}"
+
+    # --ignore-times: 不比较时间戳/大小，强制覆盖远端同名文件
+    rsync -avz --ignore-times --mkpath --info=progress2 \
+        -e "ssh -p ${CLOUD_PORT} -o ServerAliveInterval=30 -o ServerAliveCountMax=5" \
+        "$src" "${CLOUD_USER}@${CLOUD_IP}:${dst}"
+
+    echo ""
+    echo "✓ 推送完成"
+}
+
 cmd_deploy() {
     if $USE_VM; then
         echo "错误: deploy 仅支持云服务器" >&2
@@ -346,6 +406,9 @@ case "$CMD" in
         ;;
     sync)
         cmd_sync "$@"
+        ;;
+    push)
+        cmd_push "$@"
         ;;
     deploy)
         cmd_deploy

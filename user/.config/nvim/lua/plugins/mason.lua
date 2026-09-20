@@ -60,6 +60,30 @@ return {
             mason_lsp.setup({})
             local mason_path = vim.fn.glob(vim.fn.stdpath("data") .. "/mason/")
 
+            -- Windows 适配：mason 在 Windows 上为 node 系包生成 .cmd shim、原生二进制为 .exe，
+            -- 故按平台补后缀；Linux / macOS 返回与原实现完全相同的 { <mason>/bin/<name> }。
+            local is_win = vim.fn.has("win32") == 1
+            local function mason_cmd(name, ...)
+                local base = mason_path .. "bin/" .. name
+                local exe = base
+                if is_win then
+                    exe = nil
+                    for _, ext in ipairs({ ".cmd", ".exe", ".bat" }) do
+                        if vim.fn.filereadable(base .. ext) == 1 then
+                            exe = base .. ext
+                            break
+                        end
+                    end
+                    -- 都探测不到时按 mason 的 Windows shim 约定用 .cmd
+                    exe = exe or (base .. ".cmd")
+                end
+                local cmd = { exe }
+                for _, extra in ipairs({ ... }) do
+                    cmd[#cmd + 1] = extra
+                end
+                return cmd
+            end
+
             -- 新版 LSP 配置（Neovim 0.11+）
             local capabilities = vim.lsp.protocol.make_client_capabilities()
             capabilities.textDocument.completion.completionItem.snippetSupport = true
@@ -96,7 +120,8 @@ return {
                         vim.fn.getcwd() .. "/.venv",
                         vim.fn.getcwd() .. "/venv",
                         vim.fn.getcwd() .. "/.env",
-                        vim.fn.expand("~/.local/share/virtualenvs/*"),
+                        -- pipenv 虚拟环境：Windows 用 ~/.virtualenvs，Linux/macOS 用 ~/.local/share/virtualenvs
+                        vim.fn.expand(is_win and "~/.virtualenvs/*" or "~/.local/share/virtualenvs/*"),
                     }
                     local venv = ""
                     for _, path in ipairs(venv_paths) do
@@ -135,7 +160,7 @@ return {
             -- 服务器配置（新版格式）
             local servers = {
                 lua_ls = {
-                    cmd = { mason_path .. "bin/lua-language-server" },
+                    cmd = mason_cmd("lua-language-server"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                     settings = {
@@ -147,32 +172,32 @@ return {
                     },
                 },
                 ts_ls = {
-                    cmd = { mason_path .. "bin/typescript-language-server", "--stdio" },
+                    cmd = mason_cmd("typescript-language-server", "--stdio"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                 },
                 html = {
-                    cmd = { mason_path .. "bin/vscode-html-language-server", "--stdio" },
+                    cmd = mason_cmd("vscode-html-language-server", "--stdio"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                 },
                 cssls = {
-                    cmd = { mason_path .. "bin/vscode-css-language-server", "--stdio" },
+                    cmd = mason_cmd("vscode-css-language-server", "--stdio"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                 },
                 jsonls = {
-                    cmd = { mason_path .. "bin/vscode-json-language-server", "--stdio" },
+                    cmd = mason_cmd("vscode-json-language-server", "--stdio"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                 },
                 pyright = {
-                    cmd = { mason_path .. "bin/pyright-langserver", "--stdio" },
+                    cmd = mason_cmd("pyright-langserver", "--stdio"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                 },
                 clangd = {
-                    cmd = { mason_path .. "bin/clangd" },
+                    cmd = mason_cmd("clangd"),
                     on_attach = on_attach,
                     capabilities = capabilities,
                 },
@@ -190,7 +215,11 @@ return {
 CompileFlags:
   Add: -std=gnu++20
 ]==]
-            local clangd_cfg_path = vim.fn.expand("~/.config/clangd/config.yaml")
+            -- Windows 适配：clangd 在 Windows 上读 %LOCALAPPDATA%\clangd\config.yaml，
+            -- Linux / macOS 仍为 ~/.config/clangd/config.yaml（下面三元的 else 分支与原值逐字相同）
+            local clangd_cfg_path = is_win
+                    and ((os.getenv("LOCALAPPDATA") or vim.fn.expand("~/AppData/Local")) .. "/clangd/config.yaml")
+                or vim.fn.expand("~/.config/clangd/config.yaml")
             local exists = vim.fn.filereadable(clangd_cfg_path) == 1
             local same = exists and vim.fn.join(vim.fn.readfile(clangd_cfg_path), "\n") == clangd_cfg_body
             if not same then

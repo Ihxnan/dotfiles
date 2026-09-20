@@ -67,16 +67,33 @@ return {
             pattern = "python",
             callback = function()
                 local opts = { buffer = true, noremap = true, silent = true }
+                -- Windows 适配：Windows 上 Python 启动器名是 python（不是 python3）；
+                -- Linux/macOS 仍为 python3，生成的 rhs 与改动前逐字相同。
+                local is_win = vim.fn.has("win32") == 1
+                local py = is_win and "python" or "python3"
+                -- Windows 分支用 "%"：由 Vim 在按键时展开为当前文件名，双引号保证含空格也安全
+                -- （不用 Lua 侧一次性展开，避免 :saveas 后仍指向旧路径）；Linux 分支保持原样。
                 vim.keymap.set("n", "<leader>rr",
-                    "<cmd>w<CR><cmd>split | terminal python3 %<CR>i",
+                    is_win and ("<cmd>w<CR><cmd>split | terminal " .. py .. " \"%\"<CR>i")
+                        or ("<cmd>w<CR><cmd>split | terminal " .. py .. " %<CR>i"),
                     vim.tbl_extend("force", opts, { desc = "Python: 运行当前文件" }))
                 vim.keymap.set("n", "<leader>rt", function()
                     vim.cmd("w")
-                    vim.cmd("split | terminal pytest " .. vim.fn.expand("%") .. " -x --tb=short")
+                    if is_win then
+                        -- pwsh 下用双引号包住路径，避免含空格时参数分裂
+                        vim.cmd("split | terminal " .. py .. " -m pytest \"" .. vim.fn.expand("%") .. "\" -x --tb=short")
+                    else
+                        vim.cmd("split | terminal pytest " .. vim.fn.expand("%") .. " -x --tb=short")
+                    end
                 end, vim.tbl_extend("force", opts, { desc = "Python: 运行当前测试文件" }))
                 vim.keymap.set("n", "<leader>rT", function()
                     vim.cmd("w")
-                    vim.cmd("split | terminal pytest -x --tb=short")
+                    if is_win then
+                        -- Windows 上没有 pytest 独立命令名，统一走 python -m pytest
+                        vim.cmd("split | terminal " .. py .. " -m pytest -x --tb=short")
+                    else
+                        vim.cmd("split | terminal pytest -x --tb=short")
+                    end
                 end, vim.tbl_extend("force", opts, { desc = "Python: 运行全部测试" }))
             end,
         })

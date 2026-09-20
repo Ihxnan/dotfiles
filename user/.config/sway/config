@@ -34,7 +34,7 @@ exec udiskie
 
 # always
 exec_always autotiling
-exec_always node /home/ihxnan/Github/Code/server.js --edit
+# exec_always node /home/ihxnan/Github/Code/server.js --edit
 
 # SwayFX effects
 gaps inner 10
