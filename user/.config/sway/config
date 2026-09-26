@@ -144,6 +144,7 @@ output HDMI-A-1 mode 1920x1080@59.934Hz position 2560,0 scale 1
 #
     # Start chromium
     bindsym $mod+c exec chromium
+    # bindsym $mod+c exec qutebrowser
 
     # Start opencode
     bindsym $mod+Mod1+o exec $term -e opencode

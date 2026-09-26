@@ -6,11 +6,15 @@
 c.zoom.default = 120
 
 config.source('proxy.py')
-config.source('colors.py')
+config.source('matugen_colors.py')
 config.source('bindings.py')
 config.source('search.py')
 
-c.content.user_stylesheets = ["~/.config/qutebrowser/styles/black.css"]
+# Disabled together with forced dark mode (see colors.py). black.css forces
+# html/body to #111111 !important, which leaves light-themed pages with dark
+# text on a near-black backdrop once forced dark mode is off. It also cannot be
+# limited to selected sites (content.user_stylesheets takes no URL pattern).
+# c.content.user_stylesheets = ["~/.config/qutebrowser/styles/black.css"]
 
 config.load_autoconfig(False) # ignore GUI settings
 
@@ -38,18 +42,32 @@ c.auto_save.session = True
 
 c.zoom.levels = ["25%", "33%", "50%", "67%", "75%", "90%", "100%", "110%", "120%", "130%", "140%", "150%", "175%", "200%", "250%", "300%"]
 
-c.fonts.default_family = 'Noto Sans' # UI
-c.fonts.default_size = '14pt'
+# JetBrains Maple Mono for the whole browser: UI, hints and web content. It is
+# a monospace font (JetBrains Mono + Maple Mono, Nerd Font patched) covering
+# U+4E00-U+9FEF, so ordinary Chinese text renders fine; the rare glyphs it
+# lacks (CJK Ext-A/B) are the only ones that need a fallback.
+# The UI settings take a comma-separated family list, so Noto Sans CJK SC is
+# listed explicitly. The web settings are passed verbatim as one family name to
+# QWebEngineSettings.setFontFamily (a comma-separated list there is taken as a
+# single, non-existent family name and silently falls back to the default
+# font), so only the family itself is set and missing glyphs are resolved by
+# fontconfig (Noto Sans CJK SC on this system).
+c.fonts.default_family = 'JetBrains Maple Mono, Noto Sans CJK SC' # UI
+c.fonts.default_size = '13pt'
+c.fonts.web.family.standard = 'JetBrains Maple Mono'
+c.fonts.web.family.sans_serif = 'JetBrains Maple Mono'
+c.fonts.web.family.serif = 'JetBrains Maple Mono'
+c.fonts.web.family.fixed = 'JetBrains Maple Mono'
 c.fonts.web.size.default = 18 # webpage
 c.fonts.web.size.default_fixed = 18
 c.fonts.web.size.minimum = 18
-c.fonts.hints = 'normal 12pt SourceCodePro'
+c.fonts.hints = 'normal 12pt default_family'
 c.fonts.tabs.selected = '12pt default_family'
 c.fonts.tabs.unselected = '12pt default_family'
 c.fonts.statusbar = '14.5pt default_family'
 
 c.tabs.show = "always"
-c.tabs.position = "left"
+c.tabs.position = "top"
 c.tabs.padding = {"bottom":0, "left":0, "right":0, "top":0}
 c.tabs.indicator.width = 0
 c.tabs.width = '7%'
@@ -81,8 +99,11 @@ c.content.blocking.adblock.lists = [
   "https://easylist.to/easylist/easyprivacy.txt",
   "https://secure.fanboy.co.nz/fanboy-annoyance.txt",]
 
+# Sites pick their content language from this header (navigator.language
+# follows it too), so ask for Chinese first and keep English as fallback.
+c.content.headers.accept_language = 'zh-CN,zh;q=0.9,en;q=0.8'
+
 # privacy
-c.content.canvas_reading = False # breaks some sites, see `zcr` in `bindings.py`
 c.content.geolocation = False
 c.content.webrtc_ip_handling_policy = "default-public-interface-only"
 c.completion.open_categories = ['filesystem']

@@ -1,0 +1,549 @@
+#!/usr/bin/env python
+"""cpp-encrypt —— 用 #define 宏名把 C++ 源码「加密」，输出仍然能正常编译。
+
+每个 token 换成一个宏名，宏名是「种子串无限重复后的前缀」。两种风格：
+
+    --style ihxnan（默认）  I, Ih, Ihx, Ihxn, Ihxna, Ihxnan, IhxnanI, IhxnanIh, ...
+    --style underscore      _, __, ___, ____, _____, ...
+
+（也可以用 -s 直接给种子串，等价于换一种前缀序列。）
+
+宏名互为前缀，靠预处理器的最长标识符匹配消歧（写 `Ihxn` 只会展开成它自己那个）；
+输出时每个宏名后面补一个空格，相邻宏名不会被拼成一个标识符。
+
+两个必须知道的限制：
+
+1. ( ) , 这三个 token 默认不替换。预处理器只在一个「函数式宏名」后面紧跟字面量的
+   ( 时才展开它，实参也是按字面量的 , 切分的 —— 一旦把 ( ) , 换成宏名，源码里
+   all(v)、rep(i, 1, n) 这类函数式宏调用就再也不会展开。确认用不到函数式宏时
+   可以加 --aggressive。
+2. 预处理指令（#include / #define / #if ...）整行原样保留，字符串与字符字面量也
+   原样保留。所以 #define 里用了 # 或 ##（字符串化 / 粘贴）时会拒绝生成。
+
+另外：underscore 风格的宏名一个 token 长一个字符，第 N 个宏名就是 N 个下划线。
+813 个 token 的源文件实测能正常编译（最长标识符 821 个字符），但文件越大名字越长。
+"""
+
+import argparse
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+DEFAULT_SEED = "Ihxnan"
+
+# --style 的名字 → 种子串。宏名 = 种子无限重复后的前缀，所以换个种子就是换种风格：
+#   Ihxnan  → I, Ih, Ihx, Ihxn, Ihxna, Ihxnan, IhxnanI, ...
+#   _       → _, __, ___, ____, ...
+STYLES = {
+    "ihxnan": "Ihxnan",
+    "underscore": "_",
+    "_": "_",
+}
+
+# 相邻出现时合并成一个宏：int / long long / unsigned long long int
+TYPE_SPECIFIERS = frozenset(
+    "signed unsigned short long int char bool float double wchar_t void".split()
+)
+
+# 永远不替换：# 和 ## 只在预处理指令里有意义
+ALWAYS_KEEP = frozenset({"#", "##"})
+# 默认不替换：函数式宏调用与实参切分要靠它们（见模块开头说明）
+CALL_PUNCT = frozenset({"(", ")", ","})
+
+# 最长匹配优先
+PUNCT = sorted(
+    [
+        "->*", "<<=", ">>=", "...", "<=>", "##",
+        "::", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||",
+        "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "->", ".*",
+        "+", "-", "*", "/", "%", "=", "<", ">", "!", "&", "|", "^", "~",
+        "?", ":", ";", ",", ".", "(", ")", "[", "]", "{", "}", "#",
+    ],
+    key=len,
+    reverse=True,
+)
+
+
+class EncryptError(Exception):
+    """带着一批「拒绝生成」的理由退出。"""
+
+    def __init__(self, messages):
+        self.messages = list(messages)
+        super().__init__("；".join(self.messages))
+
+
+class Token:
+    __slots__ = ("kind", "text", "line", "pos", "bol", "directive", "key", "out")
+
+    def __init__(self, kind, text, line, pos, bol):
+        self.kind = kind
+        self.text = text
+        self.line = line
+        self.pos = pos
+        self.bol = bol          # 行首：前面只有空白和注释
+        self.directive = False  # 属于某条预处理指令
+        self.key = None         # 要替换时用它查对照表
+        self.out = None         # 覆盖原样输出（被合并掉的 token 输出空串）
+
+
+def _ident_start(c):
+    # ord(c) > 127 覆盖 UTF-8 标识符；$ 是 GNU 扩展
+    return c == "_" or c == "$" or "a" <= c <= "z" or "A" <= c <= "Z" or ord(c) > 127
+
+
+def _ident_char(c):
+    return _ident_start(c) or "0" <= c <= "9"
+
+
+def _pp_number_end(text, i):
+    """预处理器 pp-number：比「数字字面量」宽松得多。
+
+    1e+9 / 1e-9 / 0x1p3 / 100'000 / 10ULL / .5 / 3.14f 都是一个 token。
+    """
+    n = len(text)
+    j = i + 1
+    while j < n:
+        c = text[j]
+        if _ident_char(c) or c == ".":
+            j += 1
+        elif c == "'" and j + 1 < n and _ident_char(text[j + 1]):
+            j += 1
+        elif c in "+-" and text[j - 1] in "eEpP":
+            j += 1
+        else:
+            break
+    return j
+
+
+class Lexer:
+    def __init__(self, text):
+        self.text = text
+        self.n = len(text)
+        self.i = 0
+        self.line = 1
+        self.bol = True
+        self.tokens = []
+
+    def fail(self, msg):
+        raise EncryptError([f"{self.line} 行: {msg}"])
+
+    def add(self, kind, end):
+        tok = Token(kind, self.text[self.i:end], self.line, self.i, self.bol)
+        self.line += tok.text.count("\n")
+        if kind not in ("ws", "cmt"):
+            self.bol = False
+        self.tokens.append(tok)
+        self.i = end
+
+    def literal(self, i):
+        """识别字符串/字符字面量，返回 (结束位置, kind)；不是字面量返回 (None, None)。"""
+        text, n = self.text, self.n
+        j = None
+        for prefix in ("u8", "u", "U", "L"):
+            if text.startswith(prefix, i) and i + len(prefix) < n and text[i + len(prefix)] in "\"'R":
+                j = i + len(prefix)
+                break
+        if j is None:
+            if text[i] in "\"'":
+                j = i
+            elif text.startswith('R"', i):
+                j = i
+            else:
+                return None, None
+        if text[j] == "R" and text[j + 1:j + 2] == '"':
+            paren = text.find("(", j + 2)
+            if paren < 0:
+                return None, None
+            delim = text[j + 2:paren]
+            if len(delim) > 16 or not all(c.isascii() and (c.isalnum() or c == "_") for c in delim):
+                self.fail('原始字符串 R"定界符(...)定界符" 的定界符不合法')
+            term = ")" + delim + '"'
+            end = text.find(term, paren + 1)
+            if end < 0:
+                self.fail("原始字符串没有闭合")
+            return end + len(term), "str"
+        if text[j] not in "\"'":
+            return None, None   # 只是以 u/U/L/R 开头的普通标识符
+        quote = text[j]
+        k = j + 1
+        while k < n:
+            c = text[k]
+            if c == "\\":
+                k += 2
+                continue
+            if c == quote:
+                return k + 1, ("chr" if quote == "'" else "str")
+            if c == "\n":
+                self.fail("字符字面量没有闭合" if quote == "'" else "字符串字面量没有闭合")
+            k += 1
+        self.fail("文件末尾的字符串/字符字面量没有闭合")
+
+    def line_comment_end(self):
+        text, n, k = self.text, self.n, self.i + 2
+        while k < n:
+            if text[k] == "\\":
+                if text[k + 1:k + 2] == "\n":
+                    k += 2
+                elif text[k + 1:k + 2] == "\r" and text[k + 2:k + 3] == "\n":
+                    k += 3
+                else:
+                    k += 2
+                continue
+            if text[k] == "\n":
+                break
+            k += 1
+        return k
+
+    def run(self):
+        text, n = self.text, self.n
+        while self.i < n:
+            c = text[self.i]
+            if c == "\n":
+                self.add("ws", self.i + 1)
+                self.bol = True
+                continue
+            if c in " \t\r\v\f":
+                j = self.i
+                while j < n and text[j] in " \t\r\v\f":
+                    j += 1
+                self.add("ws", j)
+                continue
+            if text.startswith("//", self.i):
+                self.add("cmt", self.line_comment_end())
+                continue
+            if text.startswith("/*", self.i):
+                end = text.find("*/", self.i + 2)
+                if end < 0:
+                    self.fail("块注释 /* 没有闭合")
+                self.add("cmt", end + 2)
+                continue
+            if c == "\\":
+                if text[self.i + 1:self.i + 2] in ("u", "U"):
+                    self.fail("不支持 \\u / \\U 形式的标识符（UCN）")
+                self.add("raw", self.i + 1)     # 行接续的反斜杠，原样保留
+                continue
+            end, kind = self.literal(self.i)
+            if end is not None:
+                self.add(kind, end)
+                continue
+            if "0" <= c <= "9" or (c == "." and "0" <= text[self.i + 1:self.i + 2] <= "9"):
+                self.add("num", _pp_number_end(text, self.i))
+                continue
+            if _ident_start(c):
+                j = self.i
+                while j < n and _ident_char(text[j]):
+                    j += 1
+                self.add("id", j)
+                continue
+            for p in PUNCT:
+                if text.startswith(p, self.i):
+                    self.add("punct", self.i + len(p))
+                    break
+            else:
+                self.fail(f"无法识别的字符 {c!r}")
+        return self.tokens
+
+
+def mark_directives(tokens, text):
+    """把行首 # 开头的整条逻辑行（含反斜杠续行）标成 directive：原样保留、不替换。"""
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if not (tok.kind == "punct" and tok.text == "#" and tok.bol):
+            i += 1
+            continue
+        tok.directive = True
+        j = i + 1
+        while j < len(tokens):
+            nxt = tokens[j]
+            if nxt.kind == "ws" and nxt.text == "\n":
+                p = nxt.pos - 1
+                if p >= 0 and text[p] == "\r":
+                    p -= 1
+                if p >= 0 and text[p] == "\\":
+                    nxt.directive = True    # 续行
+                    j += 1
+                    continue
+                break
+            nxt.directive = True
+            j += 1
+        i = j
+
+
+def each_directive(tokens):
+    """产出 (指令名, body token 列表, 指令名在 body 里的下标)。"""
+    i = 0
+    while i < len(tokens):
+        if not tokens[i].directive:
+            i += 1
+            continue
+        j = i
+        while j < len(tokens) and tokens[j].directive:
+            j += 1
+        body = tokens[i:j]
+        at = next((k for k, b in enumerate(body) if b.kind == "id"), None)
+        yield (body[at].text if at is not None else None), body, at
+        i = j
+
+
+def is_seed_prefix(word, seed, min_len):
+    """word 是不是 seed 无限重复串的前缀（且长度不低于 min_len）。"""
+    if not word or len(word) < min_len:
+        return False
+    need = -(-len(word) // len(seed))
+    return (seed * need).startswith(word)
+
+
+def check(tokens, seed, min_len):
+    """会静默改变程序行为的写法，一律拒绝生成。"""
+    problems = []
+    seen = set()
+
+    def report(line, msg):
+        if (line, msg) not in seen:
+            seen.add((line, msg))
+            problems.append(f"{line} 行: {msg}")
+
+    for t in tokens:
+        if t.kind == "id" and is_seed_prefix(t.text, seed, min_len):
+            report(
+                t.line,
+                f"标识符 {t.text} 会和生成的宏名撞车（它是 {seed!r} 重复串的前缀）；"
+                f"加 --min-len {len(t.text) + 1} 可以从它之后开始分配",
+            )
+    for name, body, at in each_directive(tokens):
+        if name != "define" or at is None:
+            continue
+        for b in body[at + 1:]:
+            if b.kind == "punct" and b.text in ("#", "##"):
+                report(
+                    b.line,
+                    f"#define 里用了 {b.text}（字符串化 / 粘贴）；"
+                    "实参被换成宏名以后，字符串化的结果和粘贴出来的标识符都会变",
+                )
+    return problems
+
+
+def assign_keys(tokens, numbers, aggressive):
+    keep = ALWAYS_KEEP | (frozenset() if aggressive else CALL_PUNCT)
+    for t in tokens:
+        if t.directive:
+            continue
+        if t.kind == "id":
+            t.key = t.text
+        elif t.kind == "punct" and t.text not in keep:
+            t.key = t.text
+        elif t.kind == "num" and numbers:
+            t.key = t.text
+
+
+def merge_specifiers(tokens):
+    """把相邻的类型说明符合并成一个单元，这样 long long 只占一个宏名。
+
+    只合并中间隔着不含换行的空白的 ident，避免动到行号。
+    """
+    n = len(tokens)
+    i = 0
+    while i < n:
+        first = tokens[i]
+        if first.directive or first.kind != "id" or first.text not in TYPE_SPECIFIERS:
+            i += 1
+            continue
+        words = [first.text]
+        j = i + 1
+        while j + 1 < n:
+            gap, nxt = tokens[j], tokens[j + 1]
+            if (
+                gap.kind == "ws"
+                and gap.text != "\n"
+                and not nxt.directive
+                and nxt.kind == "id"
+                and nxt.text in TYPE_SPECIFIERS
+            ):
+                words.append(nxt.text)
+                j += 2
+            else:
+                break
+        if len(words) > 1:
+            first.key = " ".join(words)
+            for k in range(i + 1, j):
+                tokens[k].key = None
+                tokens[k].out = ""
+            i = j
+        else:
+            i += 1
+
+
+class Mapper:
+    """按首次出现顺序发宏名。"""
+
+    def __init__(self, seed, min_len):
+        self.seed = seed
+        self.length = min_len
+        self.map = {}
+
+    def name_for(self, key):
+        name = self.map.get(key)
+        if name is None:
+            length = self.length
+            self.length += 1
+            name = (self.seed * (length // len(self.seed) + 1))[:length]
+            self.map[key] = name
+        return name
+
+
+def encrypt(text, seed, min_len, numbers, merge, aggressive, force, display_path):
+    tokens = Lexer(text).run()
+    mark_directives(tokens, text)
+    problems = check(tokens, seed, min_len)
+    if problems and not force:
+        raise EncryptError(problems)
+    assign_keys(tokens, numbers, aggressive)
+    if merge:
+        merge_specifiers(tokens)
+
+    # 定义块插在开头连续的空白/注释/指令之后：放在 #include 前面会污染被包含的头文件
+    split = 0
+    while split < len(tokens) and (tokens[split].kind in ("ws", "cmt") or tokens[split].directive):
+        split += 1
+    first_line = tokens[split].line if split < len(tokens) else 1
+
+    mapper = Mapper(seed, min_len)
+    parts = []
+    for t in tokens[split:]:
+        if t.key is not None:
+            # 名字前面也要断开：字符串字面量紧跟一个标识符会被当成字面量后缀
+            if parts and not parts[-1][-1].isspace():
+                parts.append(" ")
+            parts.append(mapper.name_for(t.key) + " ")
+        else:
+            piece = t.out if t.out is not None else t.text
+            if piece:
+                parts.append(piece)
+    body = "".join(parts)
+
+    head = "".join(t.text for t in tokens[:split])
+    if head and not head.endswith("\n"):
+        head += "\n"
+    defines = "".join(f"#define {name} {key}\n" for key, name in mapper.map.items())
+    escaped = display_path.replace("\\", "\\\\").replace('"', '\\"')
+    out = f'{head}{defines}#line {first_line} "{escaped}"\n{body}'
+    return out, mapper.map, problems
+
+
+def write_out(path, data):
+    path = Path(path)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".cpp-encrypt-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
+            fh.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(
+        description="用一个 #define 宏名包一个 token，把 C++ 源码加密成仍然能编译的样子",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "示例:\n"
+            "  cpp-encrypt a.cpp                  # 生成 a.enc.cpp（默认 Ihxnan 风格）\n"
+            "  cpp-encrypt a.cpp --style _        # 换成 _, __, ___ 风格\n"
+            "  cpp-encrypt a.cpp -o - | g++ -x c++ - -O2\n"
+            "  cpp-encrypt a.cpp --min-len 7      # 从 IhxnanI 开始，避开 I / Ih 这类短名字\n"
+            "  cpp-encrypt a.cpp --map -          # 顺带打印 token → 宏名 对照表\n"
+        ),
+    )
+    ap.add_argument("file", help="要加密的 C++ 源文件")
+    ap.add_argument("-o", "--output", help="输出路径，- 表示写到 stdout；默认 <文件名>.enc.cpp")
+    naming = ap.add_mutually_exclusive_group()
+    naming.add_argument(
+        "--style",
+        choices=sorted(STYLES),
+        default="ihxnan",
+        help="宏名风格：ihxnan → I, Ih, Ihx, ...；underscore（或 _）→ _, __, ___ ...",
+    )
+    naming.add_argument("-s", "--seed", help=f"自定义种子串，默认 {DEFAULT_SEED}")
+    ap.add_argument("--min-len", type=int, default=1, metavar="N", help="从第 N 长的前缀开始分配宏名")
+    ap.add_argument("--no-merge", action="store_true", help="不把 long long 这类多词类型说明符合成一个宏")
+    ap.add_argument("--no-numbers", action="store_true", help="数字字面量保持原样")
+    ap.add_argument("--aggressive", action="store_true", help="连 ( ) , 也替换（源码里用了函数式宏就编不过）")
+    ap.add_argument("--map", dest="map_path", help="把 token → 宏名 对照表写到文件，- 表示 stdout")
+    ap.add_argument("--force", action="store_true", help="把安全检查的报错降级成警告，照常生成")
+    ap.add_argument("-q", "--quiet", action="store_true", help="不打印统计信息")
+    args = ap.parse_args(argv)
+
+    if args.min_len < 1:
+        print("cpp-encrypt: --min-len 至少是 1", file=sys.stderr)
+        return 1
+    seed = args.seed or STYLES[args.style]
+    if not seed:
+        print("cpp-encrypt: 种子串不能为空", file=sys.stderr)
+        return 1
+    if args.output == "-" and args.map_path == "-":
+        print("cpp-encrypt: -o - 和 --map - 会同时写 stdout，请改掉其中一个", file=sys.stderr)
+        return 1
+
+    src = Path(args.file)
+    if not src.is_file():
+        print(f"cpp-encrypt: 找不到文件 {args.file}", file=sys.stderr)
+        return 1
+
+    text = src.read_text(encoding="utf-8", errors="surrogateescape")
+    try:
+        out, mapping, problems = encrypt(
+            text,
+            seed,
+            args.min_len,
+            not args.no_numbers,
+            not args.no_merge,
+            args.aggressive,
+            args.force,
+            args.file,
+        )
+    except EncryptError as exc:
+        for msg in exc.messages:
+            print(f"cpp-encrypt: 拒绝生成 —— {msg}", file=sys.stderr)
+        print("cpp-encrypt: 确认没问题可以加 --force 强行生成", file=sys.stderr)
+        return 2
+
+    if problems:
+        for msg in problems:
+            print(f"cpp-encrypt: 警告（--force 已放行）—— {msg}", file=sys.stderr)
+
+    if args.map_path:
+        table = "".join(f"{key}\t{name}\n" for key, name in mapping.items())
+        if args.map_path == "-":
+            sys.stdout.write(table)
+        else:
+            try:
+                Path(args.map_path).write_text(table, encoding="utf-8")
+            except OSError as exc:
+                print(f"cpp-encrypt: 写对照表失败 —— {exc}", file=sys.stderr)
+                return 1
+
+    if args.output == "-":
+        sys.stdout.write(out)
+        where = "stdout"
+    else:
+        out_path = Path(args.output) if args.output else src.with_name(src.stem + ".enc.cpp")
+        try:
+            write_out(out_path, out)
+        except OSError as exc:
+            print(f"cpp-encrypt: 写文件失败 —— {exc}", file=sys.stderr)
+            return 1
+        where = str(out_path)
+
+    if not args.quiet:
+        print(f"cpp-encrypt: {len(mapping)} 个 token 换成宏名 → {where}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
