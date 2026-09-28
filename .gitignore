@@ -18,10 +18,12 @@ user/.config/niri/dms/colors.kdl
 user/.config/starship.toml
 user/.config/yazi/theme.toml
 user/.config/mpd/log
-user/.config/nvim/nvim.log
 user/.config/DankMaterialShell/firefox.css
 user/.config/qt6ct/colors/matugen.conf
 
 # opencode
 user/.config/opencode/node_modules/
 user/.config/opencode/.reasonix/
+
+# nvim is its own standalone git repo (qwerty / colemak branches)
+user/.config/nvim/
