@@ -86,7 +86,7 @@ create_symlink "$DOTFILES_DIR/user/.config/kitty" "$HOME/.config/kitty"
 create_symlink "$DOTFILES_DIR/user/.config/matugen" "$HOME/.config/matugen"
 create_symlink "$DOTFILES_DIR/user/.config/mpd" "$HOME/.config/mpd"
 create_symlink "$DOTFILES_DIR/user/.config/ncmpcpp" "$HOME/.config/ncmpcpp"
-create_symlink "$DOTFILES_DIR/user/.config/nvim" "$HOME/.config/nvim"
+# nvim 配置已独立为单独仓库（~/Github/nvim），由该仓库的 link.sh 自行软链接到 ~/.config/nvim
 create_symlink "$DOTFILES_DIR/user/.config/polybar" "$HOME/.config/polybar"
 create_symlink "$DOTFILES_DIR/user/.config/rofi" "$HOME/.config/rofi"
 create_symlink "$DOTFILES_DIR/user/.config/yazi" "$HOME/.config/yazi"
