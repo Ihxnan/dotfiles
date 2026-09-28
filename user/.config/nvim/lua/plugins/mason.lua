@@ -60,24 +60,8 @@ return {
             mason_lsp.setup({})
             local mason_path = vim.fn.glob(vim.fn.stdpath("data") .. "/mason/")
 
-            -- Windows 适配：mason 在 Windows 上为 node 系包生成 .cmd shim、原生二进制为 .exe，
-            -- 故按平台补后缀；Linux / macOS 返回与原实现完全相同的 { <mason>/bin/<name> }。
-            local is_win = vim.fn.has("win32") == 1
             local function mason_cmd(name, ...)
-                local base = mason_path .. "bin/" .. name
-                local exe = base
-                if is_win then
-                    exe = nil
-                    for _, ext in ipairs({ ".cmd", ".exe", ".bat" }) do
-                        if vim.fn.filereadable(base .. ext) == 1 then
-                            exe = base .. ext
-                            break
-                        end
-                    end
-                    -- 都探测不到时按 mason 的 Windows shim 约定用 .cmd
-                    exe = exe or (base .. ".cmd")
-                end
-                local cmd = { exe }
+                local cmd = { mason_path .. "bin/" .. name }
                 for _, extra in ipairs({ ... }) do
                     cmd[#cmd + 1] = extra
                 end
@@ -120,8 +104,8 @@ return {
                         vim.fn.getcwd() .. "/.venv",
                         vim.fn.getcwd() .. "/venv",
                         vim.fn.getcwd() .. "/.env",
-                        -- pipenv 虚拟环境：Windows 用 ~/.virtualenvs，Linux/macOS 用 ~/.local/share/virtualenvs
-                        vim.fn.expand(is_win and "~/.virtualenvs/*" or "~/.local/share/virtualenvs/*"),
+                        -- pipenv 虚拟环境
+                        vim.fn.expand("~/.local/share/virtualenvs/*"),
                     }
                     local venv = ""
                     for _, path in ipairs(venv_paths) do
@@ -215,11 +199,7 @@ return {
 CompileFlags:
   Add: -std=gnu++20
 ]==]
-            -- Windows 适配：clangd 在 Windows 上读 %LOCALAPPDATA%\clangd\config.yaml，
-            -- Linux / macOS 仍为 ~/.config/clangd/config.yaml（下面三元的 else 分支与原值逐字相同）
-            local clangd_cfg_path = is_win
-                    and ((os.getenv("LOCALAPPDATA") or vim.fn.expand("~/AppData/Local")) .. "/clangd/config.yaml")
-                or vim.fn.expand("~/.config/clangd/config.yaml")
+            local clangd_cfg_path = vim.fn.expand("~/.config/clangd/config.yaml")
             local exists = vim.fn.filereadable(clangd_cfg_path) == 1
             local same = exists and vim.fn.join(vim.fn.readfile(clangd_cfg_path), "\n") == clangd_cfg_body
             if not same then

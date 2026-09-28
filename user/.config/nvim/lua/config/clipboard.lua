@@ -13,8 +13,8 @@
 local keymap = vim.keymap
 
 -- ======================== 系统剪贴板快捷键 ========================
--- 兼容 Windows 系统剪贴板 + 黑洞寄存器
--- 由 keymaps.lua（普通 Neovim）显式调用；VSCode 分支不注册这些，保留 VSCode 原生 Ctrl+C/V/X
+-- 系统剪贴板 + 黑洞寄存器
+-- 由 keymaps.lua 显式调用
 local function setup_system_clipboard()
 	keymap.set("n", "<C-x>", '"+dd', { desc = "Ctrl+x：剪切当前行到系统剪贴板" })
 	keymap.set("n", "<C-c>", '"+yy', { desc = "Ctrl+c：复制当前行到系统剪贴板" })
@@ -31,47 +31,25 @@ end
 
 -- ======================== 竞赛模板一键复制 ========================
 
--- ======================== 平台相关路径（Windows 适配） ========================
--- 两个路径都可用环境变量覆盖（Linux / Windows 通用）：
+-- ======================== 平台相关路径 ========================
+-- 两个路径都可用环境变量覆盖：
 --   IHXNAN_INCLUDE_DIR —— 自定义头文件搜索目录
 --   IHXNAN_TEMPLATE_PY —— ihxnan 竞赛模板源码（ihxnan.py）路径
-local is_win = vim.fn.has("win32") == 1
 
 -- 头文件搜索目录：判断 #include <xxx> 能否内联时使用
---   * 未设环境变量时：Windows 默认 MinGW-w64 的 include 目录；Linux/macOS 沿用原值
 local INCLUDE_DIR = (function()
 	local env = os.getenv("IHXNAN_INCLUDE_DIR")
 	if env and env ~= "" then
 		return (env:gsub("[/\\]+$", "")) .. "/"
 	end
-	if is_win then
-		-- MinGW-w64（MSYS2）默认位置；用 scoop / 独立解压的自行改或用环境变量覆盖
-		return "C:/msys64/mingw64/include/"
-	end
 	return "/usr/local/include/"
 end)()
 
 -- Python 竞赛模板文件（ihxnan 模块源码，pip 安装位置）
---   * 未设环境变量时：Windows 在常见 Python 安装位置里查找；Linux/macOS 沿用原值
 local PY_INCLUDE_FILE = (function()
 	local env = os.getenv("IHXNAN_TEMPLATE_PY")
 	if env and env ~= "" then
 		return env
-	end
-	if is_win then
-		-- 官方安装器（用户级 / 全局）、Store 版、pip --user、scoop 的常见位置
-		for _, pattern in ipairs({
-			"~/AppData/Local/Programs/Python/Python*/Lib/site-packages/ihxnan.py",
-			"~/AppData/Roaming/Python/Python*/site-packages/ihxnan.py",
-			"~/AppData/Local/Packages/PythonSoftwareFoundation.Python.*/LocalCache/local-packages/Python*/site-packages/ihxnan.py",
-			"~/scoop/apps/python/current/Lib/site-packages/ihxnan.py",
-		}) do
-			local hit = vim.fn.glob(vim.fn.expand(pattern), true, true)[1]
-			if hit and hit ~= "" then
-				return hit
-			end
-		end
-		return vim.fn.expand("~/AppData/Local/Programs/Python/Python314/Lib/site-packages/ihxnan.py")
 	end
 	return "/home/ihxnan/.local/lib/python3.14/site-packages/ihxnan.py"
 end)()
@@ -288,7 +266,7 @@ local function copy_all_with_info()
 	print("✅ 已复制 " .. included_count .. " 个模板 (" .. total .. " 字节)")
 end
 
--- 模板内联复制映射（普通 Neovim 与 VSCode 分支都会注册）
+-- 模板内联复制映射
 local function setup_template_copy()
 	keymap.set(
 		"n",
@@ -298,9 +276,7 @@ local function setup_template_copy()
 	)
 end
 
--- 导出供其他模块调用：
---   keymaps.lua —— 普通 Neovim，注册全部剪贴板映射
---   vscode.lua  —— VSCode 分支，只注册 <C-a><C-i>
+-- 导出供 keymaps.lua 调用（注册全部剪贴板映射）
 return {
 	copy_all_with_info = copy_all_with_info,
 	setup_system_clipboard = setup_system_clipboard,

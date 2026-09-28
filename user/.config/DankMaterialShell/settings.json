@@ -273,7 +273,8 @@
       "shadowColorMode": "default",
       "shadowCustomColor": "#000000",
       "clickThrough": true,
-      "followInterfaceStyle": false
+      "followInterfaceStyle": false,
+      "widgetFollowInterfaceStyle": true
     }
   ],
   "builtInPluginSettings": {
@@ -287,5 +288,5 @@
       "trigger": "qrg"
     }
   },
-  "configVersion": 29
+  "configVersion": 31
 }
