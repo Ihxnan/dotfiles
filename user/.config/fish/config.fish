@@ -4,7 +4,7 @@ if status is-interactive
     bind \cy accept-autosuggestion
 end
 set fish_greeting ""
-fish_add_path ~/.local/bin ~/.npm-global/bin ~/.local/share/pnpm/bin
+fish_add_path ~/.local/bin
 starship init fish | source
 zoxide init fish --cmd cd | source
 # 111

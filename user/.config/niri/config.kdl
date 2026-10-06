@@ -18,6 +18,8 @@ environment {
     // 输入法环境变量
     XMODIFIERS "@im=fcitx"
     QT_IM_MODULES "wayland;fcitx"
+    QT_IM_MODULE "fcitx"
+    SDL_IM_MODULE "fcitx"
     // qt主题
     QT_QPA_PLATFORMTHEME "gtk3"
     QT_QPA_PLATFORMTHEME_QT6 "gtk3"
@@ -33,8 +35,6 @@ environment {
 input {
     keyboard {
         xkb {
-            // Caps Lock 当左 Ctrl 用
-            options "ctrl:nocaps"
         }
         repeat-delay 250
 	    repeat-rate 35
@@ -95,7 +95,6 @@ spawn-at-startup "xhost" "+si:localuser:root"
 // dms 搜索
 spawn-at-startup "dsearch" "serve"
 // x11<--> 剪贴板同步
-spawn-at-startup "systemctl" "--user" "start" "linuxqq-clipsync"
 
 // 取消启动niri时自动开启快捷键教程
 hotkey-overlay {

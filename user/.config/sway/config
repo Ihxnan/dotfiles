@@ -132,6 +132,8 @@ output HDMI-A-1 mode 1920x1080@59.934Hz position 2560,0 scale 1
 #
     input type:keyboard {
         xkb_layout "eu"
+        # xkb_layout "us"
+        # xkb_variant "colemak"
         xkb_options ctrl:nocaps
     }
 #

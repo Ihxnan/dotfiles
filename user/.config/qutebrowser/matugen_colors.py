@@ -26,53 +26,53 @@
 # --- statusbar（状态栏；刻意保持深底，原因见上方说明）---
 # 状态栏按当前模式换配色：normal / command / insert / private / passthrough /
 # caret 各成一组，互不叠加，每组 bg 决定底色、fg 决定状态栏上大部分文字。
-c.colors.statusbar.normal.bg = '#0d0e13'  # normal 模式状态栏底色（最常看到的那条）
-c.colors.statusbar.normal.fg = '#e3e1e9'  # normal 模式状态栏的默认文字色（URL 另有 url.* 一组键，见下）
-c.colors.statusbar.command.bg = '#0d0e13'  # 命令模式（按 `:`）状态栏底色
-c.colors.statusbar.command.fg = '#e3e1e9'  # 命令模式状态栏文字色（`: 命令` 与补全提示都吃这个色）
-c.colors.statusbar.command.private.bg = '#292a2f'  # 私有窗口里进命令模式的底色（private + command 的组合态，单独一组）
-c.colors.statusbar.command.private.fg = '#e3e1e9'  # 私有窗口里进命令模式的文字色
-c.colors.statusbar.insert.bg = '#e5bad8'  # insert 模式（按 `i`，按键送进网页输入框）底色 —— 换色是提醒"现在打字不会触发快捷键"
-c.colors.statusbar.insert.fg = '#44263e'  # insert 模式文字色
-c.colors.statusbar.private.bg = '#292a2f'  # 私有浏览窗口（`--private`）状态栏底色
-c.colors.statusbar.private.fg = '#e3e1e9'  # 私有浏览窗口状态栏文字色
-c.colors.statusbar.passthrough.bg = '#292a2f'  # passthrough 模式（按键原样交给网页，如 Google Docs / YouTube 快捷键）底色
-c.colors.statusbar.passthrough.fg = '#e3e1e9'  # passthrough 模式文字色
-c.colors.statusbar.caret.bg = '#bac3ff'  # caret 模式（按 `v` 用键盘光标读页面）底色
-c.colors.statusbar.caret.fg = '#212c61'  # caret 模式文字色
-c.colors.statusbar.caret.selection.bg = '#c3c5dd'  # caret 模式下已拉出选区时的底色（和上面 caret 区分开）
-c.colors.statusbar.caret.selection.fg = '#2c2f42'  # caret 模式带选区时的文字色
-c.colors.statusbar.progress.bg = '#bac3ff'  # 页面加载进度条的颜色；它是以 background-color 画在状态栏上的填充条，所以键名是 .bg 而不是 .fg
-c.colors.statusbar.url.fg = '#e3e1e9'  # 状态栏里 URL 文本的默认色
-c.colors.statusbar.url.hover.fg = '#e5bad8'  # 鼠标悬停链接、状态栏预览该链接时的 URL 色
+c.colors.statusbar.normal.bg = '#100e07'  # normal 模式状态栏底色（最常看到的那条）
+c.colors.statusbar.normal.fg = '#e9e2d4'  # normal 模式状态栏的默认文字色（URL 另有 url.* 一组键，见下）
+c.colors.statusbar.command.bg = '#100e07'  # 命令模式（按 `:`）状态栏底色
+c.colors.statusbar.command.fg = '#e9e2d4'  # 命令模式状态栏文字色（`: 命令` 与补全提示都吃这个色）
+c.colors.statusbar.command.private.bg = '#2d2a21'  # 私有窗口里进命令模式的底色（private + command 的组合态，单独一组）
+c.colors.statusbar.command.private.fg = '#e9e2d4'  # 私有窗口里进命令模式的文字色
+c.colors.statusbar.insert.bg = '#aad0b2'  # insert 模式（按 `i`，按键送进网页输入框）底色 —— 换色是提醒"现在打字不会触发快捷键"
+c.colors.statusbar.insert.fg = '#153722'  # insert 模式文字色
+c.colors.statusbar.private.bg = '#2d2a21'  # 私有浏览窗口（`--private`）状态栏底色
+c.colors.statusbar.private.fg = '#e9e2d4'  # 私有浏览窗口状态栏文字色
+c.colors.statusbar.passthrough.bg = '#2d2a21'  # passthrough 模式（按键原样交给网页，如 Google Docs / YouTube 快捷键）底色
+c.colors.statusbar.passthrough.fg = '#e9e2d4'  # passthrough 模式文字色
+c.colors.statusbar.caret.bg = '#dcc66e'  # caret 模式（按 `v` 用键盘光标读页面）底色
+c.colors.statusbar.caret.fg = '#3a3000'  # caret 模式文字色
+c.colors.statusbar.caret.selection.bg = '#d2c6a1'  # caret 模式下已拉出选区时的底色（和上面 caret 区分开）
+c.colors.statusbar.caret.selection.fg = '#373016'  # caret 模式带选区时的文字色
+c.colors.statusbar.progress.bg = '#dcc66e'  # 页面加载进度条的颜色；它是以 background-color 画在状态栏上的填充条，所以键名是 .bg 而不是 .fg
+c.colors.statusbar.url.fg = '#e9e2d4'  # 状态栏里 URL 文本的默认色
+c.colors.statusbar.url.hover.fg = '#aad0b2'  # 鼠标悬停链接、状态栏预览该链接时的 URL 色
 c.colors.statusbar.url.error.fg = '#ffb4ab'  # 页面加载失败时 URL 的颜色
-c.colors.statusbar.url.warn.fg = '#e5bad8'  # 页面带着警告加载成功时 URL 的颜色（例如证书有问题）
-c.colors.statusbar.url.success.http.fg = '#e3e1e9'  # 成功加载 http:// 页面时 URL 的颜色（与下一行同色，等于不再区分协议）
-c.colors.statusbar.url.success.https.fg = '#e3e1e9'  # 成功加载 https:// 页面时 URL 的颜色
+c.colors.statusbar.url.warn.fg = '#aad0b2'  # 页面带着警告加载成功时 URL 的颜色（例如证书有问题）
+c.colors.statusbar.url.success.http.fg = '#e9e2d4'  # 成功加载 http:// 页面时 URL 的颜色（与下一行同色，等于不再区分协议）
+c.colors.statusbar.url.success.https.fg = '#e9e2d4'  # 成功加载 https:// 页面时 URL 的颜色
 
 # --- tabs（标签栏）---
 # 标签按 even/odd（第 0/1/2… 个）区分，qutebrowser 用这套键给相邻标签做斑马纹；
 # 这里 even 与 odd 取同一个颜色，等于关掉斑马纹。选中态、固定态各有自己的键，
 # 优先级：pinned.selected > pinned / selected > even / odd。
-c.colors.tabs.bar.bg = '#0d0e13'  # 标签栏整体底色（没被标签盖住的那条区域）
-c.colors.tabs.even.bg = '#0d0e13'  # 未选中的偶数号标签底色（与 odd 同色 = 不要斑马纹）
-c.colors.tabs.even.fg = '#e3e1e9'  # 未选中的偶数号标签文字色
-c.colors.tabs.odd.bg = '#0d0e13'  # 未选中的奇数号标签底色
-c.colors.tabs.odd.fg = '#e3e1e9'  # 未选中的奇数号标签文字色
-c.colors.tabs.selected.even.bg = '#bac3ff'  # 当前选中的偶数号标签底色（primary 高亮）
-c.colors.tabs.selected.even.fg = '#212c61'  # 当前选中的偶数号标签文字色
-c.colors.tabs.selected.odd.bg = '#bac3ff'  # 当前选中的奇数号标签底色
-c.colors.tabs.selected.odd.fg = '#212c61'  # 当前选中的奇数号标签文字色
-c.colors.tabs.pinned.even.bg = '#bac3ff'  # 已固定（`:pin`）且未选中的偶数号标签底色 —— 也用 primary，固定标签因此一直很显眼
-c.colors.tabs.pinned.even.fg = '#212c61'  # 已固定且未选中的偶数号标签文字色
-c.colors.tabs.pinned.odd.bg = '#bac3ff'  # 已固定且未选中的奇数号标签底色
-c.colors.tabs.pinned.odd.fg = '#212c61'  # 已固定且未选中的奇数号标签文字色
-c.colors.tabs.pinned.selected.even.bg = '#bac3ff'  # 既固定又是当前标签的偶数号标签底色（优先级最高，这里与 pinned 同色）
-c.colors.tabs.pinned.selected.even.fg = '#212c61'  # 既固定又是当前标签的偶数号标签文字色
-c.colors.tabs.pinned.selected.odd.bg = '#bac3ff'  # 既固定又是当前标签的奇数号标签底色
-c.colors.tabs.pinned.selected.odd.fg = '#212c61'  # 既固定又是当前标签的奇数号标签文字色
-c.colors.tabs.indicator.start = '#e5bad8'  # 标签上加载进度指示器渐变的起点色（刚开始加载时的颜色）
-c.colors.tabs.indicator.stop = '#bac3ff'  # 指示器渐变的终点色（越接近加载完成越偏这个色）
+c.colors.tabs.bar.bg = '#100e07'  # 标签栏整体底色（没被标签盖住的那条区域）
+c.colors.tabs.even.bg = '#100e07'  # 未选中的偶数号标签底色（与 odd 同色 = 不要斑马纹）
+c.colors.tabs.even.fg = '#e9e2d4'  # 未选中的偶数号标签文字色
+c.colors.tabs.odd.bg = '#100e07'  # 未选中的奇数号标签底色
+c.colors.tabs.odd.fg = '#e9e2d4'  # 未选中的奇数号标签文字色
+c.colors.tabs.selected.even.bg = '#dcc66e'  # 当前选中的偶数号标签底色（primary 高亮）
+c.colors.tabs.selected.even.fg = '#3a3000'  # 当前选中的偶数号标签文字色
+c.colors.tabs.selected.odd.bg = '#dcc66e'  # 当前选中的奇数号标签底色
+c.colors.tabs.selected.odd.fg = '#3a3000'  # 当前选中的奇数号标签文字色
+c.colors.tabs.pinned.even.bg = '#dcc66e'  # 已固定（`:pin`）且未选中的偶数号标签底色 —— 也用 primary，固定标签因此一直很显眼
+c.colors.tabs.pinned.even.fg = '#3a3000'  # 已固定且未选中的偶数号标签文字色
+c.colors.tabs.pinned.odd.bg = '#dcc66e'  # 已固定且未选中的奇数号标签底色
+c.colors.tabs.pinned.odd.fg = '#3a3000'  # 已固定且未选中的奇数号标签文字色
+c.colors.tabs.pinned.selected.even.bg = '#dcc66e'  # 既固定又是当前标签的偶数号标签底色（优先级最高，这里与 pinned 同色）
+c.colors.tabs.pinned.selected.even.fg = '#3a3000'  # 既固定又是当前标签的偶数号标签文字色
+c.colors.tabs.pinned.selected.odd.bg = '#dcc66e'  # 既固定又是当前标签的奇数号标签底色
+c.colors.tabs.pinned.selected.odd.fg = '#3a3000'  # 既固定又是当前标签的奇数号标签文字色
+c.colors.tabs.indicator.start = '#aad0b2'  # 标签上加载进度指示器渐变的起点色（刚开始加载时的颜色）
+c.colors.tabs.indicator.stop = '#dcc66e'  # 指示器渐变的终点色（越接近加载完成越偏这个色）
 c.colors.tabs.indicator.error = '#ffb4ab'  # 标签加载出错时指示器的颜色
 # colors.tabs.indicator.system is NOT a colour: it picks the Qt colour
 # namespace (rgb / hsv / hsl / none), so it is left at its default.
@@ -83,11 +83,11 @@ c.colors.tabs.indicator.error = '#ffb4ab'  # 标签加载出错时指示器的�
 # --- downloads（下载栏；`:download` 或点下载链接时从底部弹出的那条）---
 # 每个下载条目按进度做渐变动画：从 start.* 的颜色渐变到 stop.* 的颜色，
 # 所以真正"正在下载"的中间态是这两组颜色之间插值出来的。
-c.colors.downloads.bar.bg = '#0d0e13'  # 下载栏的底色（所有下载条目背后那条）
-c.colors.downloads.start.fg = '#e3e1e9'  # 下载刚开始时条目的文字色（渐变起点）
-c.colors.downloads.start.bg = '#0d0e13'  # 下载刚开始时条目的底色（深色起步，随进度亮起来）
-c.colors.downloads.stop.fg = '#212c61'  # 下载接近完成/完成时条目的文字色（渐变终点）
-c.colors.downloads.stop.bg = '#bac3ff'  # 下载完成时条目的底色（primary，一眼看出已完成）
+c.colors.downloads.bar.bg = '#100e07'  # 下载栏的底色（所有下载条目背后那条）
+c.colors.downloads.start.fg = '#e9e2d4'  # 下载刚开始时条目的文字色（渐变起点）
+c.colors.downloads.start.bg = '#100e07'  # 下载刚开始时条目的底色（深色起步，随进度亮起来）
+c.colors.downloads.stop.fg = '#3a3000'  # 下载接近完成/完成时条目的文字色（渐变终点）
+c.colors.downloads.stop.bg = '#dcc66e'  # 下载完成时条目的底色（primary，一眼看出已完成）
 # colors.downloads.system.fg / .bg are NOT colours either — see the note above
 # about colors.tabs.indicator.system.
 # ↑ 同样是插值色彩空间（start→stop 渐变怎么算），不是颜色，故留默认。
@@ -106,34 +106,34 @@ c.colors.hints.fg = '#1a1a1a'  # 提示标签里字母的颜色（固定值，�
 c.colors.hints.match.fg = '#c2410c'  # 提示标签里已输入字符的颜色（固定值，深橙红；与 fg 拉开对比，方便数还剩几个键）
 
 # --- completion（补全列表：地址栏输入、`:` 命令、`:set` 等都弹这个）---
-c.colors.completion.fg = '#e3e1e9'  # 补全列表的文字色；文档允许写三个颜色（url / title / extra 三列各一个），这里给单色表示三列同色
-c.colors.completion.even.bg = '#0d0e13'  # 补全列表偶数行底色（与 odd 同色 = 不要斑马纹）
-c.colors.completion.odd.bg = '#0d0e13'  # 补全列表奇数行底色
-c.colors.completion.category.fg = '#212c61'  # 分类标题（Commands / Bookmarks / History 这类小节标题）的文字色
-c.colors.completion.category.bg = '#bac3ff'  # 分类标题的底色（上色后小节分界一眼可见）
-c.colors.completion.category.border.top = '#0d0e13'  # 分类标题的上边框色（与底色同色 = 看不出边框）
-c.colors.completion.category.border.bottom = '#0d0e13'  # 分类标题的下边框色（同上）
-c.colors.completion.item.selected.fg = '#212c61'  # 当前光标所在项的文字色
-c.colors.completion.item.selected.bg = '#bac3ff'  # 当前光标所在项的底色
-c.colors.completion.item.selected.match.fg = '#212c61'  # 选中项里"已匹配的片段"的颜色；这里与 selected.fg 相同，等于不做额外强调
-c.colors.completion.item.selected.border.top = '#0d0e13'  # 选中项的上边框色（与底色同色 = 无边框）
-c.colors.completion.item.selected.border.bottom = '#0d0e13'  # 选中项的下边框色（同上）
-c.colors.completion.match.fg = '#e5bad8'  # 未选中行里"已匹配的片段"的颜色（打 `:set dark` 时高亮那条匹配）
-c.colors.completion.scrollbar.fg = '#bac3ff'  # 补全列表滚动条的滑块色
-c.colors.completion.scrollbar.bg = '#0d0e13'  # 补全列表滚动条的槽色
+c.colors.completion.fg = '#e9e2d4'  # 补全列表的文字色；文档允许写三个颜色（url / title / extra 三列各一个），这里给单色表示三列同色
+c.colors.completion.even.bg = '#100e07'  # 补全列表偶数行底色（与 odd 同色 = 不要斑马纹）
+c.colors.completion.odd.bg = '#100e07'  # 补全列表奇数行底色
+c.colors.completion.category.fg = '#3a3000'  # 分类标题（Commands / Bookmarks / History 这类小节标题）的文字色
+c.colors.completion.category.bg = '#dcc66e'  # 分类标题的底色（上色后小节分界一眼可见）
+c.colors.completion.category.border.top = '#100e07'  # 分类标题的上边框色（与底色同色 = 看不出边框）
+c.colors.completion.category.border.bottom = '#100e07'  # 分类标题的下边框色（同上）
+c.colors.completion.item.selected.fg = '#3a3000'  # 当前光标所在项的文字色
+c.colors.completion.item.selected.bg = '#dcc66e'  # 当前光标所在项的底色
+c.colors.completion.item.selected.match.fg = '#3a3000'  # 选中项里"已匹配的片段"的颜色；这里与 selected.fg 相同，等于不做额外强调
+c.colors.completion.item.selected.border.top = '#100e07'  # 选中项的上边框色（与底色同色 = 无边框）
+c.colors.completion.item.selected.border.bottom = '#100e07'  # 选中项的下边框色（同上）
+c.colors.completion.match.fg = '#aad0b2'  # 未选中行里"已匹配的片段"的颜色（打 `:set dark` 时高亮那条匹配）
+c.colors.completion.scrollbar.fg = '#dcc66e'  # 补全列表滚动条的滑块色
+c.colors.completion.scrollbar.bg = '#100e07'  # 补全列表滚动条的槽色
 
 # --- prompts（询问框：`:download` 问文件名、`:bookmark-load -t` 问标题等）---
-c.colors.prompts.bg = '#0d0e13'  # 询问框的底色
-c.colors.prompts.fg = '#e3e1e9'  # 询问框的文字色
-c.colors.prompts.border = '1px solid #90909a'  # 询问框的边框：这个键吃的是 QSS 片段而不是纯颜色，所以必须保留 `1px solid <color>` 的写法（不能只写颜色值）
+c.colors.prompts.bg = '#100e07'  # 询问框的底色
+c.colors.prompts.fg = '#e9e2d4'  # 询问框的文字色
+c.colors.prompts.border = '1px solid #969080'  # 询问框的边框：这个键吃的是 QSS 片段而不是纯颜色，所以必须保留 `1px solid <color>` 的写法（不能只写颜色值）
 
 # --- messages（消息条：浮在状态栏上方、几秒后自动消失的提示）---
 c.colors.messages.error.fg = '#690005'  # 错误消息条的文字色（如"命令不存在"）
 c.colors.messages.error.bg = '#ffb4ab'  # 错误消息条的底色
-c.colors.messages.error.border = '#0d0e13'  # 错误消息条的边框色（与状态栏底色一致 = 视觉上不露边）
-c.colors.messages.warning.fg = '#44263e'  # 警告消息条的文字色
-c.colors.messages.warning.bg = '#e5bad8'  # 警告消息条的底色
-c.colors.messages.warning.border = '#0d0e13'  # 警告消息条的边框色（同上）
-c.colors.messages.info.fg = '#e3e1e9'  # 普通消息条的文字色（如"链接已复制""下载完成"）
-c.colors.messages.info.bg = '#292a2f'  # 普通消息条的底色
-c.colors.messages.info.border = '#0d0e13'  # 普通消息条的边框色（同上）
+c.colors.messages.error.border = '#100e07'  # 错误消息条的边框色（与状态栏底色一致 = 视觉上不露边）
+c.colors.messages.warning.fg = '#153722'  # 警告消息条的文字色
+c.colors.messages.warning.bg = '#aad0b2'  # 警告消息条的底色
+c.colors.messages.warning.border = '#100e07'  # 警告消息条的边框色（同上）
+c.colors.messages.info.fg = '#e9e2d4'  # 普通消息条的文字色（如"链接已复制""下载完成"）
+c.colors.messages.info.bg = '#2d2a21'  # 普通消息条的底色
+c.colors.messages.info.border = '#100e07'  # 普通消息条的边框色（同上）
