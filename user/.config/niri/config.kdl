@@ -28,13 +28,15 @@ environment {
     // GTK软件使用的渲染器，可以解决n卡双显卡导致的GTK应用启动缓慢问题，AMD或Intel单显卡不需要这行设置可以注释掉
     //GSK_RENDERER "gl"
     // 默认文本编辑器
-    EDITOR "vim"
+    EDITOR "nvim"
     
 }
 
 input {
     keyboard {
         xkb {
+            layout "us"
+            options "ctrl:nocaps"
         }
         repeat-delay 250
 	    repeat-rate 35
@@ -157,6 +159,14 @@ window-rule {
     open-floating true
 }
 
+// xdg-desktop-portal-termfilechooser 的 yazi 文件选择器：浮动打开
+window-rule {
+    match app-id=r#"^YaziFloat$"#
+    open-floating true
+    default-column-width { proportion 0.5; }
+    default-window-height { proportion 0.6; }
+}
+
 debug {
 	// 放宽聚焦拦截，修复点击托盘程序无法跳转聚焦的问题。
 	honor-xdg-activation-with-invalid-serial
@@ -175,3 +185,4 @@ include "dms/colors.kdl"
 // 取消下面这行的注释启动shorin预先准备好的blur配置
 include "blur.kdl"
 
+include "dms/layout.kdl"

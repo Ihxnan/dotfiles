@@ -1,7 +1,11 @@
 {
   "currentThemeName": "dynamic",
   "currentThemeCategory": "dynamic",
+  "matugenTargetMonitor": "eDP-1",
+  "niriLayoutGapsOverride": 10,
   "clockFormat": "24h",
+  "blurredWallpaperLayer": true,
+  "blurWallpaperOnOverview": true,
   "wallpaperBackgroundColorMode": "primary",
   "controlCenterWidgets": [
     {
@@ -59,7 +63,7 @@
   "showWorkspaceApps": true,
   "workspaceAppIconSizeOffset": 3,
   "appIdSubstitutions": [],
-  "useAutoLocation": true,
+  "weatherEnabled": false,
   "networkPreference": "wifi",
   "cursorSettings": {
     "theme": "System Default",
@@ -213,7 +217,9 @@
       "shadowCustomColor": "#000000",
       "clickThrough": true,
       "followInterfaceStyle": false,
-      "widgetFollowInterfaceStyle": true
+      "widgetFollowInterfaceStyle": true,
+      "attachToScreenEdge": false,
+      "island": false
     }
   ],
   "desktopClockCustomColor": {
@@ -227,7 +233,8 @@
     "hslHue": -1,
     "hslSaturation": 0,
     "hslLightness": 1,
-    "valid": true
+    "valid": true,
+    "rgba": -1
   },
   "systemMonitorCustomColor": {
     "r": 1,
@@ -240,7 +247,8 @@
     "hslHue": -1,
     "hslSaturation": 0,
     "hslLightness": 1,
-    "valid": true
+    "valid": true,
+    "rgba": -1
   },
   "builtInPluginSettings": {
     "dms_settings_search": {
@@ -251,6 +259,9 @@
     },
     "dms_qr_generator": {
       "trigger": "qrg"
+    },
+    "dms_power": {
+      "trigger": "pw"
     }
   },
   "configVersion": 18

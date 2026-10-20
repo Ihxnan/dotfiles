@@ -8,7 +8,11 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("-n", type=int, default=5, help="生成文件数量, 默认为 5")
 parser.add_argument(
-    "-t", "--type", default="cpp", choices=["cpp", "py"], help="生成文件类型，默认为 cpp"
+    "-t",
+    "--type",
+    default="contest",
+    choices=["cpp", "py", "contest"],
+    help="生成文件类型，默认为 cpp",
 )
 parser.add_argument(
     "-k", "--kind", default="alp", choices=["alp", "num"], help="生成题目的序号，默认为 alp"
@@ -20,10 +24,10 @@ index = [chr(i + ord("A")) if args.kind == "alp" else str(i + 1) for i in range(
 files = []
 
 for idx in index:
-    if args.type == "cpp":
-        idx += ".cpp"
-    else:
+    if args.type == "py":
         idx += ".py"
+    else:
+        idx += ".cpp"
     files.append(Path(idx))
 
 cpp_tmpl = """#include <ihxnan>
@@ -40,6 +44,8 @@ py_tmpl = """from ihxnan import *"""
 for file in files:
     if args.type == "cpp":
         file.write_text(cpp_tmpl)
+    elif args.type == "contest":
+        content = Path("/home/ihxnan/Github/Template/Template/contest.hpp").read_text()
+        file.write_text(content)
     else:
         file.write_text(py_tmpl)
-

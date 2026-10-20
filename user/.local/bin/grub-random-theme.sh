@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 配置：你的主题根目录
-THEME_DIR="/boot/grub/themes"
+THEME_DIR="/usr/share/grub/themes"
 # GRUB 配置文件路径
 GRUB_CONFIG="/etc/default/grub"
 
@@ -25,5 +25,5 @@ RAND_THEME=${THEMES[$RANDOM % ${#THEMES[@]}]}
 # 3. 修改 GRUB 配置文件（替换 GRUB_THEME 行）
 sed -i "s|^GRUB_THEME=.*|GRUB_THEME=\"${RAND_THEME%/}/theme.txt\"|" "$GRUB_CONFIG"
 
-# 4. 生成新的 GRUB 引导配置
+# # 4. 生成新的 GRUB 引导配置
 grub-mkconfig -o /boot/grub/grub.cfg
