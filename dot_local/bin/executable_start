@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Color definitions
+BOLD='\033[1m'
+GREEN='\033[32m'
+BLUE='\033[34m'
+CYAN='\033[36m'
+YELLOW='\033[33m'
+RED='\033[31m'
+WHITE='\033[37m'
+GRAY='\033[90m'
+RESET='\033[0m'
+
+# ==============================================
+# Check if running in a pure TTY console
+# GUI terminals and SSH will be blocked
+# ==============================================
+if [[ "$(tty)" != /dev/tty* ]]; then
+    echo -e "\n${RED}✘ Error: ${RESET}This script can only run in a pure TTY text console!"
+    echo -e "${YELLOW}ℹ Please switch to TTY using Ctrl+Alt+F1~F6 first${RESET}\n"
+    exit 1
+fi
+
+clear
+
+# 界面输出
+echo -e "${BOLD}${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}${BOLD}${GREEN}      Desktop Environment Selector${RESET}                 ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${RESET}"
+echo -e "${BOLD}${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}${BOLD}${WHITE}Please select a desktop environment:${RESET}               ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}                                                   ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}  ${GREEN}[1]${RESET} ${BLUE}i3${RESET}                             ${GRAY}(startx)${RESET}      ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}  ${GREEN}[2]${RESET} ${BLUE}KDE Plasma${RESET}            ${GRAY}(startplasma-wayland)${RESET}  ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┃${RESET}                                                   ${BOLD}${CYAN}┃${RESET}"
+echo -e "${BOLD}${CYAN}┗━━━━━━━━━━━━━━━━━━━━ remote━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${RESET}"
+echo -ne "${BOLD}${YELLOW}Please enter an option [1-2]: ${RESET}"
+read -n 1 choice
+echo
+
+case $choice in
+1)
+    if ! command -v lightdm &>/dev/null; then
+        echo -e "${RED}lightdm is not installed, cannot start i3${RESET}"
+        exit 1
+    fi
+    echo -e "${GREEN}Starting i3...${RESET}"
+    exec sudo systemctl start lightdm
+    ;;
+2)
+    if ! command -v startplasma-wayland &>/dev/null; then
+        echo -e "${RED}KDE Plasma is not installed, cannot start${RESET}"
+        exit 1
+    fi
+    echo -e "${GREEN}Starting KDE Plasma (Wayland)...${RESET}"
+    exec startplasma-wayland
+    ;;
+*)
+    echo -e "${RED}Invalid option, exiting.${RESET}"
+    exit 1
+    ;;
+esac

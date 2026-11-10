@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# 从 MP4 视频提取音频 → 单声道 WAV
+# Usage: mp42wav <input.mp4> [output.wav]
+
+set -euo pipefail
+
+INPUT="${1:?Usage: $(basename "$0") <input.mp4> [output.wav]}"
+
+if [[ ! -f "$INPUT" ]]; then
+    echo "错误：文件不存在 — $INPUT" >&2
+    exit 1
+fi
+
+# 默认输出文件名：输入文件名 + .wav
+OUTPUT="${2:-"${INPUT%.*}.wav"}"
+
+echo "🎬 输入：$INPUT"
+echo "🔊 输出：$OUTPUT"
+
+ffmpeg -hide_banner -i "$INPUT" \
+    -vn \
+    -ac 1 \
+    -ar 44100 \
+    -sample_fmt s16 \
+    -f wav \
+    "$OUTPUT"
+
+echo "✅ 完成：$OUTPUT"

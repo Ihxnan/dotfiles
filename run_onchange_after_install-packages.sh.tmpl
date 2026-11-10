@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+{{- if eq .chezmoi.os "linux" }}
+echo "==> pacman"
+pacman_pkgs=(
+{{- range .packages.arch.pacman }}
+  {{ . | shellQuote }}
+{{- end }}
+)
+sudo pacman -S --needed --noconfirm "${pacman_pkgs[@]}"
+
+{{- if .packages.arch.shorin }}
+echo "==> shorin repo"
+shorin_pkgs=(
+{{- range .packages.arch.shorin }}
+  {{ . | shellQuote }}
+{{- end }}
+)
+sudo pacman -S --needed --noconfirm "${shorin_pkgs[@]}"
+{{- end }}
+
+{{- if .packages.arch.aur }}
+echo "==> AUR"
+if ! command -v paru >/dev/null 2>&1; then
+  sudo pacman -S --needed --noconfirm base-devel
+  tmp="$(mktemp -d)"
+  git clone --depth=1 https://aur.archlinux.org/paru-bin.git "$tmp/paru-bin"
+  ( cd "$tmp/paru-bin" && makepkg -si --noconfirm )
+  rm -rf "$tmp"
+fi
+aur_pkgs=(
+{{- range .packages.arch.aur }}
+  {{ . | shellQuote }}
+{{- end }}
+)
+paru -S --needed --noconfirm "${aur_pkgs[@]}"
+{{- end }}
+
+{{- range .packages.arch.user_services }}
+systemctl --user enable --now {{ . }} || true
+{{- end }}
+
+echo "==> packages done"
+{{- end }}

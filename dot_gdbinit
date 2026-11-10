@@ -1,0 +1,4 @@
+set auto-load local-gdbinit on
+add-auto-load-safe-path /home/ihxnan
+set debuginfod enabled off
+set pagination off

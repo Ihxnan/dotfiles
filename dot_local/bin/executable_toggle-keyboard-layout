@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+config="$HOME/.config/niri/config.kdl"
+nvim="$HOME/.config/nvim"
+mode="${1:-toggle}"
+
+case "$mode" in
+    toggle)
+        grep -q 'variant "colemak"' "$config" && mode=qwerty || mode=colemak
+        ;;
+    colemak|qwerty) ;;
+    *) echo "用法: $(basename "$0") [colemak|qwerty|toggle]" >&2; exit 2 ;;
+esac
+
+# 1) 切 nvim 配置分支：QWERTY -> main，Colemak -> colemak
+branch=main
+[ "$mode" = colemak ] && branch=colemak
+if [ -d "$nvim/.git" ]; then
+    if git -C "$nvim" checkout -q "$branch" 2>/dev/null; then
+        echo "nvim 分支 → $branch"
+    else
+        echo "警告：nvim 分支切换失败（可能有未提交改动），当前仍是 $(git -C "$nvim" rev-parse --abbrev-ref HEAD 2>/dev/null)" >&2
+    fi
+fi
+
+# 2) 切键盘布局：清掉旧的 layout/variant，再按当前模式重建，避免依赖锚点行是否存在
+sed -i -e '/^[[:space:]]*layout "/d' -e '/^[[:space:]]*variant "/d' "$config"
+sed -i '/^[[:space:]]*xkb {/a\            layout "us"' "$config"
+if [ "$mode" = colemak ]; then
+    sed -i '/^[[:space:]]*layout "us"/a\            variant "colemak"' "$config"
+fi
+echo "键盘布局 → $mode"

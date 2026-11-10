@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+
+SERVER_IP=ihxnan.xyz
+SCRIPT_NAME=$(basename $0)
+
+usage() {
+    echo "Usage: $SCRIPT_NAME [options] [arguments]"
+    echo "Options:"
+    echo "  No arguments          Connect to server via SSH"
+    echo "  -m, --mount           Mount Server to ~/YUN"
+    echo "  -U, --Umount          Umount Server from ~/YUN"
+    echo "  -u, --upload <local> <remote>"
+    echo "                        Upload local file/directory to server"
+    echo "  -d, --download <remote> <local>"
+    echo "                        Download file/directory from server to local"
+    echo "  -h, --help            Show this help message"
+    echo
+    echo "Examples:"
+    echo "  $SCRIPT_NAME                               # SSH connect to server"
+    echo "  $SCRIPT_NAME -m                            # Mount Server"
+    echo "  $SCRIPT_NAME -U                            # Umount Server"
+    echo "  $SCRIPT_NAME -u ./local.txt /home/ihxnan/  # Upload file"
+    echo "  $SCRIPT_NAME -d /home/ihxnan/file.txt ./   # Download file"
+}
+
+if [ $# -eq 0 ]; then
+    echo "Connecting to $SERVER_IP..."
+    ssh $SERVER_IP
+    exit $?
+fi
+
+case $1 in
+-h | --help)
+    usage
+    exit 0
+    ;;
+-u | --uploadO)
+    if [ $# -ne 3 ]; then
+        echo "Error: Upload requires 2 arguments: local path and remote path"
+        echo
+        usage
+        exit 1
+    fi
+    LOCAL_PATH=$2
+    REMOTE_PATH=$3
+    if [ ! -e $LOCAL_PATH ]; then
+        echo "Error: Local file/directory $LOCAL_PATH does not exit"
+        exit 1
+    fi
+    echo "Uploading $LOCAL_PATH to $SERVER_IP:$REMOTE_PATH..."
+    scp -r $LOCAL_PATH $SERVER_IP:$REMOTE_PATH
+    if [ $? -eq 0 ]; then
+        echo "Upload completed successfully"
+    else
+        echo "Upload failed"
+        exit 1
+    fi
+    ;;
+-d | --download)
+    if [ $# -ne 3 ]; then
+        echo "Error: Upload requires 2 arguments: remote path and local path"
+        echo
+        usage
+        exit 1
+    fi
+    REMOTE_PATH=$2
+    LOCAL_PATH=$3
+    echo "Downloading $SERVER_IP:$REMOTE_PATH to $LOCAL_PATH..."
+    scp -r $SERVER_IP:$REMOTE_PATH $LOCAL_PATH
+    if [ $? -eq 0 ]; then
+        echo "Download completed successfully"
+    else
+        echo "Download failed"
+        exit 1
+    fi
+    ;;
+-m | --mount)
+    if [ $# -ne 1 ]; then
+        echo "Error: Too arguments"
+        echo
+        usage
+        exit1
+    fi
+    LOCAL_PATH="/home/ihxnan/YUN"
+    echo "Mounting $SERVER_IP to $LOCAL_PATH..."
+    sshfs $SERVER_IP: $LOCAL_PATH
+    if [ $? -eq 0 ]; then
+        echo "Mount completed successfully"
+    else
+        echo "Mount failed"
+        exit 1
+    fi
+    ;;
+-U | --Umount)
+    if [ $# -ne 1 ]; then
+        echo "Error: Too arguments"
+        echo
+        usage
+        exit1
+    fi
+    LOCAL_PATH="YUN"
+    echo "Umounting $SERVER_IP from $LOCAL_PATH..."
+    umount $LOCAL_PATH
+    if [ $? -eq 0 ]; then
+        echo "Umount completed successfully"
+    else
+        echo "Umount failed"
+        exit 1
+    fi
+    ;;
+*)
+    echo "Error: Invalid option $1"
+    echo
+    usage
+    exit 1
+    ;;
+esac

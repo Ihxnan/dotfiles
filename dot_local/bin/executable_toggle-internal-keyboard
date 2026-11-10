@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$EUID" -ne 0 ]; then
+    exec sudo -- "$0" "$@"
+fi
+
+drv=/sys/bus/platform/drivers/i8042
+force=${1:-}
+
+if [ -e "$drv/i8042" ]; then
+    if [ "$force" != "--force" ] && ! compgen -G "/dev/input/by-id/*-event-kbd" >/dev/null; then
+        echo "没检测到外接键盘，禁用后就再也敲不开了，已取消（确认要禁就加 --force）" >&2
+        exit 1
+    fi
+    echo i8042 > "$drv/unbind"
+    text="内置键盘已禁用，用外接键盘再跑一次可恢复"
+else
+    echo i8042 > "$drv/bind"
+    text="内置键盘已启用"
+fi
+
+if [ -n "${SUDO_USER:-}" ]; then
+    runuser -u "$SUDO_USER" -- notify-send -a toggle-internal-keyboard "$text" 2>/dev/null || true
+fi
+
+echo "$text"

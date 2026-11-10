@@ -1,0 +1,104 @@
+# 依据当前 chezmoi 已纳管的配置推导
+# pacman 组 = 官方 / CachyOS 仓库
+# shorin 组 = [shorin-arch] 仓库
+packages:
+  arch:
+    pacman:
+      # .bashrc / .bash_profile / .zshrc / .config/fish
+      - bash
+      - zsh
+      - fish
+      - starship
+      - zoxide
+      - eza
+      - bat
+      - fzf
+      - miyu
+
+      # .vimrc / .config/nvim / .clang-format / .config/clangd / .gdbinit
+      - vim
+      - neovim
+      - clang
+      - gdb
+
+      # .config/alacritty / .config/kitty
+      - alacritty
+      - kitty
+
+      # .config/niri / .config/matugen / .config/fuzzel / .config/satty / .config/xsettingsd
+      - niri
+      - matugen
+      - fuzzel
+      - satty
+      - xsettingsd
+
+      # .config/gtk-3.0 / .config/gtk-4.0
+      - gtk3
+      - gtk4
+
+      # .config/user-dirs.dirs
+      - xdg-user-dirs
+
+      # .config/xdg-desktop-portal / .config/xdg-desktop-portal-termfilechooser
+      - xdg-desktop-portal
+      - xdg-desktop-portal-gtk
+      - xdg-desktop-portal-gnome
+      - xdg-desktop-portal-termfilechooser
+      - gnome-keyring
+
+      # .config/fcitx5（基础 fcitx5 由 fcitx5-shorin-patched-git 提供）
+      - fcitx5-configtool
+      - fcitx5-chinese-addons
+      - fcitx5-gtk
+      - fcitx5-qt
+
+      # .config/cava / .config/btop / .config/yazi
+      - cava
+      - btop
+      - yazi
+
+      # .config/chromium-flags.conf
+      - chromium
+
+      # .config/libvirt
+      - libvirt
+
+      # .ssh
+      - openssh
+
+      # .local/bin / .config/scripts 里实际用到的命令
+      - wf-recorder
+      - ffmpeg
+      - imagemagick
+      - wl-clipboard
+      - grim
+      - slurp
+      - jq
+      - curl
+      - libnotify
+      - python
+
+      # fontconfig
+      - noto-fonts
+      - noto-fonts-cjk
+      - noto-fonts-emoji
+      - ttf-jetbrains-mono-nerd
+
+      # cava / 音频
+      - pipewire
+      - pipewire-pulse
+      - wireplumber
+
+    # 来自 [shorin-arch]，标准 Arch 没有这些包
+    shorin:
+      - dux-shell                    # /usr/bin/dms
+      - dux-search-bin               # /usr/bin/dsearch
+      - quickshell-git               # dms 依赖
+      - shorin-dux-niri-git          # 提供 shorindms 和默认配置
+      - fcitx5-shorin-patched-git    # 提供 fcitx5
+
+    # 目前没有必须走 AUR 的；以后有就加在这里
+    aur: []
+
+    user_services:
+      - pipewire-pulse
