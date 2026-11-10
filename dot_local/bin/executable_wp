@@ -1,0 +1,892 @@
+#!/bin/bash
+# wp - 统一壁纸管理器
+#   - 显示：静态图 / webp 用 awww，mp4 视频用 mpvpaper（不使用 DMS 内置壁纸）
+#   - 来源：本地顶层随机（~/Pictures/Wallpapers）或 Alcy API 下载
+#   - 配色：matugen（run_hooks）+ DMS 取色；取色帧统一 第一帧 / 1280 宽 / 无 alpha
+#
+# 用法:
+#   wp img local [目录]        从本地顶层随机选图片（png/jpg/jpeg/bmp，不含 webp）
+#   wp img random [分类]       从 Alcy API 下载随机图片
+#   wp webp local [目录]       从本地随机选 webp（awww 设置；动画内存/耗时自负）
+#   wp video local             从本地顶层随机选 mp4 视频壁纸
+#   wp video random            从 API 下载随机视频壁纸
+#   wp video start <文件>      播放指定视频壁纸
+#   wp mp42webp <mp4文件>      mp4 → webp（ffmpeg -quality 100 -r 30，输出同目录）
+#   wp restore                 手动恢复上一次用 wp 设置的壁纸（含配色）
+#   wp stop                    停止壁纸（mpvpaper / awww daemon）
+#   wp frame                   从当前视频重新抽帧刷新配色
+#
+# 过渡效果（切换图片壁纸时的动画；对 img / webp / restore 生效，video 用 mpvpaper 不受影响）:
+#   -t, --transition-type <类型>  过渡类型（默认 grow），可选值及效果：
+#                                   none   硬切，无动画（等价 simple + step 255，瞬间完成）
+#                                   simple 整屏渐变（awww 内置默认；忽略 -d，只受 -S 控制）
+#                                   fade   渐变，进度由 -b 缓动曲线控制
+#                                   left   从屏幕左侧开始、向右推进
+#                                   right  从屏幕右侧开始、向左推进
+#                                   top    从屏幕顶部开始、向下推进
+#                                   bottom 从屏幕底部开始、向上推进
+#                                   wipe   类似 left，但扫过方向由 -a 角度指定
+#                                   wave   波浪形扫过，波的大小由 -w 指定
+#                                   grow   圆形扩散展开，圆心由 -p 指定
+#                                   center 同 grow，圆心固定在屏幕中心
+#                                   outer  同 grow，但圆形收缩（反向动画）
+#                                   any    同 grow，圆心随机
+#                                   random 每次随机挑一种效果
+#   -d, --duration <秒>           过渡总时长（simple 类型会忽略此项）
+#   -F, --fps <帧率>              过渡帧率（注意：awww 的 -f 是缩放滤镜 filter，故此处用大写 -F）
+#   -S, --step <0-255>            每帧推进量：越大越快越硬，255 = 瞬间完成
+#   -a, --angle <角度>            wipe/wave 的角度：0=从右到左，90=从上到下
+#   -p, --pos <位置>              grow/outer/any 的圆心：0.5,0.5=屏幕中心；整数=像素（y 自底部算）；
+#                                 也支持别名 center/top/left/right/bottom/top-left/top-right/...
+#   -b, --bezier <x1,y1,x2,y2>    缓动曲线（取值参考 https://cubic-bezier.com）
+#   -w, --wave <宽,高>            wave 类型每道波的尺寸
+#   -Y, --invert-y                反转 -p 的 y 方向（改成从顶部算）
+#
+# 选项:
+#   -o <输出>                  指定输出设备（默认 ALL=所有显示器，如 eDP-1）
+#   -s                         静默模式（不发送桌面通知）
+#   -h, --help                 显示本帮助
+set -euo pipefail
+
+# ================= 配置 =================
+OUTPUT="${WP_OUTPUT:-ALL}" # 输出目标：默认 ALL（所有显示器）；-o 或 WP_OUTPUT 可覆盖
+FRAME_DIR="$HOME/.cache/video-wallpaper"
+LAST_STATE="$FRAME_DIR/last-wallpaper" # 最后一次成功设置的壁纸（kind + 路径）
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+DOWNLOAD_DIR="$WALLPAPER_DIR/api-random-download"
+IMAGE_API_URL="https://t.alcy.cc"
+VIDEO_API_URL="${WP_VIDEO_API:-https://t.alcy.cc/acg}"
+KEEP_IMAGES=40 # 下载目录保留的图片数量
+SILENT_MODE=false
+
+# ================= 过渡效果默认值 =================
+# 这些是 wp 自己的默认过渡效果：不传任何 -t/-d/... 时使用（命令行选项可逐个覆盖）。
+# 之所以不用 awww 内置默认：awww 默认是 `simple` 且 --transition-step=2，淡入极慢，观感像卡住。
+# 想默认硬切：把 DEF_TRANS_TYPE 改成 none，或临时用 `wp img local -t none`。
+DEF_TRANS_TYPE="grow"     # 从左下角圆形展开
+DEF_TRANS_DURATION="1.2"  # 过渡总时长（秒）
+DEF_TRANS_FPS="60"        # 过渡帧率
+DEF_TRANS_POS="0.75,0.75" # 圆心：屏幕宽度 50%、底部（y 自底部算）
+# 其余参数（step / angle / bezier / wave / invert-y）默认留空 = 不传给 awww，用 awww 内置默认值
+
+# awww 会把缩放后的图像写入其缓存目录；写磁盘会带来数秒系统开销（实测 5s → 0.3s），
+# 故默认把 awww 缓存指向 tmpfs（内存盘 /dev/shm），并定期清理旧文件控制内存占用。
+# 可用 WP_AWWW_CACHE 覆盖；该目录不可写时自动退回默认磁盘缓存。
+AWWW_CACHE_DIR="${WP_AWWW_CACHE:-/dev/shm/awww-cache}"
+AWWW_CACHE_MAX_MB="${WP_AWWW_CACHE_MAX_MB:-512}" # tmpfs 缓存上限（MB），超出从最旧清理
+
+# ================= 颜色 =================
+# 仅终端输出彩色；遵循 NO_COLOR，可用 WP_COLOR=always 强制（便于管道/测试）
+if { [ -t 1 ] || [ "${WP_COLOR:-}" = "always" ]; } && [ -z "${NO_COLOR:-}" ]; then
+    C_RESET=$'\033[0m'
+    C_TITLE=$'\033[1;36m' # 标题 / 分组
+    C_CMD=$'\033[1;32m'   # 命令
+    C_ARG=$'\033[33m'     # 参数
+    C_DIM=$'\033[2m'      # 次要说明
+else
+    C_RESET=""
+    C_TITLE=""
+    C_CMD=""
+    C_ARG=""
+    C_DIM=""
+fi
+
+# 显示宽度：非 ASCII（CJK 等）按 2 列计
+_dwidth() {
+    local s="$1" w=0 i ch
+    for ((i = 0; i < ${#s}; i++)); do
+        ch="${s:i:1}"
+        if [[ "$ch" == [![:ascii:]] ]]; then
+            w=$((w + 2))
+        else
+            w=$((w + 1))
+        fi
+    done
+    printf '%s' "$w"
+}
+
+# ================= 帮助排版 =================
+# 帮助文本中 "命令 + 参数" 列的最小宽度（需容纳 -t, --transition-type 这类长选项）
+_CMD_W=34
+
+# 一行帮助：命令(绿) [参数](黄)  描述
+_usage_row() {
+    local name="$1" arg="${2:-}" desc="${3:-}" w
+    w=$(_dwidth "$name")
+    printf '  %s%s%s' "$C_CMD" "$name" "$C_RESET"
+    if [ -n "$arg" ]; then
+        printf ' %s%s%s' "$C_ARG" "$arg" "$C_RESET"
+        w=$((w + 1 + $(_dwidth "$arg")))
+    fi
+    printf '%*s  %s\n' "$((_CMD_W - w))" "" "$desc"
+}
+
+# 分组标题
+_usage_section() {
+    printf '\n%s%s%s' "$C_TITLE" "$1" "$C_RESET"
+    [ -n "${2:-}" ] && printf ' %s%s%s' "$C_DIM" "$2" "$C_RESET"
+    printf '\n'
+}
+
+# ================= 通知 =================
+notify() {
+    echo "[wp] $*"
+    if [ "$SILENT_MODE" = false ]; then
+        # DMS 环境优先走 dms notify，fallback 到 notify-send
+        dms notify "Wallpaper" "$*" 2>/dev/null || notify-send "Wallpaper" "$*" --expire-time=5000 2>/dev/null || true
+    fi
+}
+
+notify_err() {
+    echo "[wp 错误] $*" >&2
+    if [ "$SILENT_MODE" = false ]; then
+        dms notify "Wallpaper Error" "$*" 2>/dev/null || notify-send "Wallpaper Error" "$*" --expire-time=5000 --urgency=critical 2>/dev/null || true
+    fi
+}
+
+usage() {
+    local code="${1:-0}"
+    printf '%s用法%s: %swp%s %s[选项]%s <分类> <动作> [参数]  %s（-h 查看本帮助）%s\n' \
+        "$C_TITLE" "$C_RESET" "$C_CMD" "$C_RESET" "$C_ARG" "$C_RESET" "$C_DIM" "$C_RESET"
+
+    _usage_section "静态图片" "用 awww 设置"
+    _usage_row "wp img local" "[目录]" "从本地顶层随机选图片（png/jpg/jpeg/bmp，不含 webp）"
+    _usage_row "wp img random" "[分类]" "从 Alcy API 下载随机图片"
+
+    _usage_section "webp 壁纸" "用 awww 设置（动画内存自负）"
+    _usage_row "wp webp local" "[目录]" "从本地随机选 webp；配色取首帧"
+
+    _usage_section "视频壁纸" "用 mpvpaper 播放"
+    _usage_row "wp video local" "" "从本地顶层随机选 mp4 视频"
+    _usage_row "wp video random" "" "从 API 下载随机视频"
+    _usage_row "wp video start" "<文件>" "播放指定视频"
+
+    _usage_section "工具"
+    _usage_row "wp mp42webp" "<mp4文件>" "mp4 转 webp（-quality 100 -r 30，输出到同目录同名 .webp）"
+    _usage_row "wp restore" "" "手动恢复上一次用 wp 设置的壁纸（含配色）"
+    _usage_row "wp stop" "" "停止壁纸（mpvpaper / awww daemon）"
+    _usage_row "wp frame" "" "从当前视频重新抽帧刷新配色"
+
+    _usage_section "选项"
+    _usage_row "-o, --output" "<输出>" "指定输出设备（默认 ALL=全部；awww 支持逗号分隔多个）"
+    _usage_row "-s, --silent" "" "静默模式（不发送桌面通知）"
+    _usage_row "-h, --help" "" "显示本帮助"
+
+    _usage_section "过渡效果" "（图片壁纸切换动画；img / webp / restore 生效；可写在命令任意位置）"
+    _usage_row "-t, --transition-type" "<类型>" "none|simple|fade|left|right|top|bottom|wipe|wave|grow|center|outer|any|random（默认 grow）"
+    _usage_row "-d, --duration" "<秒>" "过渡总时长（默认 1.2；simple 类型会忽略此项）"
+    _usage_row "-F, --fps" "<帧率>" "过渡帧率（默认 60；awww 的 -f 是缩放滤镜，故此处用大写 -F）"
+    _usage_row "-S, --step" "<0-255>" "每帧推进量：越大越快越硬，255=瞬间完成（默认不传，用 awww 值）"
+    _usage_row "-a, --angle" "<角度>" "wipe/wave 的角度：0=从右到左，90=从上到下（默认不传，awww 用 45）"
+    _usage_row "-p, --pos" "<位置>" "grow/outer/any 的圆心：0.5,0.5=中心；整数=像素（y 自底部）；支持 center/top-left 等别名（默认 0.5,1.0）"
+    _usage_row "-b, --bezier" "<x1,y1,x2,y2>" "缓动曲线，取值见 cubic-bezier.com（默认不传，用 awww 值）"
+    _usage_row "-w, --wave" "<宽,高>" "wave 类型每道波的尺寸（默认不传，awww 用 20,20）"
+    _usage_row "-Y, --invert-y" "" "反转 -p 的 y 方向（改成从顶部算）"
+
+    _usage_section "示例"
+    _usage_row "wp img local" "" "随机应用一张本地图片壁纸（默认 grow 圆形展开）"
+    _usage_row "wp img local -t none" "" "硬切，无过渡动画"
+    _usage_row "wp img local -t wipe -a 45" "" "45° 斜向擦除"
+    _usage_row "wp webp local -t outer -p center" "" "webp 壁纸从中心圆形收缩切入"
+    _usage_row "wp video local" "" "随机播放本地视频壁纸（mpvpaper，不受过渡选项影响）"
+    _usage_row "wp mp42webp a.mp4" "" "把 a.mp4 转成同目录的 a.webp"
+
+    printf '\n%s提示%s: 选项可写在命令任意位置（如 %swp img local -o eDP-1%s）；%s-o <输出>%s 或 %sWP_OUTPUT%s 指定输出（默认 ALL=所有显示器）；%sWP_COLOR=always%s 强制彩色；%sNO_COLOR=1%s 禁用彩色；%sWP_AWWW_CACHE(_MAX_MB)%s 调整 awww 缓存；过渡默认 %sgrow 1.2s/60fps%s（%swp img local -t none%s 硬切）\n\n' \
+        "$C_TITLE" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" \
+        "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" \
+        "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET" "$C_ARG" "$C_RESET"
+    exit "$code"
+}
+
+# ================= 选项解析 =================
+# 手写解析（替代原来的 getopts）：getopts 既不支持长选项，也会在遇到首个非选项参数时停止解析，
+# 把 `wp webp local -o eDP-1` 里的 `-o eDP-1` 当成位置参数（目录变成 "-o"）。
+# 这里从左到右扫描：选项就地消费（因此可写在命令任意位置），非选项按原序收集到 _POS。
+_POS=()
+
+# 过渡效果：初值取文件顶部"过渡效果默认值"区的 DEF_*，随后由命令行选项逐个覆盖。
+# 空字符串 = 该项不传给 awww，改用 awww 自己的默认值。
+TRANS_TYPE="$DEF_TRANS_TYPE"
+TRANS_DURATION="$DEF_TRANS_DURATION"
+TRANS_FPS="$DEF_TRANS_FPS"
+TRANS_STEP=""
+TRANS_ANGLE=""
+TRANS_POS="$DEF_TRANS_POS"
+TRANS_BEZIER=""
+TRANS_WAVE=""
+TRANS_INVERT_Y=false
+
+# 最终追加到 `awww img` 之后的过渡参数（由 build_trans_args 组装，见本段末尾）
+AWWW_TRANS_ARGS=()
+
+# awww 支持的过渡类型（wp 侧用这个列表校验 -t，并出现在帮助文本里）：
+#   none    = 硬切（等价于 simple + step 255，瞬间完成）
+#   simple  = 整屏渐变（awww 的默认值；此类型下 --transition-duration 无效，只受 step 控制）
+#   fade    = 渐变，进度由 --transition-bezier 控制
+#   left / right / top / bottom = 从该方向推向对侧
+#   wipe    = 类似 left，但扫过方向由 --transition-angle 指定
+#   wave    = 波浪形扫过，波的尺寸由 --transition-wave 指定
+#   grow    = 圆形扩散展开，圆心由 --transition-pos 指定
+#   center  = grow 且圆心固定为屏幕中心
+#   outer   = grow 的反向：圆形收缩
+#   any     = grow 且圆心随机
+#   random  = 每次随机挑一种效果
+TRANS_TYPES="none simple fade left right top bottom wipe wave grow center outer any random"
+
+# 选项缺少参数时的统一报错（$1 = 选项名，可附带用法提示）
+_need_value() {
+    printf '%s选项 %s 缺少参数%s\n' "$C_TITLE" "${1:-}" "$C_RESET" >&2
+    usage 1
+}
+
+# 在 wp 侧先校验过渡类型：比把错误抛给 awww 更易读（错误信息里直接列出全部可用值）
+_check_trans_type() {
+    case " $TRANS_TYPES " in
+        *" $1 "*) return 0 ;;
+    esac
+    printf '%s无效的过渡类型%s: %s\n可用类型: %s\n' "$C_TITLE" "$C_RESET" "$1" "$TRANS_TYPES" >&2
+    usage 1
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        # ---------------- wp 自身选项 ----------------
+        -o | --output)
+            [ $# -ge 2 ] || _need_value "$1（用法: -o <输出>，如 -o eDP-1）"
+            OUTPUT="$2"
+            shift 2
+            ;;
+        -s | --silent)
+            SILENT_MODE=true
+            shift
+            ;;
+        -h | --help)
+            usage 0
+            ;;
+        --)
+            shift
+            _POS+=("$@")
+            break
+            ;;
+        -)
+            # 单独的 `-` 不是选项（awww 用它表示从 stdin 读图），按位置参数处理
+            _POS+=("$1")
+            shift
+            ;;
+        # ---------------- 过渡效果选项（原样透传给 awww img） ----------------
+        # 长选项名与 awww 完全一致，方便在两个命令之间互相搬参数；短选项见文件顶部用法注释。
+        -t | --transition-type)
+            [ $# -ge 2 ] || _need_value "$1"
+            _check_trans_type "$2"
+            TRANS_TYPE="$2"
+            shift 2
+            ;;
+        -d | --duration | --transition-duration)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_DURATION="$2"
+            shift 2
+            ;;
+        -F | --fps | --transition-fps)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_FPS="$2"
+            shift 2
+            ;;
+        -S | --step | --transition-step)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_STEP="$2"
+            shift 2
+            ;;
+        -a | --angle | --transition-angle)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_ANGLE="$2"
+            shift 2
+            ;;
+        -p | --pos | --transition-pos)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_POS="$2"
+            shift 2
+            ;;
+        -b | --bezier | --transition-bezier)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_BEZIER="$2"
+            shift 2
+            ;;
+        -w | --wave | --transition-wave)
+            [ $# -ge 2 ] || _need_value "$1"
+            TRANS_WAVE="$2"
+            shift 2
+            ;;
+        -Y | --invert-y)
+            TRANS_INVERT_Y=true
+            shift
+            ;;
+        -*)
+            printf '%s未知选项%s: %s\n' "$C_TITLE" "$C_RESET" "$1" >&2
+            usage 1
+            ;;
+        *)
+            _POS+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${_POS[@]}"
+
+# 把上面的过渡变量组装成 awww 的参数数组：只追加"已被设置"的项（空值 = 不传，用 awww 默认）
+build_trans_args() {
+    # `-t none` 是硬切，其它过渡参数对它没有意义：只传 -t none，避免出现误导性的参数组合
+    if [ "$TRANS_TYPE" = "none" ]; then
+        AWWW_TRANS_ARGS=(-t none)
+        return 0
+    fi
+    AWWW_TRANS_ARGS=(-t "$TRANS_TYPE")
+    if [ -n "$TRANS_DURATION" ]; then
+        AWWW_TRANS_ARGS+=(--transition-duration "$TRANS_DURATION")
+    fi
+    if [ -n "$TRANS_FPS" ]; then
+        AWWW_TRANS_ARGS+=(--transition-fps "$TRANS_FPS")
+    fi
+    if [ -n "$TRANS_STEP" ]; then
+        AWWW_TRANS_ARGS+=(--transition-step "$TRANS_STEP")
+    fi
+    if [ -n "$TRANS_ANGLE" ]; then
+        AWWW_TRANS_ARGS+=(--transition-angle "$TRANS_ANGLE")
+    fi
+    if [ -n "$TRANS_POS" ]; then
+        AWWW_TRANS_ARGS+=(--transition-pos "$TRANS_POS")
+    fi
+    if [ -n "$TRANS_BEZIER" ]; then
+        AWWW_TRANS_ARGS+=(--transition-bezier "$TRANS_BEZIER")
+    fi
+    if [ -n "$TRANS_WAVE" ]; then
+        AWWW_TRANS_ARGS+=(--transition-wave "$TRANS_WAVE")
+    fi
+    if [ "$TRANS_INVERT_Y" = true ]; then
+        AWWW_TRANS_ARGS+=(--invert-y)
+    fi
+    return 0
+}
+
+# 解析结束后立即组装（此时 -t/-d/-F/... 都已是最终值）
+build_trans_args
+
+[ $# -lt 1 ] && usage 1
+CATEGORY="${1:-}"
+shift || true
+
+# ================= 基础设施：进程与 awww daemon =================
+
+# 切到图片模式：必须停掉视频壁纸，否则 mpvpaper 会盖住图片
+stop_video() {
+    pkill -f mpvpaper 2>/dev/null || true
+}
+
+# mpvpaper 是否在运行（精确匹配进程名，避免匹配到命令行里含 "mpvpaper" 的其它进程）
+mpvpaper_running() {
+    pgrep -x mpvpaper >/dev/null 2>&1
+}
+
+# awww 需 layer-shell 常驻 daemon 才能设壁纸：
+# 图片模式用前自动启动，视频(mpvpaper)/stop 时自动关闭，避免残留层与内存占用
+
+# 健康检查：以“socket 能否连通”为准（进程存在≠可用：daemon 被 OOM/强杀后
+# 会留下残留 socket，此时连接被拒 Connection refused，pgrep 判据会误认为正常）
+awww_daemon_ready() {
+    awww query >/dev/null 2>&1
+}
+
+# 默认 daemon socket 路径（残留清理用）
+awww_socket_path() {
+    printf '%s/%s-awww-daemon.sock' "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" "${WAYLAND_DISPLAY:-wayland-1}"
+}
+
+awww_daemon_stop() {
+    pkill -x awww-daemon 2>/dev/null || true
+}
+
+# 启动并等待“真正可连接”；若当前不可用，先清理残留进程/socket 与旧缓存再重启
+awww_daemon_start() {
+    command -v awww-daemon >/dev/null 2>&1 || return 1
+    awww_daemon_ready && return 0
+    # 不可用：清掉可能半死的进程与残留 socket
+    awww_daemon_stop
+    local sock
+    sock=$(awww_socket_path)
+    [ -S "$sock" ] && rm -f "$sock"
+    # 清掉 daemon 的磁盘缓存：否则冷启动会自动恢复它缓存的“上次显示”（闪现旧壁纸，
+    # 与你当前屏幕内容不一致）；该缓存还会随动画 webp 膨胀（实测可达 10G+），
+    # 且对 awww img 没有加速作用（连续同一张图耗时不变），清除无损失
+    awww clear-cache >/dev/null 2>&1 || true
+    awww-daemon >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+    # 等 daemon 真正可连接（最多约 15s；冷启动首次要加载缓存，可能较慢）
+    local i
+    for i in $(seq 1 150); do
+        awww_daemon_ready && return 0
+        sleep 0.1
+    done
+    return 1
+}
+
+# ================= 基础设施：awww 客户端缓存 =================
+
+# 控制 tmpfs 缓存占用：先删 30 分钟前的，再按上限从最旧开始清理
+cleanup_awww_cache() {
+    local d="$AWWW_CACHE_DIR" max=$((AWWW_CACHE_MAX_MB * 1024)) size oldest
+    [ -d "$d" ] || return 0
+    find "$d" -type f -mmin +30 -delete 2>/dev/null || true
+    size=$(du -sk "$d" 2>/dev/null | cut -f1)
+    [ -n "$size" ] || return 0
+    while [ "$size" -gt "$max" ]; do
+        oldest=$(find "$d" -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | head -1 | cut -d' ' -f2-)
+        [ -n "$oldest" ] || break
+        rm -f "$oldest" || break
+        size=$(du -sk "$d" 2>/dev/null | cut -f1)
+        [ -n "$size" ] || break
+    done
+}
+
+# awww img 包装：缓存指向 tmpfs（避免写磁盘的数秒开销），并在后台清理缓存。
+# 过渡效果参数由 build_trans_args 组装在 AWWW_TRANS_ARGS 里，这里统一插到 `awww img` 之后，
+# 因此所有调用点（换壁纸、冷启动占位图）都自动带上动画，无需各自重复传参。
+awww_img() {
+    local -a targs=("${AWWW_TRANS_ARGS[@]}")
+    # 个别调用点需要"瞬间显示、不要动画"（如冷启动占位图）：调用前设 AWWW_IMG_NO_TRANSITION=1 即可
+    if [ -n "${AWWW_IMG_NO_TRANSITION:-}" ]; then
+        targs=(-t none)
+    fi
+    if mkdir -p "$AWWW_CACHE_DIR" 2>/dev/null && [ -w "$AWWW_CACHE_DIR" ]; then
+        XDG_CACHE_HOME="$AWWW_CACHE_DIR" awww img "${targs[@]}" "$@" || return $?
+        (cleanup_awww_cache) &
+        disown 2>/dev/null || true
+        return 0
+    fi
+    awww img "${targs[@]}" "$@"
+}
+
+# daemon 冷启动时不会显示任何图（缓存已清）→ awww 层是黑色，会盖住 DMS 壁纸。
+# 用 DMS 当前壁纸占位，使加载新壁纸期间屏幕保持你原本看到的画面，加载完再切换。
+awww_placeholder_current() {
+    command -v dms >/dev/null 2>&1 || return 0
+    local cur
+    cur=$(dms ipc call wallpaper get 2>/dev/null | head -1)
+    [ -n "$cur" ] && [ -f "$cur" ] || return 0
+    # 占位的目的是"立刻"显示你原本看到的画面、遮住 daemon 冷启动时的黑屏，所以强制硬切、不做动画
+    AWWW_IMG_NO_TRANSITION=1 awww_img "$cur" >/dev/null 2>&1 || true
+}
+
+# ================= 基础设施：图像与取色 =================
+
+# ImageMagick 转换封装（magick / convert 任一；额外参数放在 dst 之前）
+img_convert() {
+    local src="$1" dst="$2"
+    shift 2
+    if command -v magick >/dev/null 2>&1; then
+        magick "$src" "$@" "$dst" 2>/dev/null && return 0
+    elif command -v convert >/dev/null 2>&1; then
+        convert "$src" "$@" "$dst" 2>/dev/null && return 0
+    fi
+    return 1
+}
+
+# 抽第一帧为取色帧：1280 宽、无 alpha（DMS 无法解码带 alpha 的 PNG，会回退默认配色）
+# ffmpeg 优先（对动画 webp 只解第一帧）；ImageMagick 兜底（会整段解码，4K 动画可能失败）
+frame_png() {
+    local src="$1" dst="$2"
+    if command -v ffmpeg >/dev/null 2>&1; then
+        ffmpeg -y -loglevel error -i "$src" -frames:v 1 -vf "scale=1280:-2" -pix_fmt rgb24 "$dst" 2>/dev/null && return 0
+    fi
+    img_convert "$src" "$dst" -alpha off -background black -flatten -resize "1280x>" || return 1
+}
+
+# DMS 的 dynamic 主题靠“壁纸取色”驱动：把取色源交给它即可刷新 DMS 界面配色
+# （DMS 内置壁纸已禁用，此调用只用于取色，不会重新显示壁纸）
+# 注意：DMS 以壁纸“路径”判断是否需要重新取色，固定文件名会让它第二次起直接跳过，
+# 故所有取色帧都按源文件名区分路径。
+sync_dms_theme() {
+    local src="${1:-}"
+    [ -n "$src" ] || return 1
+    command -v dms >/dev/null 2>&1 || return 0
+    # DMS 无法解码带 alpha 的 PNG：对 png 检测，带 alpha 就先生成无 alpha 副本
+    case "${src,,}" in
+        *.png)
+            if command -v identify >/dev/null 2>&1 &&
+                [[ "$(identify -format '%[type]' "$src" 2>/dev/null)" == *Alpha* ]]; then
+                local fixed="$FRAME_DIR/dms-src-$(basename "${src%.*}").png"
+                mkdir -p "$FRAME_DIR"
+                img_convert "$src" "$fixed" -alpha off -background black -flatten && src="$fixed"
+            fi
+            ;;
+    esac
+    if dms ipc call wallpaper set "$src" >/dev/null 2>&1; then
+        notify "已同步 DMS 配色"
+    else
+        notify_err "DMS 配色刷新失败（不影响壁纸）"
+    fi
+}
+
+# 配色钩子：matugen 主题 + niri 模糊背景（后台执行，不阻塞命令返回）
+run_hooks() {
+    local img="$1"
+    (
+        if [ -x "$HOME/.config/scripts/matugen-update.sh" ]; then
+            "$HOME/.config/scripts/matugen-update.sh" "$img" >/dev/null 2>&1 || true
+        fi
+        sleep 0.5
+        if [ -x "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" ]; then
+            "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" >/dev/null 2>&1 || true
+        fi
+    ) &
+}
+
+# 记录最后一次成功设置的壁纸（供 wp restore 使用）
+remember_wallpaper() {
+    local kind="$1" path="$2"
+    [ -n "$path" ] || return 0
+    mkdir -p "$FRAME_DIR"
+    printf '%s\n%s\n' "$kind" "$path" >"$LAST_STATE" 2>/dev/null || true
+}
+
+# ================= 基础设施：随机选择与下载 =================
+
+# 在目录顶层随机取一个匹配文件并输出路径；找不到时报错
+# 用法: find_pick <目录> <描述> [find 条件...]
+find_pick() {
+    local dir="$1" desc="$2"
+    shift 2
+    local f
+    f=$(find "$dir" -maxdepth 1 -type f "$@" 2>/dev/null | shuf -n1 || true)
+    if [ -z "$f" ]; then
+        notify_err "在 $dir 没找到$desc"
+        return 1
+    fi
+    printf '%s' "$f"
+}
+
+# 下载并校验：失败/过小/类型不符时报错并清理
+# 用法: download_checked <url> <输出文件> <mime 前缀> <名称> [最小字节数]
+download_checked() {
+    local url="$1" out="$2" prefix="$3" label="$4" min_size="${5:-1}"
+    local ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+    if ! curl -L -s -A "$ua" --connect-timeout 10 -m 120 -o "$out" "$url"; then
+        notify_err "$label 下载失败"
+        rm -f "$out"
+        return 1
+    fi
+    local size
+    size=$(wc -c <"$out" 2>/dev/null || echo 0)
+    if [ ! -s "$out" ] || [ "$size" -lt "$min_size" ]; then
+        notify_err "$label 内容无效（${size}B）"
+        rm -f "$out"
+        return 1
+    fi
+    local ftype
+    ftype=$(file --mime-type -b "$out" 2>/dev/null || echo unknown)
+    if [[ "$ftype" != "$prefix"* ]]; then
+        notify_err "$label 类型不符（$ftype）"
+        rm -f "$out"
+        return 1
+    fi
+}
+
+# 只保留下载目录中最近 KEEP_IMAGES 张 wall_*.png
+prune_downloads() {
+    [ -d "$DOWNLOAD_DIR" ] || return 0
+    find "$DOWNLOAD_DIR" -maxdepth 1 -type f -name 'wall_*.png' -printf '%T@ %p\n' 2>/dev/null |
+        sort -rn | tail -n +"$((KEEP_IMAGES + 1))" | cut -d' ' -f2- |
+        xargs -r rm -f 2>/dev/null || true
+}
+
+# ================= 壁纸设置（awww） =================
+# 用 awww 设置静态壁纸（png/jpg/jpeg/webp），并用第一帧刷新配色（matugen + DMS 主题）
+awww_wallpaper() {
+    local img="${1:-}"
+    [ -n "$img" ] || {
+        notify_err "awww_wallpaper: 缺少图片参数"
+        return 1
+    }
+    # 切图片模式：先停视频，避免 mpvpaper 盖在上面
+    stop_video
+    # daemon 之前没在运行 = 冷启动：启动后会清缓存（无旧图），但 awww 层会是黑色，
+    # 需要用 DMS 当前壁纸占位，避免加载新壁纸期间出现黑屏/旧图
+    local cold_start=0
+    awww_daemon_ready || cold_start=1
+    # awww 需要常驻 daemon：确保可连通（内部会清理残留 socket 与旧缓存并等待就绪）
+    awww_daemon_start || true
+    [ "$cold_start" = 1 ] && awww_placeholder_current
+    # -o 指定输出；ALL（默认）时交给 awww 自行作用于所有输出
+    local -a aargs=()
+    if [ "$OUTPUT" != "ALL" ]; then
+        aargs=(-o "$OUTPUT")
+    fi
+    local out ok=1
+    if out=$(awww_img "${aargs[@]}" "$img" 2>&1); then
+        ok=0
+    else
+        # 自愈：daemon 可能半死/残留 socket，重启后重试一次
+        notify_err "awww 设置壁纸失败，重启 daemon 后重试: $out"
+        if awww_daemon_start; then
+            out=$(awww_img "${aargs[@]}" "$img" 2>&1) && ok=0
+        fi
+    fi
+    if [ "$ok" = 0 ]; then
+        notify "已用 awww 设置壁纸: $(basename "$img")"
+        local kind=img
+        case "${img,,}" in *.webp) kind=webp ;; esac
+        remember_wallpaper "$kind" "$img"
+    else
+        notify_err "awww 设置壁纸仍失败: $out"
+    fi
+    # 配色与显示解耦：无论 awww 是否成功都刷新配色
+    # 静态图（png/jpg/jpeg/bmp）直接用原图作取色源；webp 先抽第一帧（动画会被整段解码）
+    local png="$FRAME_DIR/color-src-$(basename "${img%.*}").png"
+    local color_src="$img"
+    mkdir -p "$FRAME_DIR"
+    case "${img,,}" in
+        *.webp)
+            if frame_png "$img" "$png" && [ -s "$png" ]; then
+                color_src="$png"
+            fi
+            ;;
+    esac
+    sync_dms_theme "$color_src"
+    run_hooks "$color_src"
+    [ "$ok" = 0 ] || return 1
+}
+
+# ================= 图片功能 =================
+img_local() {
+    local dir="${1:-$WALLPAPER_DIR}"
+    if [ ! -d "$dir" ]; then
+        notify_err "目录 $dir 不存在"
+        return 1
+    fi
+    local wall
+    # 仅静态图（不含 webp，webp 由 wp webp local 负责）
+    wall=$(find_pick "$dir" "图片" \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.bmp" \)) || return 1
+    awww_wallpaper "$wall"
+}
+
+# API 图片分类（Alcy）：ycy/moe/ai/ysz/pc/moe/fj/bd/ys/acg/mp/moemp/ysmp/aimp/tx/lai/xhl
+img_random() {
+    local category="${1:-ycy}"
+    local ts raw final
+    mkdir -p "$DOWNLOAD_DIR" "$FRAME_DIR"
+    ts=$(date +%s)
+    raw="$DOWNLOAD_DIR/wall_${ts}_raw.tmp"
+    final="$DOWNLOAD_DIR/wall_${ts}.png"
+
+    notify "正在从 Alcy($category) 下载图片..."
+    download_checked "$IMAGE_API_URL/$category" "$raw" image/ "图片" 20480 || return 1
+    if ! img_convert "$raw" "$final"; then
+        notify_err "图片转换失败（需要 ImageMagick）"
+        rm -f "$raw"
+        return 1
+    fi
+    rm -f "$raw"
+
+    awww_wallpaper "$final"
+    prune_downloads
+}
+
+# ================= webp 功能 =================
+# 只从本地顶层随机选 webp（显式排除 API 下载目录），交 awww 显示
+webp_local() {
+    local dir="${1:-$WALLPAPER_DIR}"
+    if [ ! -d "$dir" ]; then
+        notify_err "目录 $dir 不存在"
+        return 1
+    fi
+    local wall
+    wall=$(find_pick "$dir" "webp 文件（已排除 $DOWNLOAD_DIR）" -iname '*.webp' ! -path "$DOWNLOAD_DIR/*") || return 1
+    notify "选中本地 webp: $(basename "$wall")"
+    awww_wallpaper "$wall"
+}
+
+# ================= 视频功能 =================
+# 抽视频第一帧为取色帧（按视频名区分路径，见 sync_dms_theme 的说明）
+extract_frame() {
+    local video="$1"
+    mkdir -p "$FRAME_DIR"
+    local out="$FRAME_DIR/frame-$(basename "${video%.*}").png"
+    frame_png "$video" "$out"
+    printf '%s' "$out"
+}
+
+video_start() {
+    local video="${1:-}"
+    if [ -z "$video" ]; then
+        usage 1
+        return 1
+    fi
+    if [ ! -f "$video" ]; then
+        notify_err "文件不存在: $video"
+        return 1
+    fi
+    local sock="$FRAME_DIR/mpv.sock"
+    # 视频模式与 awww 互斥：先关掉 awww daemon（若在跑）
+    awww_daemon_stop
+    if [ -S "$sock" ] && mpvpaper_running; then
+        # mpvpaper 已在跑：loadfile 换源 → 无缝无闪烁（保留 loop 属性）
+        notify "视频切换中: $(basename "$video")"
+        echo 'set loop-file inf' | socat - "$sock" 2>/dev/null || true
+        echo "loadfile '$video'" | socat - "$sock" 2>/dev/null || true
+    else
+        # 首次启动：带 IPC socket。
+        # 注意 mpvpaper 前台常驻（命令会保持运行直到 mpvpaper 退出），属预期行为
+        pkill -f mpvpaper 2>/dev/null || true
+        sleep 0.3
+        # cuda-copy 硬解：NVIDIA 卡在 Wayland 下最稳定的硬解方式，避免 CPU 软解 4K 卡顿
+        mpvpaper -p -f -l bottom -o "input-ipc-server=$sock loop no-audio panscan=1.0 hwdec=cuda-copy" "$OUTPUT" "$video"
+        notify "视频壁纸已启动: $(basename "$video")"
+    fi
+    # 等视频开始播放再抽帧（socket 换源约需 0.5s）
+    sleep 0.5
+    local frame
+    frame=$(extract_frame "$video")
+    sync_dms_theme "$frame"
+    run_hooks "$frame"
+    remember_wallpaper video "$video"
+    notify "已从视频抽帧刷新配色"
+}
+
+video_random() {
+    local tmp
+    mkdir -p "$FRAME_DIR" "$DOWNLOAD_DIR"
+    tmp="$DOWNLOAD_DIR/video_$(date +%s).mp4"
+    notify "正在下载随机视频壁纸..."
+    download_checked "$VIDEO_API_URL" "$tmp" video/ "视频" || return 1
+    notify "视频下载完成，正在应用..."
+    video_start "$tmp"
+}
+
+video_local() {
+    local video
+    video=$(find_pick "$WALLPAPER_DIR" "mp4 视频") || {
+        notify "本地顶层没有视频，自动转 API 下载"
+        video_random
+        return $?
+    }
+    notify "选中本地视频: $(basename "$video")"
+    video_start "$video"
+}
+
+refresh_frame() {
+    local pid video
+    # 精确取 mpvpaper 进程，再从它自己的 cmdline 里取视频路径
+    pid=$(pgrep -x mpvpaper 2>/dev/null | head -1)
+    if [ -z "$pid" ]; then
+        notify_err "没有正在播放的视频"
+        return 1
+    fi
+    video=$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -oE '/[^ ]+\.mp4' | head -1 || true)
+    if [ -z "$video" ]; then
+        notify_err "无法从 mpvpaper 命令行解析视频路径"
+        return 1
+    fi
+    local frame
+    frame=$(extract_frame "$video")
+    sync_dms_theme "$frame"
+    run_hooks "$frame"
+    notify "已刷新配色"
+}
+
+# ================= 工具 =================
+# 手动恢复上一次用 wp 设置的壁纸（img/webp/video），并刷新配色
+restore_wallpaper() {
+    if [ ! -s "$LAST_STATE" ]; then
+        notify_err "没有记录最后一次壁纸，无法恢复"
+        return 1
+    fi
+    local kind path
+    kind=$(sed -n 1p "$LAST_STATE")
+    path=$(sed -n 2p "$LAST_STATE")
+    if [ -z "$path" ] || [ ! -f "$path" ]; then
+        notify_err "记录的壁纸不存在: ${path:-（空）}"
+        return 1
+    fi
+    notify "恢复上次壁纸（$kind）: $(basename "$path")"
+    case "$kind" in
+        video) video_start "$path" ;;
+        *) awww_wallpaper "$path" ;;
+    esac
+}
+
+# mp4 → webp（-quality 100 -r 30），输出到 mp4 同目录同名 .webp
+mp42webp() {
+    local file="${1:-}"
+    if [ -z "$file" ]; then
+        notify_err "缺少 mp4 文件参数"
+        usage 1
+        return 1
+    fi
+    if [ ! -f "$file" ]; then
+        notify_err "文件不存在: $file"
+        return 1
+    fi
+    local out="${file%.*}.webp"
+    notify "转换中: $(basename "$file") → $(basename "$out")"
+    if ! ffmpeg -y -i "$file" -quality 100 -r 30 "$out" 2>/dev/null; then
+        notify_err "ffmpeg 转换失败: $file"
+        return 1
+    fi
+    notify "已转换: $out"
+}
+
+# ================= 主入口 =================
+case "$CATEGORY" in
+    img)
+        action="${1:-}"
+        shift || true
+        case "$action" in
+            local) img_local "${1:-}" ;;
+            random) img_random "${1:-}" ;;
+            *)
+                printf '%simg 未知动作%s: %s（可用: local, random）\n' "$C_TITLE" "$C_RESET" "$action" >&2
+                usage 1
+                ;;
+        esac
+        ;;
+    webp)
+        action="${1:-}"
+        shift || true
+        case "$action" in
+            local) webp_local "${1:-}" ;;
+            *)
+                printf '%swebp 未知动作%s: %s（可用: local）\n' "$C_TITLE" "$C_RESET" "$action" >&2
+                usage 1
+                ;;
+        esac
+        ;;
+    video)
+        action="${1:-}"
+        shift || true
+        case "$action" in
+            local) video_local ;;
+            random) video_random ;;
+            start) video_start "${1:-}" ;;
+            *)
+                printf '%svideo 未知动作%s: %s（可用: local, random, start）\n' "$C_TITLE" "$C_RESET" "$action" >&2
+                usage 1
+                ;;
+        esac
+        ;;
+    mp42webp)
+        mp42webp "${1:-}"
+        ;;
+    restore)
+        restore_wallpaper
+        ;;
+    stop)
+        stop_video
+        awww_daemon_stop
+        notify "壁纸已停止（mpvpaper / awww）"
+        ;;
+    frame)
+        refresh_frame
+        ;;
+    *)
+        printf '%s未知分类%s: %s（可用: img, webp, video, mp42webp, restore, stop, frame）\n' "$C_TITLE" "$C_RESET" "$CATEGORY" >&2
+        usage 1
+        ;;
+esac

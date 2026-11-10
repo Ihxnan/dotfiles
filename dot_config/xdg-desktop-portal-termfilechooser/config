@@ -1,0 +1,6 @@
+[filechooser]
+cmd=yazi-wrapper.sh
+default_dir=$HOME
+env=TERMCMD=kitty --class YaziFloat --title termfilechooser
+open_mode=last
+save_mode=suggested

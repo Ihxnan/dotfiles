@@ -1,0 +1,32 @@
+#!/bin/bash
+
+current_target=$(systemctl get-default)
+
+case "$current_target" in
+graphical.target)
+    echo "当前默认启动目标：图形界面 (graphical.target)"
+    echo "正在切换到命令行模式 (multi-user.target)..."
+    sudo systemctl set-default multi-user.target
+    new_target="multi-user.target"
+    ;;
+multi-user.target)
+    echo "当前默认启动目标：命令行 (multi-user.target)"
+    echo "正在切换到图形界面模式 (graphical.target)..."
+    sudo systemctl set-default graphical.target
+    new_target="graphical.target"
+    ;;
+*)
+    echo "警告：检测到未知的默认启动目标: $current_target"
+    echo "将默认切换到图形界面模式 (graphical.target)..."
+    sudo systemctl set-default graphical.target
+    new_target="graphical.target"
+    ;;
+esac
+
+if [ "$(systemctl get-default)" = "$new_target" ]; then
+    echo -e "\033[32m切换成功！\033[0m 新的默认启动目标为：$new_target"
+    echo "提示：切换仅对下次系统启动生效，当前会话不受影响。"
+else
+    echo -e "\033[31m切换失败！\033[0m 当前默认启动目标仍为：$current_target"
+    exit 1
+fi

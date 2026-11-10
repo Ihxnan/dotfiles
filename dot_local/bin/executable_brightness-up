@@ -1,0 +1,6 @@
+#!/bin/bash
+cur=$(cat /sys/class/backlight/intel_backlight/brightness)
+if [ "$cur" = "0" ]; then
+    echo 1 | sudo tee /sys/class/backlight/intel_backlight/brightness > /dev/null
+fi
+dms ipc call brightness increment 5 ""

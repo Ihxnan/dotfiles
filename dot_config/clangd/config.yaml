@@ -1,0 +1,5 @@
+# 由 nvim 配置自动生成（lua/plugins/mason.lua）
+# 全局生效：所有项目按 C++20 解析（无 compile_commands.json 时尤其必要）
+CompileFlags:
+  Add: -std=gnu++20
+

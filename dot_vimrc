@@ -1,0 +1,36 @@
+" __  ____   __  _   ___     _____ __  __ ____   ____                          
+"|  \/  \ \ / / | \ | \ \   / /_ _|  \/  |  _ \ / ___|
+"| |\/| |\ V /  |  \| |\ \ / / | || |\/| | |_) | |
+"| |  | | | |   | |\  | \ V /  | || |  | |  _ <| |___
+"|_|  |_| |_|   |_| \_|  \_/  |___|_|  |_|_| \_\\____|
+
+" Author: @ihxnan
+
+syntax on 
+
+filetype plugin indent on
+
+set nu rnu cul ai si sw=4 ts=4
+
+imap jk <esc>
+
+if has('clipboard')
+  nnoremap y "+y
+  vnoremap y "+y
+  nnoremap Y "+Y
+
+  nnoremap x "+x
+  vnoremap x "+x
+
+  nnoremap p "+p
+  vnoremap p "+p
+  nnoremap P "+P
+  vnoremap P "+P
+endif
+
+set mouse=a
+
+let g:fcitx_state = 1
+autocmd InsertLeave * let g:fcitx_state = system("fcitx5-remote")[0] | call job_start("fcitx5-remote -c")
+autocmd InsertEnter * if g:fcitx_state == '2' | call job_start("fcitx5-remote -o") | endif
+autocmd VimEnter * call job_start("fcitx5-remote -c")
