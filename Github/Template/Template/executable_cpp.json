@@ -1,0 +1,20 @@
+{
+    "ACM Template": {
+        "prefix": "acm",
+        "body": [
+            "#include <bits/stdc++.h>",
+            "/* ──▶  INCLUDE  ◀── */",
+            "$1#define MULTIT",
+            "#include <ihxnan>",
+            "/* ──▶  /INCLUDE  ◀── */",
+            "",
+            "/* ╔══════════ SOLVE ══════════╗ */",
+            "void solve()",
+            "{",
+            "    $0",
+            "}",
+            "/* ╚══════════ /SOLVE ══════════╝ */"
+        ],
+        "description": "ACM Final Template with fast IO"
+    }
+}

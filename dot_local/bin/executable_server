@@ -2,8 +2,8 @@
 
 set -e
 
-VM="archlinux"
-SERVER_IP="192.168.122.8"
+VM="CachyOS"
+SERVER_IP="192.168.122.148"
 SSH_USER="ihxnan"
 MOUNT_POINT="$HOME/vm-server"
 CLOUD_USER="root"

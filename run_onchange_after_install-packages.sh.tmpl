@@ -2,15 +2,53 @@
 set -euo pipefail
 
 {{- if eq .chezmoi.os "linux" }}
-echo "==> pacman"
-pacman_pkgs=(
-{{- range .packages.arch.pacman }}
-  {{ . | shellQuote }}
-{{- end }}
-)
-sudo pacman -S --needed --noconfirm "${pacman_pkgs[@]}"
 
-{{- if .packages.arch.shorin }}
+# ---------- 仓库：不存在才追加到 /etc/pacman.conf ----------
+add_repo() {
+  local name=$1
+  shift
+  if pacman-conf --repo-list 2>/dev/null | grep -qx "$name"; then
+    echo "==> repo ${name} 已存在，跳过"
+    return 0
+  fi
+  echo "==> 添加 repo ${name}"
+  {
+    echo
+    echo "[${name}]"
+    for server in "$@"; do printf 'Server = %s\n' "$server"; done
+  } | sudo tee -a /etc/pacman.conf >/dev/null
+}
+
+# ---------- GPG key：没导入就 recv + 本地签名 ----------
+ensure_key() {
+  local fp=$1
+  if pacman-key --list-keys "$fp" >/dev/null 2>&1; then
+    echo "==> key ${fp: -16} 已存在，跳过"
+    return 0
+  fi
+  echo "==> 导入并本地签名 ${fp: -16}"
+  sudo pacman-key --recv-keys "$fp" --keyserver hkps://keyserver.ubuntu.com
+  sudo pacman-key --lsign-key "$fp"
+}
+
+add_repo archlinuxcn \
+  'https://mirrors.ustc.edu.cn/archlinuxcn/$arch' \
+  'https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/$arch' \
+  'https://mirrors.hit.edu.cn/archlinuxcn/$arch' \
+  'https://repo.huaweicloud.com/archlinuxcn/$arch'
+add_repo shorin-arch \
+  'https://repo.shorin.xyz/archlinux/$arch'
+
+ensure_key 4B1DE545A801D4549BFD3FEF90CB3D62C13D4796  # farseerfc — archlinuxcn
+ensure_key 8ED9ABE61CDBAABAC4B6A694C9218E60C13B4BA8  # shorinkiwata — shorin-arch
+
+echo "==> 同步仓库数据库"
+sudo pacman -Syu --noconfirm
+
+echo "==> archlinuxcn keyring"
+sudo pacman -S --needed --noconfirm archlinuxcn-keyring
+
+{{ if .packages.arch.shorin }}
 echo "==> shorin repo"
 shorin_pkgs=(
 {{- range .packages.arch.shorin }}
@@ -19,6 +57,14 @@ shorin_pkgs=(
 )
 sudo pacman -S --needed --noconfirm "${shorin_pkgs[@]}"
 {{- end }}
+
+echo "==> pacman"
+pacman_pkgs=(
+{{- range .packages.arch.pacman }}
+  {{ . | shellQuote }}
+{{- end }}
+)
+sudo pacman -S --needed --noconfirm "${pacman_pkgs[@]}"
 
 {{- if .packages.arch.aur }}
 echo "==> AUR"
@@ -37,7 +83,7 @@ aur_pkgs=(
 paru -S --needed --noconfirm "${aur_pkgs[@]}"
 {{- end }}
 
-{{- range .packages.arch.user_services }}
+{{ range .packages.arch.user_services }}
 systemctl --user enable --now {{ . }} || true
 {{- end }}
 

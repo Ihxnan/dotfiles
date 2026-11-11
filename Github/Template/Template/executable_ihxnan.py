@@ -1,0 +1,31 @@
+import math
+import sys
+from collections import Counter, defaultdict, deque
+from heapq import heapify, heappop, heappush
+
+input = sys.stdin.readline
+sys.setrecursionlimit(1000000)
+
+
+def I():
+    return input().strip()
+
+
+def II():
+    return int(input())
+
+
+def MII():
+    return map(int, input().split())
+
+
+def LII():
+    return list(map(int, input().split()))
+
+
+def GMI():
+    return map(lambda x: int(x) - 1, input().split())
+
+
+def LGMI():
+    return list(map(lambda x: int(x) - 1, input().split()))

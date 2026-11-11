@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+{{- if eq .chezmoi.os "linux" }}
+{{- $src := joinPath .chezmoi.sourceDir "Github" "Template" }}
+{{- $cmd := printf "find %q \\( -name '*.hpp' -o -name '*symlink.py' \\) -print0 | sort -z | xargs -0 cat | sha256sum" $src }}
+# hpp-checksum: {{ output "bash" "-c" $cmd }}
+
+symlink_py="$HOME/Github/Template/symlink.py"
+if [ ! -f "$symlink_py" ]; then
+  echo "==> 跳过：找不到 $symlink_py"
+  exit 0
+fi
+
+echo "==> 刷新 /usr/local/include 下的 .hpp 符号链接"
+if sudo -n true 2>/dev/null || [ -t 0 ] || [ -t 1 ]; then
+  sudo python3 "$symlink_py" -c -v
+else
+  echo "==> 跳过：非交互环境且 sudo 需要密码，请手动执行："
+  echo "    sudo python3 $symlink_py -c -v"
+fi
+{{- end }}
