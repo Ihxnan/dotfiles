@@ -1,6 +1,7 @@
 # 依据当前 chezmoi 已纳管的配置推导
-# pacman 组 = 官方 / CachyOS 仓库
-# shorin 组 = [shorin-arch] 仓库
+# pacman 组     = 官方 / CachyOS 仓库
+# archlinuxcn 组 = [archlinuxcn] 仓库
+# shorin 组     = [shorin-arch] 仓库
 packages:
   arch:
     pacman:
@@ -13,7 +14,6 @@ packages:
       - eza
       - bat
       - fzf
-      - miyu
 
       # .vimrc / .config/nvim / .clang-format / .config/clangd / .gdbinit
       - vim
@@ -39,11 +39,10 @@ packages:
       # .config/user-dirs.dirs
       - xdg-user-dirs
 
-      # .config/xdg-desktop-portal / .config/xdg-desktop-portal-termfilechooser
+      # .config/xdg-desktop-portal
       - xdg-desktop-portal
       - xdg-desktop-portal-gtk
       - xdg-desktop-portal-gnome
-      - xdg-desktop-portal-termfilechooser
       - gnome-keyring
 
       # .config/fcitx5（基础 fcitx5 由 fcitx5-shorin-patched-git 提供）
@@ -77,6 +76,7 @@ packages:
       - curl
       - libnotify
       - python
+      - wtype                        # dux-shell 粘贴剪贴板历史
 
       # fontconfig
       - noto-fonts
@@ -89,6 +89,10 @@ packages:
       - pipewire-pulse
       - wireplumber
 
+    # 来自 [archlinuxcn]，标准 Arch 没有这些包
+    archlinuxcn:
+      - xdg-desktop-portal-termfilechooser   # .config/xdg-desktop-portal-termfilechooser
+
     # 来自 [shorin-arch]，标准 Arch 没有这些包
     shorin:
       - dux-shell                    # /usr/bin/dms
@@ -96,9 +100,19 @@ packages:
       - quickshell-git               # dms 依赖
       - shorin-dux-niri-git          # 提供 shorindms 和默认配置
       - fcitx5-shorin-patched-git    # 提供 fcitx5
+      - miyu                         # 终端 AI 助手
 
     # 目前没有必须走 AUR 的；以后有就加在这里
     aur: []
 
     user_services:
       - pipewire-pulse.socket
+
+    # 需要 root 的系统服务
+    system_services:
+      - sshd.service
+      - libvirtd.socket
+
+    # 需要把当前用户加入的附加组（重新登录后生效）
+    user_groups:
+      - libvirt
