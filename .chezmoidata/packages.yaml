@@ -101,4 +101,4 @@ packages:
     aur: []
 
     user_services:
-      - pipewire-pulse
+      - pipewire-pulse.socket

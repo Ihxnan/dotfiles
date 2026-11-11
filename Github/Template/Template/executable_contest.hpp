@@ -1,0 +1,61 @@
+#include <bits/stdc++.h>
+
+#define endl '\n'                        // 输出换行, 配合下方 IO 结构体使用 (末尾无多余空白)
+#define ls(x) ((x) << 1)                 // 线段树/树状结构: 节点 x 的左儿子下标 (x*2)
+#define rs(x) ((x) << 1 | 1)             // 线段树/树状结构: 节点 x 的右儿子下标 (x*2+1)
+#define bl(x) ((x) * blen + 1)           // 分块: 块 x 的左边界下标 (1 起始, 含)
+#define bi(x) (((x) - 1) / blen)         // 分块: 下标 x 所属的块编号 (0 起始, blen 为块长)
+#define br(x) (min(((x) + 1) * blen, n)) // 分块: 块 x 的右边界下标 (受全局 n 限制, 含)
+#define fid(x, y) ((m) * (x - 1) + (y))  // 二维坐标 (x,y) -> 一维编号 (1-indexed, m 为列数)
+#define gx(id) (((id) - 1) / m + 1)      // fid 逆变换: 编号 id -> 行号 x (1-indexed)
+#define gy(id) (((id) - 1) % m + 1)      // fid 逆变换: 编号 id -> 列号 y (1-indexed)
+
+using namespace std;
+using ll = long long;
+using ul = unsigned long long;
+using lll = __int128;
+using ld = long double;
+using vb = vector<bool>;
+using vi = vector<int>;
+using vvi = vector<vi>;
+using vl = vector<ll>;
+using vvl = vector<vl>;
+using pii = pair<int, int>;
+using pll = pair<ll, ll>;
+using ti = tuple<int, int, int>;
+using tl = tuple<ll, ll, ll>;
+
+const ll iINF = 0x3f3f3f3f, mod = 998244353, lINF = 0x3f3f3f3f3f3f3f3f, MOD = 1000000007;
+
+#ifdef IHXNAN
+template <typename T> void _debug(char *f, T t)
+{
+    cerr << f << " = " << t << endl;
+}
+template <typename T, typename... Ar> void _debug(char *f, T x, Ar... y)
+{
+    while (*f != ',')
+        cerr << *f++;
+    cerr << " = " << x << ",";
+    _debug(f + 1, y...);
+}
+#define gdb(...) _debug((char *)#__VA_ARGS__, __VA_ARGS__)
+#else
+#define gdb(...) void()
+#endif
+
+void solve()
+{
+}
+
+int main()
+{
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    cout.tie(nullptr);
+    int t = 1;
+    cin >> t;
+    while (t--)
+        solve();
+    return 0;
+}

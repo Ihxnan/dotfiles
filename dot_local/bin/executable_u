@@ -5,6 +5,7 @@
 #   非交互环境（管道/脚本）下保持 toggle 行为。
 #
 # 默认设备 /dev/sda1 <-> 挂载点 /mnt，可用环境变量 U_DEVICE / U_MOUNT_POINT 覆盖。
+# exfat/vfat/ntfs 挂载时默认带上 uid/gid（当前用户），也可用 -o 自定义挂载选项。
 #
 # TUI 快捷键:
 #   ↵    挂载/卸载选中的设备
@@ -15,6 +16,7 @@
 # ==================== 默认配置 ====================
 DEVICE="${U_DEVICE:-/dev/sda1}"
 MOUNT_POINT="${U_MOUNT_POINT:-/mnt}"
+MOUNT_OPTS="${U_MOUNT_OPTS:-}"   # 附加挂载选项；留空时自动为 fat/ntfs 补 uid/gid
 FORCE=0
 ACTION=auto
 
@@ -51,16 +53,22 @@ usage() {
 选项:
   -d, --device <设备>   指定设备，如 /dev/sdb1、LABEL=xxx、UUID=xxx
   -m, --mount <挂载点>  指定挂载点目录
+  -o, --opt <选项>      附加挂载选项，逗号分隔（如 rw,uid=1000,gid=1000）
   -f, --force           卸载被占用时改用延迟卸载 umount -l
   -h, --help            显示本帮助
 
-环境变量: U_DEVICE、U_MOUNT_POINT 可设置默认设备与挂载点。
+环境变量: U_DEVICE、U_MOUNT_POINT 可设置默认设备与挂载点；U_MOUNT_OPTS 设置默认挂载选项。
+
+说明: exfat/vfat/ntfs 支持 uid/gid/fmask/dmask，未给 -o 时自动带上当前用户
+      (uid=<你>,gid=<你>)，因此挂上后即可直接读写；ext4/btrfs 等按 POSIX 权限
+      工作，不支持这两个选项（不会自动添加）。
 
 示例:
   $(basename "$0")                  # 交互终端: 打开菜单; 其他: 切换挂载
   $(basename "$0") menu             # 打开菜单
   $(basename "$0") status           # 查看状态
   $(basename "$0") -d /dev/sdb1 -m /media/data on
+  $(basename "$0") on -o rw,uid=1000,gid=1000,fmask=0133
 EOF
     exit 0
 }
@@ -116,6 +124,18 @@ _notify() { # 桌面通知（fzf 内部操作无终端输出时反馈错误用�
 }
 
 # ==================== 挂载 ====================
+# fat/ntfs 系文件系统用 uid/gid 决定属主；其他文件系统原样返回空（不传 -o）
+owner_mount_opts() {
+    local dev=$1 fs u
+    fs=$(lsblk -no FSTYPE "$dev" 2>/dev/null | head -n 1)
+    case "$fs" in
+        exfat | vfat | ntfs | ntfs3 | fuseblk) ;;
+        *) return 0 ;;
+    esac
+    u=${SUDO_USER:-$(id -un)}
+    printf 'uid=%s,gid=%s' "$(id -u "$u" 2>/dev/null)" "$(id -g "$u" 2>/dev/null)"
+}
+
 wait_for_device() { # 设备未出现时短暂轮询（如刚插入的 USB）
     local tries=10
     while ! device_present; do
@@ -129,7 +149,7 @@ wait_for_device() { # 设备未出现时短暂轮询（如刚插入的 USB）
 }
 
 mount_it() {
-    local src t
+    local src t failed=
     # 1) 挂载点已被其他设备占用 → 拒绝，避免误卸载无关设备
     src=$(mountpoint_source)
     if [[ -n "$src" ]]; then
@@ -155,10 +175,17 @@ mount_it() {
         msg "创建挂载点目录 $MOUNT_POINT ..."
         sudo_run mkdir -p "$MOUNT_POINT" || die "创建挂载点失败: $MOUNT_POINT"
     fi
-    # 5) 执行挂载
-    msg "挂载 $DEVICE → $MOUNT_POINT ..."
-    if ! sudo_run mount "$DEVICE" "$MOUNT_POINT"; then
-        err "挂载失败，可能原因：文件系统损坏、缺少驱动(exfat/ntfs-3g 等)、$MOUNT_POINT 被占用"
+    # 5) 执行挂载（未指定 -o 时，fat/ntfs 自动带上当前用户的 uid/gid）
+    local opt=$MOUNT_OPTS
+    [[ -n "$opt" ]] || opt=$(owner_mount_opts "$(resolve_path)")
+    msg "挂载 $DEVICE → $MOUNT_POINT ${opt:+(选项: $opt)}..."
+    if [[ -n "$opt" ]]; then
+        sudo_run mount -o "$opt" "$DEVICE" "$MOUNT_POINT" || failed=1
+    else
+        sudo_run mount "$DEVICE" "$MOUNT_POINT" || failed=1
+    fi
+    if [[ -n "${failed:-}" ]]; then
+        err "挂载失败，可能原因：文件系统损坏、缺少驱动(exfat/ntfs-3g 等)、$MOUNT_POINT 被占用、挂载选项不被该文件系统支持"
         return 1
     fi
     ok "挂载成功: $DEVICE → $MOUNT_POINT"
@@ -244,6 +271,7 @@ status() {
             [[ -n "$t" ]] || continue
             ok "已挂载: $t"
             findmnt -h -no 'SOURCE,FSTYPE,SIZE,USED,AVAIL' "$t" 2>/dev/null | sed 's/^/        /'
+            findmnt -no OPTIONS "$t" 2>/dev/null | cut -d, -f1-3 | sed 's/^/        选项: /'
         done <<<"$targets"
     fi
     src=$(mountpoint_source)
@@ -449,6 +477,11 @@ parse_args() {
                 MOUNT_POINT=${args[i]:?缺少参数: $a 需要一个挂载点，如 /mnt}
                 ;;
             --mount=* | --mount-point=*) MOUNT_POINT=${a#*=} ;;
+            -o | --opt | --options)
+                (( i++ ))
+                MOUNT_OPTS=${args[i]:?缺少参数: $a 需要挂载选项，如 rw,uid=1000,gid=1000}
+                ;;
+            --opt=* | --options=*) MOUNT_OPTS=${a#*=} ;;
             -f | --force) FORCE=1 ;;
             toggle | on | mount | off | umount | unmount | status | menu | ui | tui)
                 if (( verb_seen )); then
