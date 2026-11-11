@@ -4,6 +4,6 @@ README.md
 # 没有 age 密钥时跳过加密文件，避免 chezmoi apply 整体中止
 {{ if eq (len (glob (joinPath .chezmoi.homeDir ".config" "chezmoi" "key.txt"))) 0 }}
 {{ warnf "未找到 age 密钥 ~/.config/chezmoi/key.txt，已跳过 ~/.ssh/id_ed25519 与 ~/.config/fish/conf.d/secret.fish；配置密钥后重新 chezmoi apply 即可应用" }}
-.ssh/id_d25519
+.ssh/id_ed25519
 .config/fish/conf.d/secret.fish
 {{ end }}
