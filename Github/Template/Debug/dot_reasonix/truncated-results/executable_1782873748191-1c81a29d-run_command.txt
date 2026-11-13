@@ -1,0 +1,461 @@
+$ g++ -std=c++20 -o test_grid test_grid.cpp && ./test_grid 2>&1
+[exit 0]
+In file included from test_grid.cpp:2:
+dbg.hpp:363:29: warning: multi-character character constant [-Wmultichar]
+  363 |     auto dash_c = string(w, '─');
+      |                             ^~~
+dbg.hpp:364:30: warning: multi-character character constant [-Wmultichar]
+  364 |     auto dash_r = string(wr, '─');
+      |                              ^~~
+dbg.hpp:383:11: warning: multi-character character constant [-Wmultichar]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |           ^~~
+dbg.hpp:383:16: warning: multi-character character constant [-Wmultichar]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                ^~~
+dbg.hpp:383:21: warning: multi-character character constant [-Wmultichar]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                     ^~~
+dbg.hpp:383:26: warning: multi-character character constant [-Wmultichar]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                          ^~~
+dbg.hpp:387:11: warning: multi-character character constant [-Wmultichar]
+  387 |     os << '│' << string(wr, ' ') << '│';
+      |           ^~~
+dbg.hpp:387:37: warning: multi-character character constant [-Wmultichar]
+  387 |     os << '│' << string(wr, ' ') << '│';
+      |                                     ^~~
+dbg.hpp:390:81: warning: multi-character character constant [-Wmultichar]
+  390 |         os << ' ' << _dbg_c(RED) << setw(w - 2) << j << _dbg_c(RESET) << ' ' << '│';
+      |                                                                                 ^~~
+dbg.hpp:395:11: warning: multi-character character constant [-Wmultichar]
+  395 |     hline('├', '┼', '┼', '┤');
+      |           ^~~
+dbg.hpp:395:16: warning: multi-character character constant [-Wmultichar]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                ^~~
+dbg.hpp:395:21: warning: multi-character character constant [-Wmultichar]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                     ^~~
+dbg.hpp:395:26: warning: multi-character character constant [-Wmultichar]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                          ^~~
+dbg.hpp:401:15: warning: multi-character character constant [-Wmultichar]
+  401 |         os << '│' << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << '│';
+      |               ^~~
+dbg.hpp:401:85: warning: multi-character character constant [-Wmultichar]
+  401 |         os << '│' << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << '│';
+      |                                                                                     ^~~
+dbg.hpp:406:93: warning: multi-character character constant [-Wmultichar]
+  406 |             os << ' ' << _dbg_c(CYAN) << setw(w - 2) << ss.str() << _dbg_c(RESET) << ' ' << '│';
+      |                                                                                             ^~~
+dbg.hpp:412:19: warning: multi-character character constant [-Wmultichar]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                   ^~~
+dbg.hpp:412:24: warning: multi-character character constant [-Wmultichar]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                        ^~~
+dbg.hpp:412:29: warning: multi-character character constant [-Wmultichar]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                             ^~~
+dbg.hpp:412:34: warning: multi-character character constant [-Wmultichar]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                                  ^~~
+dbg.hpp:418:11: warning: multi-character character constant [-Wmultichar]
+  418 |     hline('└', '┴', '┴', '┘');
+      |           ^~~
+dbg.hpp:418:16: warning: multi-character character constant [-Wmultichar]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                ^~~
+dbg.hpp:418:21: warning: multi-character character constant [-Wmultichar]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                     ^~~
+dbg.hpp:418:26: warning: multi-character character constant [-Wmultichar]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                          ^~~
+dbg.hpp:816:22: warning: multi-character character constant [-Wmultichar]
+  816 |     string dash_c(w, '─');
+      |                      ^~~
+dbg.hpp:817:23: warning: multi-character character constant [-Wmultichar]
+  817 |     string dash_r(wr, '─');
+      |                       ^~~
+dbg.hpp:828:11: warning: multi-character character constant [-Wmultichar]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |           ^~~
+dbg.hpp:828:16: warning: multi-character character constant [-Wmultichar]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |                ^~~
+dbg.hpp:828:21: warning: multi-character character constant [-Wmultichar]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |                     ^~~
+dbg.hpp:828:26: warning: multi-character character constant [-Wmultichar]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |                          ^~~
+dbg.hpp:832:11: warning: multi-character character constant [-Wmultichar]
+  832 |     os << '│' << string(wr, ' ') << '│';
+      |           ^~~
+dbg.hpp:832:37: warning: multi-character character constant [-Wmultichar]
+  832 |     os << '│' << string(wr, ' ') << '│';
+      |                                     ^~~
+dbg.hpp:835:81: warning: multi-character character constant [-Wmultichar]
+  835 |         os << ' ' << _dbg_c(RED) << setw(w - 2) << j << _dbg_c(RESET) << ' ' << '│';
+      |                                                                                 ^~~
+dbg.hpp:840:11: warning: multi-character character constant [-Wmultichar]
+  840 |     hline('├', '┼', '┼', '┤');
+      |           ^~~
+dbg.hpp:840:16: warning: multi-character character constant [-Wmultichar]
+  840 |     hline('├', '┼', '┼', '┤');
+      |                ^~~
+dbg.hpp:840:21: warning: multi-character character constant [-Wmultichar]
+  840 |     hline('├', '┼', '┼', '┤');
+      |                     ^~~
+dbg.hpp:840:26: warning: multi-character character constant [-Wmultichar]
+  840 |     hline('├', '┼', '┼', '┤');
+      |                          ^~~
+dbg.hpp:846:15: warning: multi-character character constant [-Wmultichar]
+  846 |         os << '│' << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << '│';
+      |               ^~~
+dbg.hpp:846:85: warning: multi-character character constant [-Wmultichar]
+  846 |         os << '│' << ' ' << _dbg_c(RED) << setw(rw) << i << _dbg_c(RESET) << ' ' << '│';
+      |                                                                                     ^~~
+dbg.hpp:851:93: warning: multi-character character constant [-Wmultichar]
+  851 |             os << ' ' << _dbg_c(CYAN) << setw(w - 2) << ss.str() << _dbg_c(RESET) << ' ' << '│';
+      |                                                                                             ^~~
+dbg.hpp:857:19: warning: multi-character character constant [-Wmultichar]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                   ^~~
+dbg.hpp:857:24: warning: multi-character character constant [-Wmultichar]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                        ^~~
+dbg.hpp:857:29: warning: multi-character character constant [-Wmultichar]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                             ^~~
+dbg.hpp:857:34: warning: multi-character character constant [-Wmultichar]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                                  ^~~
+dbg.hpp:863:11: warning: multi-character character constant [-Wmultichar]
+  863 |     hline('└', '┴', '┴', '┘');
+      |           ^~~
+dbg.hpp:863:16: warning: multi-character character constant [-Wmultichar]
+  863 |     hline('└', '┴', '┴', '┘');
+      |                ^~~
+dbg.hpp:863:21: warning: multi-character character constant [-Wmultichar]
+  863 |     hline('└', '┴', '┴', '┘');
+      |                     ^~~
+dbg.hpp:863:26: warning: multi-character character constant [-Wmultichar]
+  863 |     hline('└', '┴', '┴', '┘');
+      |                          ^~~
+dbg.hpp: In instantiation of ‘void _dbg_print_2d_c_array_grid(std::ostream&, const T (&)[R][C]) [with T = int; long unsigned int R = 3; long unsigned int C = 4; std::ostream = std::basic_ostream<char>]’:
+dbg.hpp:446:39:   required from ‘std::ostream& dbg_print(std::ostream&, const T (&)[N], int) [with T = int [4]; long unsigned int N = 3; std::ostream = std::basic_ostream<char>]’
+  446 |             _dbg_print_2d_c_array_grid(os,
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~
+  447 |                 reinterpret_cast<const Inner (&)[N][COLS]>(arr));
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:732:14:   required from ‘void _gdb_all_vars(std::ostream&, const char*, const T&) [with T = int [3][4]; std::ostream = std::basic_ostream<char>]’
+  732 |     dbg_print(os, val, 0);
+      |     ~~~~~~~~~^~~~~~~~~~~~
+test_grid.cpp:6:5:   required from here
+  758 |      _gdb_all_vars(_dbg_os(), #__VA_ARGS__, __VA_ARGS__), _dbg_os() << '\n', fflush(_dbg_out_fp()), 0)
+      |      ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:363:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  363 |     auto dash_c = string(w, '─');
+      |                             ^~~
+dbg.hpp:364:30: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  364 |     auto dash_r = string(wr, '─');
+      |                              ^~~
+dbg.hpp:383:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849164’ to ‘-116’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |           ^~~
+dbg.hpp:383:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                ^~~
+dbg.hpp:383:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                     ^~~
+dbg.hpp:383:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849168’ to ‘-112’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                          ^~~
+dbg.hpp:395:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |           ^~~
+dbg.hpp:395:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                ^~~
+dbg.hpp:395:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                     ^~~
+dbg.hpp:395:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                          ^~~
+dbg.hpp:412:19: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                   ^~~
+dbg.hpp:412:24: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                        ^~~
+dbg.hpp:412:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                             ^~~
+dbg.hpp:412:34: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                                  ^~~
+dbg.hpp:418:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849172’ to ‘-108’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |           ^~~
+dbg.hpp:418:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                ^~~
+dbg.hpp:418:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                     ^~~
+dbg.hpp:418:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849176’ to ‘-104’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                          ^~~
+dbg.hpp: In instantiation of ‘void _dbg_print_2d_c_array_grid(std::ostream&, const T (&)[R][C]) [with T = int; long unsigned int R = 5; long unsigned int C = 6; std::ostream = std::basic_ostream<char>]’:
+dbg.hpp:446:39:   required from ‘std::ostream& dbg_print(std::ostream&, const T (&)[N], int) [with T = int [6]; long unsigned int N = 5; std::ostream = std::basic_ostream<char>]’
+  446 |             _dbg_print_2d_c_array_grid(os,
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~
+  447 |                 reinterpret_cast<const Inner (&)[N][COLS]>(arr));
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:732:14:   required from ‘void _gdb_all_vars(std::ostream&, const char*, const T&) [with T = int [5][6]; std::ostream = std::basic_ostream<char>]’
+  732 |     dbg_print(os, val, 0);
+      |     ~~~~~~~~~^~~~~~~~~~~~
+test_grid.cpp:18:5:   required from here
+  758 |      _gdb_all_vars(_dbg_os(), #__VA_ARGS__, __VA_ARGS__), _dbg_os() << '\n', fflush(_dbg_out_fp()), 0)
+      |      ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:363:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  363 |     auto dash_c = string(w, '─');
+      |                             ^~~
+dbg.hpp:364:30: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  364 |     auto dash_r = string(wr, '─');
+      |                              ^~~
+dbg.hpp:383:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849164’ to ‘-116’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |           ^~~
+dbg.hpp:383:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                ^~~
+dbg.hpp:383:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                     ^~~
+dbg.hpp:383:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849168’ to ‘-112’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                          ^~~
+dbg.hpp:395:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |           ^~~
+dbg.hpp:395:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                ^~~
+dbg.hpp:395:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                     ^~~
+dbg.hpp:395:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                          ^~~
+dbg.hpp:412:19: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                   ^~~
+dbg.hpp:412:24: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                        ^~~
+dbg.hpp:412:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                             ^~~
+dbg.hpp:412:34: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                                  ^~~
+dbg.hpp:418:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849172’ to ‘-108’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |           ^~~
+dbg.hpp:418:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                ^~~
+dbg.hpp:418:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                     ^~~
+dbg.hpp:418:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849176’ to ‘-104’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                          ^~~
+dbg.hpp: In instantiation of ‘void _dbg_print_2d_c_array_grid(std::ostream&, const T (&)[R][C]) [with T = int; long unsigned int R = 2; long unsigned int C = 3; std::ostream = std::basic_ostream<char>]’:
+dbg.hpp:446:39:   required from ‘std::ostream& dbg_print(std::ostream&, const T (&)[N], int) [with T = int [3]; long unsigned int N = 2; std::ostream = std::basic_ostream<char>]’
+  446 |             _dbg_print_2d_c_array_grid(os,
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~
+  447 |                 reinterpret_cast<const Inner (&)[N][COLS]>(arr));
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:732:14:   required from ‘void _gdb_all_vars(std::ostream&, const char*, const T&) [with T = int [2][3]; std::ostream = std::basic_ostream<char>]’
+  732 |     dbg_print(os, val, 0);
+      |     ~~~~~~~~~^~~~~~~~~~~~
+test_grid.cpp:22:5:   required from here
+  758 |      _gdb_all_vars(_dbg_os(), #__VA_ARGS__, __VA_ARGS__), _dbg_os() << '\n', fflush(_dbg_out_fp()), 0)
+      |      ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:363:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  363 |     auto dash_c = string(w, '─');
+      |                             ^~~
+dbg.hpp:364:30: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  364 |     auto dash_r = string(wr, '─');
+      |                              ^~~
+dbg.hpp:383:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849164’ to ‘-116’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |           ^~~
+dbg.hpp:383:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                ^~~
+dbg.hpp:383:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                     ^~~
+dbg.hpp:383:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849168’ to ‘-112’ [-Woverflow]
+  383 |     hline('┌', '┬', '┬', '┐');
+      |                          ^~~
+dbg.hpp:395:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |           ^~~
+dbg.hpp:395:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                ^~~
+dbg.hpp:395:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                     ^~~
+dbg.hpp:395:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  395 |     hline('├', '┼', '┼', '┤');
+      |                          ^~~
+dbg.hpp:412:19: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                   ^~~
+dbg.hpp:412:24: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                        ^~~
+dbg.hpp:412:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                             ^~~
+dbg.hpp:412:34: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  412 |             hline('├', '┼', '┼', '┤');
+      |                                  ^~~
+dbg.hpp:418:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849172’ to ‘-108’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |           ^~~
+dbg.hpp:418:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                ^~~
+dbg.hpp:418:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                     ^~~
+dbg.hpp:418:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849176’ to ‘-104’ [-Woverflow]
+  418 |     hline('└', '┴', '┴', '┘');
+      |                          ^~~
+dbg.hpp: In instantiation of ‘void _dbg_print_grid(std::ostream&, const std::vector<std::vector<_Tp> >&, int, int, int, int) [with T = int; std::ostream = std::basic_ostream<char>]’:
+dbg.hpp:331:20:   required from ‘void _dbg_print_2d(std::ostream&, const std::vector<std::vector<_Tp> >&) [with T = int; std::ostream = std::basic_ostream<char>]’
+  331 |     _dbg_print_grid(os, mat, 0, r, 0, c);
+      |     ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:637:34:   required from ‘std::ostream& dbg_print(std::ostream&, const T&, int) [with T = std::vector<std::vector<int> >; std::ostream = std::basic_ostream<char>]’
+  637 |                     _dbg_print_2d(os, x);
+      |                     ~~~~~~~~~~~~~^~~~~~~
+dbg.hpp:732:14:   required from ‘void _gdb_all_vars(std::ostream&, const char*, const T&) [with T = std::vector<std::vector<int> >; std::ostream = std::basic_ostream<char>]’
+  732 |     dbg_print(os, val, 0);
+      |     ~~~~~~~~~^~~~~~~~~~~~
+test_grid.cpp:9:5:   required from here
+  758 |      _gdb_all_vars(_dbg_os(), #__VA_ARGS__, __VA_ARGS__), _dbg_os() << '\n', fflush(_dbg_out_fp()), 0)
+      |      ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dbg.hpp:816:22: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  816 |     string dash_c(w, '─');
+      |                      ^~~
+dbg.hpp:817:23: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849152’ to ‘-128’ [-Woverflow]
+  817 |     string dash_r(wr, '─');
+      |                       ^~~
+dbg.hpp:828:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849164’ to ‘-116’ [-Woverflow]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |           ^~~
+dbg.hpp:828:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |                ^~~
+dbg.hpp:828:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849196’ to ‘-84’ [-Woverflow]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |                     ^~~
+dbg.hpp:828:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849168’ to ‘-112’ [-Woverflow]
+  828 |     hline('┌', '┬', '┬', '┐');
+      |                          ^~~
+dbg.hpp:840:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  840 |     hline('├', '┼', '┼', '┤');
+      |           ^~~
+dbg.hpp:840:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  840 |     hline('├', '┼', '┼', '┤');
+      |                ^~~
+dbg.hpp:840:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  840 |     hline('├', '┼', '┼', '┤');
+      |                     ^~~
+dbg.hpp:840:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  840 |     hline('├', '┼', '┼', '┤');
+      |                          ^~~
+dbg.hpp:857:19: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849180’ to ‘-100’ [-Woverflow]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                   ^~~
+dbg.hpp:857:24: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                        ^~~
+dbg.hpp:857:29: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849212’ to ‘-68’ [-Woverflow]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                             ^~~
+dbg.hpp:857:34: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849188’ to ‘-92’ [-Woverflow]
+  857 |             hline('├', '┼', '┼', '┤');
+      |                                  ^~~
+dbg.hpp:863:11: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849172’ to ‘-108’ [-Woverflow]
+  863 |     hline('└', '┴', '┴', '┘');
+      |           ^~~
+dbg.hpp:863:16: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  863 |     hline('└', '┴', '┴', '┘');
+      |                ^~~
+dbg.hpp:863:21: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849204’ to ‘-76’ [-Woverflow]
+  863 |     hline('└', '┴', '┴', '┘');
+      |                     ^~~
+dbg.hpp:863:26: warning: overflow in conversion from ‘int’ to ‘char’ changes value from ‘14849176’ to ‘-104’ [-Woverflow]
+  863 |     hline('└', '┴', '┴', '┘');
+      |                          ^~~
+[1;33m[test_grid.cpp:6]
+[0m[1;31mb[0m = [1;36m
+��������������������������
+14849154    14849154 [1;31m 0[0m 14849154 [1;31m 1[0m 14849154 [1;31m 2[0m 14849154 [1;31m 3[0m 14849154
+��������������������������
+14849154 [1;31m 0[0m 14849154 [1;36m 1[0m 14849154 [1;36m 2[0m 14849154 [1;36m 3[0m 14849154 [1;36m 4[0m 14849154
+��������������������������
+14849154 [1;31m 1[0m 14849154 [1;36m 5[0m 14849154 [1;36m 6[0m 14849154 [1;36m 7[0m 14849154 [1;36m 8[0m 14849154
+��������������������������
+14849154 [1;31m 2[0m 14849154 [1;36m 9[0m 14849154 [1;36m10[0m 14849154 [1;36m11[0m 14849154 [1;36m12[0m 14849154
+��������������������������
+[0m
+[1;33m[test_grid.cpp:9]
+[0m[1;31mv[0m = [1;36m
+
+��������������
+14849154    14849154 [1;31m0[0m 14849154 [1;31m1[0m 14849154
+��������������
+14849154 [1;31m 0[0m 14849154 [1;36m1[0m 14849154 [1;36m0[0m 14849154
+��������������
+14849154 [1;31m 1[0m 14849154 [1;36m0[0m 14849154 [1;36m1[0m 14849154
+��������������
+[0m
+[1;33m[test_grid.cpp:18]
+[0m[1;31mbig[0m = [1;36m
+������������������������������������
+14849154    14849154 [1;31m 0[0m 14849154 [1;31m 1[0m 14849154 [1;31m 2[0m 14849154 [1;31m 3[0m 14849154 [1;31m 4[0m 14849154 [1;31m 5[0m 14849154
+������������������������������������
+14849154 [1;31m 0[0m 14849154 [1;36m 1[0m 14849154 [1;36m 2[0m 14849154 [1;36m 3[0m 14849154 [1;36m 4[0m 14849154 [1;36m 5[0m 14849154 [1;36m 6[0m 14849154
+������������������������������������
+14849154 [1;31m 1[0m 14849154 [1;36m 7[0m 14849154 [1;36m 8[0m 14849154 [1;36m 9[0m 14849154 [1;36m10[0m 14849154 [1;36m11[0m 14849154 [1;36m12[0m 14849154
+������������������������������������
+14849154 [1;31m 2[0m 14849154 [1;36m13[0m 14849154 [1;36m14[0m 14849154 [1;36m15[0m 14849154 [1;36m16[0m 14849154 [1;36m17[0m 14849154 [1;36m18[0m 14849154
+������������������������������������
+14849154 [1;31m 3[0m 14849154 [1;36m19[0m 14849154 [1;36m20[0m 14849154 [1;36m21[0m 14849154 [1;36m22[0m 14849154 [1;36m23[0m 14849154 [1;36m24[0m 14849154
+������������������������������������
+14849154 [1;31m 4[0m 14849154 [1;36m25[0m 14849154 [1;36m26[0m 14849154 [1;36m27[0m 14849154 [1;36m28[0m 14849154 [1;36m29[0m 14849154 [1;36m30[0m 14849154
+������������������������������������
+[0m
+[1;33m[test_grid.cpp:22]
+[0m[1;31mneg[0m = [1;36m
+���������������������������
+14849154    14849154 [1;31m   0[0m 14849154 [1;31m   1[0m 14849154 [1;31m   2[0m 14849154
+���������������������������
+14849154 [1;31m 0[0m 14849154 [1;36m  -1[0m 14849154 [1;36m   0[0m 14849154 [1;36m   1[0m 14849154
+���������������������������
+14849154 [1;31m 1[0m 14849154 [1;36m-100[0m 14849154 [1;36m  42[0m 14849154 [1;36m  -5[0m 14849154
+���������������������������
+[0m

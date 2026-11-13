@@ -1,8 +1,6 @@
-struct AhoCorasick
-{
+struct AhoCorasick {
     static constexpr int ALPHABET = 26;
-    struct Node
-    {
+    struct Node {
         int len;
         int link;
         array<int, ALPHABET> next;
@@ -92,3 +90,36 @@ struct AhoCorasick
         return tree.size();
     }
 };
+
+/*
+void solve()
+{
+    int n;
+    cin >> n;
+    AhoCorasick ac;
+    string str;
+    vi ends(n);
+    for (auto &p : ends)
+    {
+        cin >> str;
+        p = ac.add(str);
+    }
+    ac.work();
+
+    cin >> str;
+    vi cnt(ac.size());
+    int p = 1;
+    for (auto &ch : str)
+        ++cnt[p = ac.next(p, ch - 'a')];
+
+    vi order(ac.size());
+    iota(order.begin(), order.end(), 0);
+    sort(order.begin(), order.end(), [&](int a, int b) { return ac.len(a) > ac.len(b); });
+
+    for (auto &p : order)
+        cnt[ac.link(p)] += cnt[p];
+
+    for (auto &p : ends)
+        cout << cnt[p] << endl;
+}
+*/
