@@ -32,6 +32,9 @@ packages:
       - satty
       - xsettingsd
 
+      - paru
+      - yay
+
       # .config/gtk-3.0 / .config/gtk-4.0
       - gtk3
       - gtk4
@@ -95,12 +98,16 @@ packages:
 
     # 来自 [shorin-arch]，标准 Arch 没有这些包
     shorin:
-      - dux-shell                    # /usr/bin/dms
-      - dux-search-bin               # /usr/bin/dsearch
-      - quickshell-git               # dms 依赖
-      - shorin-dux-niri-git          # 提供 shorindms 和默认配置
-      - fcitx5-shorin-patched-git    # 提供 fcitx5
-      - miyu                         # 终端 AI 助手
+      - dux-shell                             # /usr/bin/dms
+      - dux-search-bin                        # /usr/bin/dsearch
+      - quickshell-git                        # dms 依赖
+      - shorin-dux-niri-git                   # 提供 shorindms 和默认配置
+      - fcitx5-shorin-patched-git             # 提供 fcitx5
+      - miyu                                  # 终端 AI 助手
+      - shorin-pac-git                        # 下载器
+      - ttf-jetbrains-maple-mono-nf-xx-xx     # 终端字体
+      - ttf-fira-code                         # 终端字体
+      - ttf-firacode-nerd                     # 终端字体
 
     # 目前没有必须走 AUR 的；以后有就加在这里
     aur: []

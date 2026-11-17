@@ -16,7 +16,21 @@ return {
 				desc = "DAP：启动/继续",
 			},
 			{
+				"<leader>dc",
+				function()
+					require("dap").continue()
+				end,
+				desc = "DAP：启动/继续",
+			},
+			{
 				"<F9>",
+				function()
+					require("dap").toggle_breakpoint()
+				end,
+				desc = "DAP：切换断点",
+			},
+			{
+				"<leader>db",
 				function()
 					require("dap").toggle_breakpoint()
 				end,
@@ -31,11 +45,25 @@ return {
 				desc = "DAP：步过",
 			},
 			{
+				"<leader>dn",
+				function()
+					require("dap").step_over()
+				end,
+				desc = "DAP：步过",
+			},
+			{
 				"<F11>",
 				function()
 					require("dap").step_into()
 				end,
 				mode = { "n", "i" },
+				desc = "DAP：步入",
+			},
+			{
+				"<leader>di",
+				function()
+					require("dap").step_into()
+				end,
 				desc = "DAP：步入",
 			},
 			{
@@ -46,7 +74,21 @@ return {
 				desc = "DAP：步出",
 			},
 			{
+				"<leader>do",
+				function()
+					require("dap").step_out()
+				end,
+				desc = "DAP：步出",
+			},
+			{
 				"<S-F5>",
+				function()
+					require("dap").terminate()
+				end,
+				desc = "DAP：结束调试",
+			},
+			{
+				"<leader>dt",
 				function()
 					require("dap").terminate()
 				end,
