@@ -118,5 +118,18 @@
             "    return 0;",
             "}"
         ]
+    },
+    "UNDEF": {
+        "prefix": "udf",
+        "body": [
+            "#undef cin",
+            "#undef cout"
+        ]
+    },
+    "INIT": {
+        "prefix": "init",
+        "body": [
+            "int init = [] { return cin >> t, 0; }();"
+        ]
     }
 }

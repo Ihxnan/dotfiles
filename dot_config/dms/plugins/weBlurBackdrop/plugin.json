@@ -1,0 +1,12 @@
+{
+    "id": "weBlurBackdrop",
+    "name": "WE Blur Backdrop",
+    "description": "Use the linux-wallpaperengine static screenshot as the blurred niri overview backdrop",
+    "version": "1.0.0",
+    "author": "local",
+    "type": "daemon",
+    "capabilities": ["wallpaper", "blur"],
+    "component": "./WeBlurBackdrop.qml",
+    "icon": "blur_on",
+    "requires_dms": ">=2.0.0"
+}
