@@ -98,6 +98,8 @@ spawn-at-startup "~/.config/niri/scripts/screenshot-sound.sh"
 spawn-at-startup "xhost" "+si:localuser:root"
 // dms 搜索
 spawn-at-startup "dsearch" "serve"
+// 工作区单窗口自动铺满；第2个窗口左右平分；第3个起并入当前聚焦列上下平分；跨工作区移动窗口也按此规则
+spawn-sh-at-startup "python3 ~/.config/niri/scripts/niri_tilemod.py --num_stack 1000 --column_bounds 1 1000 --no_outer_stack --apply_to_moved_windows"
 // x11<--> 剪贴板同步
 
 // 取消启动niri时自动开启快捷键教程
