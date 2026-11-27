@@ -260,6 +260,10 @@ keymap = [
   ], run = "cd /share", desc = "Go /share" },
   { on = [
     "g",
+    "v",
+  ], run = "cd ~/Videos", desc = "Go ~/Videos" },
+  { on = [
+    "g",
     "w",
   ], run = "cd ~/WorkSpace", desc = "Go ~/WorkSpace" },
   { on = [
