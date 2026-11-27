@@ -162,10 +162,10 @@ binds {
     Mod+B hotkey-overlay-title="浏览器 Browser" { spawn "chromium"; }
     Mod+Ctrl+Shift+Alt+B hotkey-overlay-title="播放Bad Apple Play Bad Apple" { spawn "bad-apple"; }
     Mod+F1 hotkey-overlay-title="开关输入法 Toggle fcitx" { spawn-sh "pkill fcitx5 || fcitx5 "; }
-    Mod+F3 hotkey-overlay-title="录屏 Screen record" { spawn "shorin-screenrec-menu"; }
     Mod+F5 hotkey-overlay-title="快速存档 Quick save" { spawn "quicksave"; }
     Mod+F8 hotkey-overlay-title="快速读档 Quick load" { spawn "quickload"; }
     Mod+Print hotkey-overlay-title="长截图 Scrolling screenshot" { spawn-sh "wl-longshot --control menu --menu-cmd fuzzel --open"; }
+    Mod+Shift+Print hotkey-overlay-title="录屏 Screen record" { spawn "shorin-screenrec-menu"; }
     Mod+Shift+S hotkey-overlay-title="截图后按下此键进行编辑 Edit the image after screenshot" { spawn-sh "wl-paste | satty -f -"; }
     Mod+Shift+Slash hotkey-overlay-title="快捷键教程 Keybind tutorial" { spawn "~/.config/niri/scripts/niri-binds"; }
     Mod+Slash hotkey-overlay-title="临时终端 Quick Terminal" { spawn "kitty" "--single-instance" "--class" "quickterminal"; }
