@@ -101,6 +101,16 @@
       "skillFolderHash": "292eaa2adb46c1ee678f090efec7780c50b91419",
       "installedAt": "2026-11-27T05:07:04.848Z",
       "updatedAt": "2026-11-27T05:07:04.848Z"
+    },
+    "uv": {
+      "source": "astral-sh/agent-plugins",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/astral-sh/agent-plugins.git",
+      "commit": "855418fb9ebfada49a8345a5c3ada9db2cdc2419",
+      "skillPath": "plugins/astral/skills/uv/SKILL.md",
+      "skillFolderHash": "46f8fea3384b4d49360a1ad91bf2325ee3736ede",
+      "installedAt": "2026-11-27T12:12:34.533Z",
+      "updatedAt": "2026-11-27T12:12:34.533Z"
     }
   },
   "dismissed": {
