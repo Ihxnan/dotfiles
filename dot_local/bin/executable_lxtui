@@ -1,0 +1,1704 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
+"""lxtui — LX Music 桌面版开放 API 的终端播放器界面。
+
+通过 LX Music 的开放 API（默认 http://localhost:23330）在终端里控制播放，
+并用 SSE 实时显示歌词、进度和播放状态。
+
+用法:
+    uv run lxtui.py [--server http://localhost:23330]
+    uv run lxtui.py --lyrics-only        # 桌面歌词模式：顶部一行 + 3 行歌词
+    python3 lxtui.py [--server http://localhost:23330]
+
+依赖: 仅 Python 3 标准库（curses），无需第三方包。
+"""
+
+from __future__ import annotations
+
+import argparse
+import bisect
+import codecs
+import curses
+import json
+import os
+import queue
+import re
+import select
+import shlex
+import subprocess
+import sys
+import threading
+import time
+import unicodedata
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+
+DEFAULT_SERVER = (os.environ.get("LX_API_URL") or "http://localhost:23330").strip()
+
+# 订阅 / 拉取播放状态时需要的字段
+FILTER_FIELDS = (
+    "status",
+    "name",
+    "singer",
+    "albumName",
+    "duration",
+    "progress",
+    "playbackRate",
+    "picUrl",
+    "lyricLineText",
+    "lyricLineAllText",
+    "lyric",
+    "tlyric",
+    "rlyric",
+    "collect",
+    "volume",
+    "mute",
+)
+
+DEFAULTS = {
+    "status": "stoped",
+    "name": "",
+    "singer": "",
+    "albumName": "",
+    "duration": 0.0,
+    "progress": 0.0,
+    "playbackRate": 1.0,
+    "picUrl": "",
+    "lyricLineText": "",
+    "lyricLineAllText": "",
+    "lyric": "",
+    "tlyric": "",
+    "rlyric": "",
+    "collect": False,
+    "volume": 100,
+    "mute": False,
+}
+
+HELP_LINES = (
+    "空格 播放/暂停   j/k 切歌   h/l 快退/快进   ↑/↓ 音量   m 静音",
+    "J/K 歌词滚动   d/u 翻页   a 自动跟随   c 收藏   / 搜索   o 歌单",
+    "r 重连   ? / F1 全部快捷键   q 退出",
+)
+
+# 常见歌单链接域名 -> LX Music 源
+PLAYLIST_HOSTS = {
+    "music.163.com": "wy",
+    "y.qq.com": "tx",
+    "kuwo.cn": "kw",
+    "kugou.com": "kg",
+    "music.migu.cn": "mg",
+}
+
+# 帮助面板内容
+HELP_LEFT_SECTIONS = (
+    (
+        "播放",
+        (
+            ("空格", "播放 / 暂停"),
+            ("j / k", "下一首 / 上一首"),
+            ("h / l", "快退 / 快进 5 秒"),
+            ("H / L", "快退 / 快进 30 秒"),
+            ("+ / -", "音量 ±5"),
+            ("m", "静音开关"),
+            ("c", "收藏 / 取消收藏"),
+        ),
+    ),
+    (
+        "歌词",
+        (
+            ("J / K", "歌词下滚 / 上滚 1 行"),
+            ("d / u", "歌词下翻 / 上翻 5 行"),
+            ("g / G", "跳到歌词开头 / 结尾"),
+            ("a", "回到当前歌词"),
+        ),
+    ),
+)
+HELP_RIGHT_SECTIONS = (
+    (
+        "搜索 / 其他",
+        (
+            ("/", "搜索并播放"),
+            ("o", "打开歌单"),
+            ("r", "重新连接"),
+            ("? / F1", "显示 / 关闭帮助"),
+            ("q / Esc", "退出"),
+        ),
+    ),
+)
+HELP_NOTE = "方向键、PgUp/PgDn、n/p 也可用"
+
+
+def _help_block(sections, label_width: int = 8):
+    lines = []
+    for index, (title, items) in enumerate(sections):
+        if index:
+            lines.append(("", "gap"))
+        lines.append((title, "header"))
+        for label, desc in items:
+            pad = " " * max(1, label_width - text_width(label))
+            lines.append((f"  {label}{pad}{desc}", "item"))
+    return lines
+
+
+def help_layout(width: int):
+    """返回帮助面板的 (行列表, 左栏宽度, 右栏宽度)。
+
+    每行形如 (左文本, 左类型, 右文本或 None, 右类型)，宽屏两栏、窄屏单栏。
+    """
+    left = _help_block(HELP_LEFT_SECTIONS)
+    right = _help_block(HELP_RIGHT_SECTIONS) + [("", "gap"), (HELP_NOTE, "dim")]
+    left_width = max(text_width(text) for text, _ in left)
+    right_width = max(text_width(text) for text, _ in right)
+    if width >= left_width + right_width + 10:
+        rows = []
+        for index in range(max(len(left), len(right))):
+            ltext, lkind = left[index] if index < len(left) else ("", "gap")
+            rtext, rkind = right[index] if index < len(right) else ("", "gap")
+            rows.append((ltext, lkind, rtext, rkind))
+        return rows, left_width, right_width
+    rows = [(text, kind, None, None) for text, kind in left]
+    rows.append(("", "gap", None, None))
+    rows.extend((text, kind, None, None) for text, kind in right)
+    return rows, left_width, 0
+
+
+# --------------------------------------------------------------------------- #
+# 显示宽度工具（正确处理中日韩宽字符）
+# --------------------------------------------------------------------------- #
+
+def char_width(ch: str) -> int:
+    if unicodedata.combining(ch):
+        return 0
+    if unicodedata.east_asian_width(ch) in ("W", "F"):
+        return 2
+    return 1
+
+
+def text_width(text: str) -> int:
+    return sum(char_width(ch) for ch in text)
+
+
+def clip_display(text: str, max_width: int) -> str:
+    """按终端显示宽度裁剪字符串，超长时补省略号。"""
+    if max_width <= 0:
+        return ""
+    if text_width(text) <= max_width:
+        return text
+    limit = max_width - 1  # 预留 1 列给省略号
+    used = 0
+    out = []
+    for ch in text:
+        cw = char_width(ch)
+        if used + cw > limit:
+            break
+        out.append(ch)
+        used += cw
+    out.append("…")
+    return "".join(out)
+
+
+def clip_tail(text: str, max_width: int) -> str:
+    """从左侧裁剪，保留末尾（输入框需要看到光标附近的内容）。"""
+    if max_width <= 0:
+        return ""
+    if text_width(text) <= max_width:
+        return text
+    limit = max_width - 1
+    used = 0
+    out = []
+    for ch in reversed(text):
+        cw = char_width(ch)
+        if used + cw > limit:
+            break
+        out.append(ch)
+        used += cw
+    return "…" + "".join(reversed(out))
+
+
+def fmt_time(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+# --------------------------------------------------------------------------- #
+# HTTP 客户端
+# --------------------------------------------------------------------------- #
+
+class ApiClient:
+    def __init__(self, base: str):
+        self.base = base.rstrip("/") or "http://localhost:23330"
+
+    def _open(self, path: str, params: dict | None = None, timeout: float = 6.0):
+        url = self.base + path
+        if params:
+            url += "?" + urllib.parse.urlencode(params)
+        request = urllib.request.Request(
+            url,
+            headers={"User-Agent": "lxtui/1.0", "Accept": "*/*"},
+        )
+        return urllib.request.urlopen(request, timeout=timeout)
+
+    def status(self, fields=FILTER_FIELDS) -> dict:
+        with self._open("/status", {"filter": ",".join(fields)}) as resp:
+            return json.loads(resp.read().decode("utf-8", "replace"))
+
+    def action(self, endpoint: str, **params) -> str:
+        params = {k: v for k, v in params.items() if v is not None}
+        with self._open("/" + endpoint, params or None) as resp:
+            return resp.read().decode("utf-8", "replace")
+
+
+# --------------------------------------------------------------------------- #
+# 共享播放状态
+# --------------------------------------------------------------------------- #
+
+class SharedState:
+    """SSE 线程写、UI 主线程读的状态容器。"""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._data = dict(DEFAULTS)
+        self._progress_ts = 0.0
+        self.revision = 0
+        self.connected = False
+        self.error = ""
+
+    def apply(self, key: str, value) -> None:
+        if key not in DEFAULTS:
+            return
+        with self._lock:
+            if key == "progress":
+                try:
+                    value = max(0.0, float(value))
+                except (TypeError, ValueError):
+                    return
+                self._progress_ts = time.monotonic()
+            elif key == "status":
+                # 暂停/恢复时不应按旧时间戳外推进度
+                self._progress_ts = time.monotonic()
+            elif key == "duration":
+                try:
+                    value = max(0.0, float(value))
+                except (TypeError, ValueError):
+                    return
+            elif key == "volume":
+                try:
+                    value = int(round(float(value)))
+                except (TypeError, ValueError):
+                    return
+            self._data[key] = value
+            self.revision += 1
+
+    def set_local(self, key: str, value) -> None:
+        """本地乐观更新（发送控制请求后立即生效，随后被 SSE 回包覆盖）。"""
+        if key not in DEFAULTS:
+            return
+        with self._lock:
+            if key in ("progress", "status"):
+                self._progress_ts = time.monotonic()
+            self._data[key] = value
+            self.revision += 1
+
+    def set_connection(self, connected: bool, error: str = "") -> None:
+        with self._lock:
+            if self.connected == connected and self.error == error:
+                return
+            self.connected = connected
+            self.error = error or ""
+            self.revision += 1
+
+    def snapshot(self):
+        with self._lock:
+            return (
+                dict(self._data),
+                self.revision,
+                self._progress_ts,
+                self.connected,
+                self.error,
+            )
+
+
+def effective_progress(data: dict, progress_ts: float, now: float) -> float:
+    try:
+        progress = float(data.get("progress") or 0.0)
+    except (TypeError, ValueError):
+        progress = 0.0
+    if data.get("status") == "playing" and progress_ts > 0:
+        try:
+            rate = float(data.get("playbackRate") or 1.0)
+        except (TypeError, ValueError):
+            rate = 1.0
+        progress += max(0.0, now - progress_ts) * rate
+    try:
+        duration = float(data.get("duration") or 0.0)
+    except (TypeError, ValueError):
+        duration = 0.0
+    if duration > 0:
+        progress = min(progress, duration)
+    return max(0.0, progress)
+
+
+# --------------------------------------------------------------------------- #
+# SSE 订阅线程
+# --------------------------------------------------------------------------- #
+
+class SseListener(threading.Thread):
+    def __init__(self, state: SharedState, server: str):
+        super().__init__(name="lx-sse", daemon=True)
+        self.state = state
+        self.url = (
+            server.rstrip("/")
+            + "/subscribe-player-status?"
+            + urllib.parse.urlencode({"filter": ",".join(FILTER_FIELDS)})
+        )
+        self._stop = threading.Event()
+        self._wake = threading.Event()
+        self._resp = None
+        self._resp_lock = threading.Lock()
+
+    def reconnect(self) -> None:
+        self._wake.set()
+        with self._resp_lock:
+            resp = self._resp
+        if resp is not None:
+            try:
+                resp.close()
+            except OSError:
+                pass
+
+    def stop(self) -> None:
+        self._stop.set()
+        self.reconnect()
+
+    def run(self) -> None:
+        backoff = 0.5
+        while not self._stop.is_set():
+            self._wake.clear()
+            try:
+                request = urllib.request.Request(
+                    self.url,
+                    headers={
+                        "Accept": "text/event-stream",
+                        "Cache-Control": "no-cache",
+                    },
+                )
+                resp = urllib.request.urlopen(request, timeout=15)
+                with self._resp_lock:
+                    self._resp = resp
+                with resp:
+                    # 连接建立后改回阻塞读，用 select 轮询，方便随时响应重连/退出
+                    try:
+                        resp.fp.raw._sock.settimeout(None)
+                    except (AttributeError, OSError):
+                        pass
+                    self.state.set_connection(True)
+                    backoff = 0.5
+                    buffer = b""
+                    event = None
+                    while not self._stop.is_set() and not self._wake.is_set():
+                        try:
+                            try:
+                                fd = resp.fileno()
+                            except (AttributeError, OSError):
+                                fd = resp.fp.fileno()
+                            readable = select.select([fd], [], [], 1.0)[0]
+                        except (OSError, ValueError) as exc:
+                            raise ConnectionError("连接已关闭") from exc
+                        if not readable:
+                            continue
+                        chunk = resp.read1(65536)
+                        if not chunk:
+                            raise ConnectionError("服务端关闭了连接")
+                        buffer += chunk
+                        while b"\n" in buffer:
+                            raw, buffer = buffer.split(b"\n", 1)
+                            line = raw.decode("utf-8", "replace").rstrip("\r")
+                            if line.startswith("event:"):
+                                event = line[6:].strip()
+                            elif line.startswith("data:"):
+                                payload = line[5:].strip()
+                                try:
+                                    value = json.loads(payload)
+                                except ValueError:
+                                    value = payload
+                                if event and value != "undefined":
+                                    self.state.apply(event, value)
+                            elif not line:
+                                event = None
+                if not self._stop.is_set() and not self._wake.is_set():
+                    self.state.set_connection(False, "连接已断开")
+            except TimeoutError:
+                # 暂停等场景下长时间没有状态变化，socket 读超时后静默重连
+                pass
+            except Exception as exc:  # noqa: BLE001 - 需要把错误展示给用户
+                if not self._stop.is_set() and not self._wake.is_set():
+                    self.state.set_connection(
+                        False, f"{type(exc).__name__}: {exc}"
+                    )
+            finally:
+                with self._resp_lock:
+                    self._resp = None
+            if self._stop.is_set():
+                break
+            if not self._wake.wait(backoff):
+                backoff = min(backoff * 2, 5.0)
+
+
+# --------------------------------------------------------------------------- #
+# 控制请求线程（避免阻塞 UI）
+# --------------------------------------------------------------------------- #
+
+class ActionWorker(threading.Thread):
+    def __init__(self, client: ApiClient, out: queue.Queue):
+        super().__init__(name="lx-actions", daemon=True)
+        self.client = client
+        self.out = out
+        self._queue: queue.Queue = queue.Queue()
+
+    def submit(self, endpoint: str, **params) -> None:
+        self._queue.put((endpoint, params))
+
+    def stop(self) -> None:
+        self._queue.put(None)
+
+    def run(self) -> None:
+        while True:
+            item = self._queue.get()
+            if item is None:
+                return
+            endpoint, params = item
+            try:
+                self.client.action(endpoint, **params)
+            except Exception as exc:  # noqa: BLE001
+                self.out.put(("error", f"{endpoint} 操作失败：{exc}"))
+
+
+# --------------------------------------------------------------------------- #
+# LRC 歌词解析
+# --------------------------------------------------------------------------- #
+
+TIME_TAG = re.compile(r"\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]")
+OFFSET_TAG = re.compile(r"\[offset:\s*([+-]?\d+)\s*\]", re.IGNORECASE)
+
+
+def parse_lrc(text: str) -> list[tuple[float, str]]:
+    """解析 LRC 文本，返回按时间排序的 (秒, 歌词) 列表。"""
+    if not text:
+        return []
+    offset = 0.0
+    match = OFFSET_TAG.search(text)
+    if match:
+        try:
+            offset = int(match.group(1)) / 1000.0
+        except ValueError:
+            offset = 0.0
+    entries: list[tuple[float, str]] = []
+    for raw_line in text.splitlines():
+        stamps = TIME_TAG.findall(raw_line)
+        if not stamps:
+            continue
+        body = TIME_TAG.sub("", raw_line).strip()
+        for minutes, seconds, fraction in stamps:
+            try:
+                stamp = int(minutes) * 60 + int(seconds)
+                if fraction:
+                    stamp += int(fraction.ljust(3, "0")) / 1000.0
+            except ValueError:
+                continue
+            entries.append((max(0.0, stamp - offset), body))
+    entries.sort(key=lambda item: item[0])
+    return entries
+
+
+class LyricView:
+    """把普通歌词、翻译、罗马音合并成便于逐行渲染的结构。"""
+
+    def __init__(self):
+        self.lines: list[tuple[float, str, tuple[str, ...]]] = []
+        self.times: list[float] = []
+        self.line_row: list[int] = []       # 每行歌词在 row_* 中的起始下标
+        self.row_text: list[str] = []       # 每个显示行
+        self.row_line: list[int] = []       # 每个显示行属于哪一行歌词
+        self.row_sub: list[bool] = []       # 是否是翻译/罗马音行
+
+    def set_lyrics(self, lyric: str, tlyric: str = "", rlyric: str = "") -> None:
+        self.__init__()
+        base = parse_lrc(lyric)
+        if not base:
+            return
+        translations = parse_lrc(tlyric)
+        romaji = parse_lrc(rlyric)
+
+        for stamp, text in base:
+            subs: list[str] = []
+            for track in (translations, romaji):
+                for extra in _texts_near(track, stamp):
+                    if extra != text and extra not in subs:
+                        subs.append(extra)
+            subs = subs[:2]
+
+            line_index = len(self.lines)
+            self.lines.append((stamp, text, tuple(subs)))
+            self.times.append(stamp)
+            self.line_row.append(len(self.row_text))
+
+            self.row_text.append(text)
+            self.row_line.append(line_index)
+            self.row_sub.append(False)
+            for sub in subs:
+                self.row_text.append(sub)
+                self.row_line.append(line_index)
+                self.row_sub.append(True)
+
+    @property
+    def empty(self) -> bool:
+        return not self.lines
+
+    def current_index(self, position: float) -> int:
+        if not self.times:
+            return -1
+        return bisect.bisect_right(self.times, position) - 1
+
+
+def _texts_near(track: list[tuple[float, str]], stamp: float, tolerance: float = 0.5):
+    if not track:
+        return []
+    index = bisect.bisect_left(track, (stamp - tolerance, ""))
+    texts = []
+    while index < len(track) and track[index][0] <= stamp + tolerance:
+        if track[index][1]:
+            texts.append(track[index][1])
+        index += 1
+    return texts
+
+
+# --------------------------------------------------------------------------- #
+# 屏幕抽象（便于脱离 curses 做单元测试）
+# --------------------------------------------------------------------------- #
+
+class CursesScreen:
+    def __init__(self, win):
+        self.win = win
+
+    @property
+    def width(self) -> int:
+        return self.win.getmaxyx()[1]
+
+    @property
+    def height(self) -> int:
+        return self.win.getmaxyx()[0]
+
+    def clear(self) -> None:
+        self.win.erase()
+
+    def put(self, y: int, x: int, text: str, attr: int = 0) -> None:
+        if not text:
+            return
+        try:
+            self.win.addstr(y, x, text, attr)
+        except curses.error:
+            pass
+
+
+def put_clipped(scr, y: int, x: int, text: str, attr: int = 0, max_width=None) -> None:
+    if not text:
+        return
+    if y < 0 or y >= scr.height or x < 0 or x >= scr.width:
+        return
+    if max_width is None:
+        max_width = scr.width - x
+    else:
+        max_width = min(max_width, scr.width - x)
+    clipped = clip_display(text, max_width)
+    if clipped:
+        scr.put(y, x, clipped, attr)
+
+
+def put_center(scr, y: int, text: str, attr: int = 0, max_width=None) -> None:
+    if max_width is None:
+        max_width = scr.width
+    clipped = clip_display(text, max_width)
+    x = max(0, (scr.width - text_width(clipped)) // 2)
+    scr.put(y, x, clipped, attr)
+
+
+def put_right(scr, y: int, x_end: int, segments: list[tuple[str, int]]) -> None:
+    if not segments:
+        return
+    total = sum(text_width(text) for text, _ in segments)
+    x = x_end - total
+    if x < 0:
+        merged = "".join(text for text, _ in segments)
+        put_clipped(scr, y, 0, merged, segments[0][1], max_width=max(0, x_end))
+        return
+    for text, attr in segments:
+        if not text:
+            continue
+        put_clipped(scr, y, x, text, attr, max_width=x_end - x)
+        x += text_width(text)
+
+
+# --------------------------------------------------------------------------- #
+# 主题 / 配色
+# --------------------------------------------------------------------------- #
+
+class Theme:
+    def __init__(self, disabled: bool = False):
+        self.enabled = curses.has_colors() and not disabled
+        self.accent = 0
+        self.good = 0
+        self.warn = 0
+        self.bad = 0
+        self.dim = curses.A_DIM
+        if not self.enabled:
+            return
+        try:
+            curses.start_color()
+        except curses.error:
+            self.enabled = False
+            return
+        try:
+            curses.use_default_colors()
+            background = -1
+        except curses.error:
+            background = curses.COLOR_BLACK
+        self.accent = self._pair(1, curses.COLOR_CYAN, background)
+        self.good = self._pair(2, curses.COLOR_GREEN, background)
+        self.warn = self._pair(3, curses.COLOR_YELLOW, background)
+        self.bad = self._pair(4, curses.COLOR_RED, background)
+        if curses.COLORS >= 256:
+            self.dim = self._pair(5, 244, background)
+        else:
+            self.dim = curses.A_DIM
+
+    @staticmethod
+    def _pair(number: int, fg: int, bg: int) -> int:
+        try:
+            curses.init_pair(number, fg, bg)
+            return curses.color_pair(number)
+        except curses.error:
+            return 0
+
+
+def status_style(theme: Theme, status: str) -> tuple[str, str, int]:
+    if status == "playing":
+        return "▶", "正在播放", theme.good
+    if status == "paused":
+        return "⏸", "已暂停", theme.warn
+    if status == "error":
+        return "✖", "播放出错", theme.bad
+    return "■", "已停止", theme.dim
+
+
+# --------------------------------------------------------------------------- #
+# 搜索 / 歌单（Scheme URL）
+# --------------------------------------------------------------------------- #
+
+def split_query(text: str) -> tuple[str, str]:
+    """把「歌名 - 歌手」拆成 (歌名, 歌手)；没有分隔符时歌手为空。"""
+    text = text.strip()
+    if " - " in text:
+        name, singer = text.rsplit(" - ", 1)
+        name, singer = name.strip(), singer.strip()
+        if name:
+            return name, singer
+    return text, ""
+
+
+def songlist_payload(text: str) -> dict | None:
+    """解析用户输入的歌单参数，返回 Scheme URL 的 data 内容。"""
+    text = text.strip()
+    if not text:
+        return None
+    if re.match(r"^https?://", text, re.IGNORECASE):
+        host = urllib.parse.urlparse(text).netloc.lower()
+        for domain, source in PLAYLIST_HOSTS.items():
+            if domain in host:
+                return {"source": source, "url": text}
+        return None
+    match = re.match(r"^(kw|kg|tx|wy|mg)\s*[/:]\s*(.+)$", text, re.IGNORECASE)
+    if match:
+        return {"source": match.group(1).lower(), "id": match.group(2).strip()}
+    return None
+
+
+class InputPrompt:
+    """底部的单行输入框，支持 UTF-8（逐字节输入解码）。"""
+
+    SEARCH = "search"
+    SONGLIST = "songlist"
+
+    def __init__(self, kind: str):
+        self.kind = kind
+        self.text = ""
+        self.mode = "play" if kind == self.SEARCH else "open"
+        self._decoder = codecs.getincrementaldecoder("utf-8")("replace")
+
+    @property
+    def title(self) -> str:
+        if self.kind == self.SEARCH:
+            return "立即播放" if self.mode == "play" else "在 LX Music 中搜索"
+        return "打开歌单"
+
+    @property
+    def hint(self) -> str:
+        if self.kind == self.SEARCH:
+            return "歌名 或 歌名 - 歌手    Tab 切换模式    回车 确认    Esc 取消"
+        return "kw/歌单ID 或 歌单链接    回车 打开    Esc 取消"
+
+    def feed(self, ch: int) -> str | None:
+        """处理一个按键，返回 submit / cancel / toggle / None。"""
+        if ch in (10, 13, curses.KEY_ENTER):
+            return "submit"
+        if ch in (27, 3):
+            return "cancel"
+        if ch in (curses.KEY_BACKSPACE, 8, 127):
+            self.text = self.text[:-1]
+            return None
+        if ch == 9:
+            if self.kind == self.SEARCH:
+                self.mode = "open" if self.mode == "play" else "play"
+            return "toggle"
+        if ch == 21:  # Ctrl-U 清空
+            self.text = ""
+            return None
+        if 32 <= ch < 256:
+            self.text += self._decoder.decode(bytes([ch]))
+        return None
+
+
+# --------------------------------------------------------------------------- #
+# 渲染
+# --------------------------------------------------------------------------- #
+
+@dataclass
+class Frame:
+    data: dict
+    progress: float
+    connected: bool
+    error: str
+    notice: str = ""
+    notice_error: bool = False
+    scroll: int = 0
+    prompt: "InputPrompt | None" = None
+    help_open: bool = False
+    help_scroll: int = 0
+
+    @property
+    def scroll_locked(self) -> bool:
+        return self.scroll != 0
+
+
+class Renderer:
+    def __init__(self, theme: Theme, lyrics_only: bool = False):
+        self.theme = theme
+        self.lyrics_only = lyrics_only
+
+    # ---- 对外入口 -------------------------------------------------------- #
+
+    def draw(self, scr, frame: Frame, view: LyricView) -> None:
+        scr.clear()
+        if frame.help_open:
+            self._draw_help(scr, frame.help_scroll)
+            return
+        if self.lyrics_only:
+            self._draw_lyrics_only(scr, frame, view)
+            return
+        if scr.width < 24 or scr.height < 8:
+            self._draw_tiny(scr, frame, view)
+            return
+
+        height = scr.height
+        if height >= 20:
+            help_count = 3
+        elif height >= 16:
+            help_count = 2
+        elif height >= 12:
+            help_count = 1
+        else:
+            help_count = 0
+
+        if help_count:
+            rule_row = height - help_count - 2
+            help_rows = list(range(rule_row + 1, height - 1))
+            msg_row = height - 1
+            lyrics_bottom = rule_row
+        else:
+            rule_row = None
+            help_rows = []
+            msg_row = height - 1 if height >= 9 else None
+            lyrics_bottom = msg_row if msg_row is not None else height
+
+        self._header(scr, frame)
+        self._progress(scr, frame)
+        self._rule(scr, 5)
+
+        top = 6
+        if lyrics_bottom > top:
+            self._lyrics(scr, top, lyrics_bottom, frame, view)
+
+        if rule_row is not None and top <= rule_row < height:
+            self._rule(scr, rule_row)
+
+        if frame.prompt is not None:
+            if help_rows and help_rows[-1] < height:
+                hint, attr = frame.prompt.hint, self.theme.warn
+                if frame.notice and frame.notice_error:
+                    hint, attr = frame.notice, self.theme.bad
+                put_clipped(scr, help_rows[-1], 2, hint, attr)
+        else:
+            for row, text in zip(help_rows, HELP_LINES):
+                if row < height:
+                    put_clipped(scr, row, 2, text, self.theme.dim)
+
+        if msg_row is not None and msg_row < height:
+            if frame.prompt is not None:
+                self._prompt_row(scr, msg_row, frame.prompt)
+            else:
+                message = self._message(frame)
+                if message:
+                    put_clipped(scr, msg_row, 2, message, self._message_attr(frame))
+
+    def _prompt_row(self, scr, row: int, prompt: InputPrompt) -> None:
+        theme = self.theme
+        width = scr.width
+        prefix = prompt.title + "："
+        available = width - 4 - text_width(prefix)
+        if available < 6:
+            prefix = ""
+            available = width - 4
+        put_clipped(scr, row, 2, prefix, theme.dim)
+        tail = clip_tail(prompt.text + "▏", available)
+        put_clipped(
+            scr, row, 2 + text_width(prefix), tail, theme.accent | curses.A_BOLD
+        )
+
+    # ---- 各区块 ---------------------------------------------------------- #
+
+    def _header(self, scr, frame: Frame) -> None:
+        theme = self.theme
+        data = frame.data
+        width = scr.width
+        status = str(data.get("status") or "stoped")
+        icon, label, style = status_style(theme, status)
+
+        put_clipped(
+            scr, 0, 2, "♪ LX Music", theme.accent | curses.A_BOLD, width - 4
+        )
+
+        segments: list[tuple[str, int]] = []
+        if data.get("collect"):
+            segments.append(("♥  ", theme.bad))
+        if data.get("mute"):
+            segments.append(("静音  ", theme.warn))
+        try:
+            volume = int(round(float(data.get("volume") or 0)))
+        except (TypeError, ValueError):
+            volume = 0
+        segments.append((f"音量 {volume}%", theme.warn if data.get("mute") else theme.dim))
+        segments.append(("  ", theme.dim))
+        if frame.connected:
+            segments.append(("● 已连接", theme.good))
+        else:
+            segments.append(("○ 未连接", theme.bad))
+        put_right(scr, 0, width - 2, segments)
+
+        name = str(data.get("name") or "").strip()
+        title = f"{icon} {name or '（未在播放）'}"
+        right: list[tuple[str, int]] = [(label, style)]
+        try:
+            rate = float(data.get("playbackRate") or 1.0)
+        except (TypeError, ValueError):
+            rate = 1.0
+        if abs(rate - 1.0) > 0.001:
+            right.insert(0, (f"{rate:g}x  ", theme.dim))
+        right_width = sum(text_width(text) for text, _ in right) + 2
+        put_clipped(
+            scr,
+            2,
+            2,
+            title,
+            (style | curses.A_BOLD) if name else theme.dim,
+            max(0, width - 4 - right_width),
+        )
+        put_right(scr, 2, width - 2, right)
+
+        singer = str(data.get("singer") or "").strip()
+        album = str(data.get("albumName") or "").strip()
+        meta = singer
+        if album and album != singer:
+            meta = f"{meta}  ·  {album}" if meta else album
+        put_clipped(scr, 3, 2, meta, theme.dim, width - 4)
+
+    def _progress(self, scr, frame: Frame) -> None:
+        theme = self.theme
+        data = frame.data
+        width = scr.width
+        try:
+            duration = float(data.get("duration") or 0.0)
+        except (TypeError, ValueError):
+            duration = 0.0
+        position = frame.progress
+
+        left = fmt_time(position)
+        right = fmt_time(duration)
+        put_clipped(scr, 4, 2, left, theme.dim)
+        x = 2 + text_width(left) + 1
+        right_width = text_width(right)
+        bar_width = width - 2 - x - right_width - 2
+        if bar_width >= 4:
+            fraction = 0.0 if duration <= 0 else max(0.0, min(1.0, position / duration))
+            filled = max(0, min(bar_width, int(round(fraction * bar_width))))
+            if filled:
+                put_clipped(
+                    scr, 4, x, "█" * filled, theme.accent | curses.A_BOLD, bar_width
+                )
+            if filled < bar_width:
+                put_clipped(
+                    scr,
+                    4,
+                    x + filled,
+                    "─" * (bar_width - filled),
+                    theme.dim,
+                    bar_width - filled,
+                )
+        put_clipped(scr, 4, width - 2 - right_width, right, theme.dim)
+
+    def _lyrics(self, scr, top: int, bottom: int, frame: Frame, view: LyricView) -> None:
+        theme = self.theme
+        width = scr.width
+        height = bottom - top
+        if height <= 0:
+            return
+
+        if view.empty:
+            raw = frame.data.get("lyricLineAllText") or frame.data.get("lyricLineText") or ""
+            rows = [row.strip() for row in str(raw).splitlines() if row.strip()]
+            if rows:
+                y = top + max(0, (height - len(rows[:height])) // 2)
+                for index, row in enumerate(rows[:height]):
+                    attr = (theme.good | curses.A_BOLD) if index == 0 else theme.dim
+                    put_center(scr, y + index, row, attr, width - 4)
+            else:
+                put_center(scr, top + height // 2, "暂无歌词", theme.dim)
+            return
+
+        current = view.current_index(frame.progress)
+        anchor = max(current, 0)
+        start_line_row = view.line_row[anchor] if view.line_row else 0
+        total = len(view.row_text)
+        start = start_line_row - height // 2 + frame.scroll
+        if total <= height:
+            start = 0
+        else:
+            start = max(0, min(start, total - height))
+
+        for offset in range(height):
+            row = start + offset
+            if row >= total:
+                break
+            text = view.row_text[row]
+            is_sub = view.row_sub[row]
+            active = view.row_line[row] == current
+            if is_sub:
+                prefix = "    "
+                attr = theme.good if active else theme.dim
+            else:
+                prefix = "♪ " if active else "  "
+                attr = (theme.good | curses.A_BOLD) if active else 0
+            put_clipped(scr, top + offset, 2, prefix + text, attr, width - 4)
+
+    def _rule(self, scr, row: int) -> None:
+        put_clipped(scr, row, 0, "─" * scr.width, self.theme.dim, scr.width)
+
+    def _message(self, frame: Frame) -> str:
+        if frame.error and not frame.connected:
+            return f"连接失败：{frame.error}（自动重试中…）"
+        if frame.notice:
+            return frame.notice
+        if frame.scroll_locked:
+            return "手动滚动中 · 按 a 恢复自动跟随"
+        return ""
+
+    def _message_attr(self, frame: Frame) -> int:
+        theme = self.theme
+        if frame.error and not frame.connected:
+            return theme.bad
+        if frame.notice:
+            return theme.bad if frame.notice_error else theme.accent
+        if frame.scroll_locked:
+            return theme.warn
+        return theme.dim
+
+    # ---- 桌面歌词模式 ---------------------------------------------------- #
+
+    def _draw_lyrics_only(self, scr, frame: Frame, view: LyricView) -> None:
+        width, height = scr.width, scr.height
+        body_top = 1
+        if frame.prompt is not None:
+            self._prompt_row(scr, 0, frame.prompt)
+            if height >= 2:
+                hint, attr = frame.prompt.hint, self.theme.warn
+                if frame.notice and frame.notice_error:
+                    hint, attr = frame.notice, self.theme.bad
+                put_clipped(scr, 1, 2, hint, attr, width - 4)
+            body_top = 2
+        else:
+            self._lyrics_only_header(scr, frame)
+        if height > body_top:
+            self._lyrics_only_body(scr, body_top, height, frame, view)
+
+    def _lyrics_only_header(self, scr, frame: Frame) -> None:
+        theme = self.theme
+        data = frame.data
+        width = scr.width
+        status = str(data.get("status") or "stoped")
+        icon, _, style = status_style(theme, status)
+
+        name = str(data.get("name") or "").strip()
+        singer = str(data.get("singer") or "").strip()
+        title = name or "（未在播放）"
+        if name and singer:
+            title += f" - {singer}"
+        left = f"{icon} {title}"
+
+        right: list[tuple[str, int]] = []
+        if frame.notice:
+            notice = clip_display(frame.notice, max(6, width // 2))
+            right.append(
+                (notice, theme.bad if frame.notice_error else theme.accent)
+            )
+        elif width >= 64:
+            if data.get("collect"):
+                right.append(("♥  ", theme.bad))
+            if data.get("mute"):
+                right.append(("静音  ", theme.warn))
+            try:
+                volume = int(round(float(data.get("volume") or 0)))
+            except (TypeError, ValueError):
+                volume = 0
+            right.append((f"音量 {volume}%  ", theme.warn if data.get("mute") else theme.dim))
+            right.append(
+                ("● 已连接" if frame.connected else "○ 未连接",
+                 theme.good if frame.connected else theme.bad)
+            )
+        elif width >= 40:
+            try:
+                volume = int(round(float(data.get("volume") or 0)))
+            except (TypeError, ValueError):
+                volume = 0
+            right.append((f"{volume}%  ", theme.dim))
+            right.append(
+                ("● 已连接" if frame.connected else "○ 未连接",
+                 theme.good if frame.connected else theme.bad)
+            )
+        else:
+            right.append(
+                ("●" if frame.connected else "○",
+                 theme.good if frame.connected else theme.bad)
+            )
+
+        right_width = sum(text_width(text) for text, _ in right) + 2
+        put_clipped(
+            scr,
+            0,
+            2,
+            left,
+            (style | curses.A_BOLD) if name else theme.dim,
+            max(0, width - 4 - right_width),
+        )
+        put_right(scr, 0, max(0, width - 2), right)
+
+    def _lyrics_only_body(
+        self, scr, top: int, bottom: int, frame: Frame, view: LyricView
+    ) -> None:
+        theme = self.theme
+        width = scr.width
+        height = bottom - top
+        if height <= 0:
+            return
+
+        if view.empty:
+            raw = (
+                frame.data.get("lyricLineAllText")
+                or frame.data.get("lyricLineText")
+                or ""
+            )
+            rows = [row.strip() for row in str(raw).splitlines() if row.strip()]
+            if rows:
+                start = max(0, (height - len(rows[:height])) // 2)
+                for index, row in enumerate(rows[:height]):
+                    attr = (theme.good | curses.A_BOLD) if index == 0 else theme.dim
+                    put_center(scr, top + start + index, row, attr, width - 4)
+            else:
+                put_center(scr, top + height // 2, "暂无歌词", theme.dim)
+            return
+
+        current = view.current_index(frame.progress)
+        base = current if current >= 0 else 0
+        focus = max(0, min(len(view.lines) - 1, base + frame.scroll))
+
+        rows: list[tuple[str, bool, int]] = []
+        for index in (focus - 1, focus, focus + 1):
+            if not 0 <= index < len(view.lines):
+                continue
+            _, text, subs = view.lines[index]
+            rows.append((text, False, index))
+            for sub in subs:
+                rows.append((sub, True, index))
+
+        total = len(rows)
+        focus_row = 0
+        for offset, (_, is_sub, index) in enumerate(rows):
+            if index == focus and not is_sub:
+                focus_row = offset
+                break
+        focus_block = 1 + len(view.lines[focus][2])
+
+        if total <= height:
+            start = 0
+            pad = max(0, (height - total) // 2)
+        else:
+            start = focus_row - max(0, (height - focus_block) // 2)
+            start = max(0, min(start, total - height))
+            # 不要从某行歌词的翻译开始显示，回退到该行原文
+            while start > 0 and rows[start][1]:
+                start -= 1
+            pad = 0
+
+        for offset, (text, is_sub, index) in enumerate(rows[start : start + height]):
+            active = index == current
+            content = f"♪ {text}" if (not is_sub and active) else text
+            if is_sub:
+                attr = theme.good if active else theme.dim
+            elif active:
+                attr = theme.good | curses.A_BOLD
+            else:
+                attr = 0
+            put_center(scr, top + pad + offset, content, attr, width - 4)
+
+    # ---- 帮助面板 -------------------------------------------------------- #
+
+    def _draw_help(self, scr, offset: int) -> None:
+        theme = self.theme
+        width, height = scr.width, scr.height
+        rows, left_width, _unused = help_layout(width)
+        total = len(rows)
+
+        put_clipped(
+            scr, 0, 0, " LX Music 快捷键", theme.accent | curses.A_BOLD, width
+        )
+
+        view_height = max(0, height - 2)
+        offset = max(0, min(offset, max(0, total - view_height)))
+
+        for index in range(view_height):
+            row_index = offset + index
+            if row_index >= total:
+                break
+            ltext, lkind, rtext, rkind = rows[row_index]
+            y = 1 + index
+            if rtext is None:
+                put_clipped(scr, y, 2, ltext, self._help_attr(lkind), width - 4)
+            else:
+                put_clipped(
+                    scr, y, 2, ltext, self._help_attr(lkind), max(0, left_width)
+                )
+                x = 2 + left_width + 3
+                if x < width - 2:
+                    put_clipped(
+                        scr, y, x, rtext, self._help_attr(rkind), width - 2 - x
+                    )
+
+        if height >= 2:
+            hint = " j/k 滚动 · d/u 翻页 · ? / F1 / Esc 关闭"
+            position = f"{min(offset + view_height, total)}/{total} "
+            put_clipped(
+                scr,
+                height - 1,
+                2,
+                hint,
+                theme.dim,
+                max(0, width - 4 - text_width(position)),
+            )
+            put_right(scr, height - 1, width - 2, [(position, theme.dim)])
+
+    def _help_attr(self, kind: str) -> int:
+        if kind == "header":
+            return self.theme.accent | curses.A_BOLD
+        if kind in ("gap", "dim"):
+            return self.theme.dim
+        return 0
+
+    def _draw_tiny(self, scr, frame: Frame, view: LyricView) -> None:
+        theme = self.theme
+        data = frame.data
+        if frame.prompt is not None:
+            self._prompt_row(scr, 0, frame.prompt)
+            return
+        icon, _, style = status_style(theme, str(data.get("status") or "stoped"))
+        name = str(data.get("name") or "").strip() or "（未在播放）"
+        put_clipped(scr, 0, 0, f"{icon} {name}", style | curses.A_BOLD, scr.width)
+        if scr.height > 1:
+            self._lyrics(scr, 1, scr.height, frame, view)
+
+
+# --------------------------------------------------------------------------- #
+# 应用主体
+# --------------------------------------------------------------------------- #
+
+class App:
+    def __init__(
+        self,
+        server: str = DEFAULT_SERVER,
+        no_color: bool = False,
+        seek_step: float = 5.0,
+        volume_step: int = 5,
+        lyrics_only: bool = False,
+    ):
+        self.server = server
+        self.no_color = no_color
+        self.lyrics_only = lyrics_only
+        self.seek_step = max(1.0, float(seek_step))
+        self.volume_step = max(1, int(volume_step))
+
+        self.state = SharedState()
+        self.events: queue.Queue = queue.Queue()
+        self.client = ApiClient(server)
+        self.sse = SseListener(self.state, server)
+        self.worker = ActionWorker(self.client, self.events)
+
+        self.view = LyricView()
+        self._lyric_key = None
+        self.scroll = 0
+        self.prompt: "InputPrompt | None" = None
+        self.help_open = False
+        self.help_scroll = 0
+        self.screen_width = 80
+        self.screen_height = 24
+
+        self.notice = ""
+        self.notice_error = False
+        self.notice_until = 0.0
+
+        self.running = True
+
+    # ---- 生命周期 -------------------------------------------------------- #
+
+    def start(self) -> None:
+        self.sse.start()
+        self.worker.start()
+
+    def stop(self) -> None:
+        self.sse.stop()
+        self.worker.stop()
+
+    def set_notice(self, text: str, error: bool = False, duration: float = 3.5) -> None:
+        self.notice = text
+        self.notice_error = error
+        self.notice_until = time.monotonic() + duration
+
+    def drain_events(self) -> None:
+        while True:
+            try:
+                kind, text = self.events.get_nowait()
+            except queue.Empty:
+                return
+            self.set_notice(text, error=(kind == "error"))
+
+    def sync_lyrics(self, data: dict) -> None:
+        key = (
+            str(data.get("lyric") or ""),
+            str(data.get("tlyric") or ""),
+            str(data.get("rlyric") or ""),
+        )
+        if key == self._lyric_key:
+            return
+        self._lyric_key = key
+        self.view.set_lyrics(*key)
+        rows = len(self.view.row_text)
+        if rows == 0:
+            self.scroll = 0
+        else:
+            limit = len(self.view.lines) if self.lyrics_only else rows
+            self.scroll = max(-limit, min(limit, self.scroll))
+
+    def build_frame(self):
+        data, revision, progress_ts, connected, error = self.state.snapshot()
+        self.sync_lyrics(data)
+        now = time.monotonic()
+        if self.notice and now >= self.notice_until:
+            self.notice = ""
+        frame = Frame(
+            data=data,
+            progress=effective_progress(data, progress_ts, now),
+            connected=connected,
+            error=error,
+            notice=self.notice,
+            notice_error=self.notice_error,
+            scroll=self.scroll,
+            prompt=self.prompt,
+            help_open=self.help_open,
+            help_scroll=self.help_scroll,
+        )
+        return frame, revision
+
+    # ---- 控制动作 -------------------------------------------------------- #
+
+    def act_play_pause(self) -> None:
+        data, *_ = self.state.snapshot()
+        if data.get("status") == "playing":
+            self.state.set_local("status", "paused")
+            self.worker.submit("pause")
+            self.set_notice("已暂停")
+        else:
+            self.state.set_local("status", "playing")
+            self.worker.submit("play")
+            self.set_notice("播放中")
+
+    def act_skip(self, endpoint: str) -> None:
+        self.worker.submit(endpoint)
+        self.set_notice("下一曲…" if endpoint == "skip-next" else "上一曲…")
+
+    def act_seek(self, delta: float) -> None:
+        data, _, progress_ts, _, _ = self.state.snapshot()
+        position = effective_progress(data, progress_ts, time.monotonic())
+        try:
+            duration = float(data.get("duration") or 0.0)
+        except (TypeError, ValueError):
+            duration = 0.0
+        target = max(0.0, position + delta)
+        if duration > 0:
+            target = min(target, max(0.0, duration - 0.1))
+        self.state.set_local("progress", target)
+        self.worker.submit("seek", offset=f"{target:.3f}")
+        self.set_notice(f"跳转至 {fmt_time(target)}")
+
+    def act_volume(self, delta: int) -> None:
+        data, *_ = self.state.snapshot()
+        try:
+            current = int(round(float(data.get("volume") or 0)))
+        except (TypeError, ValueError):
+            current = 0
+        volume = max(0, min(100, current + delta))
+        self.state.set_local("volume", volume)
+        self.worker.submit("volume", volume=volume)
+        self.set_notice(f"音量 {volume}%")
+
+    def act_mute(self) -> None:
+        data, *_ = self.state.snapshot()
+        target = not bool(data.get("mute"))
+        self.state.set_local("mute", target)
+        self.worker.submit("mute", mute="true" if target else "false")
+        self.set_notice("已静音" if target else "已取消静音")
+
+    def act_collect(self) -> None:
+        data, *_ = self.state.snapshot()
+        if data.get("collect"):
+            self.state.set_local("collect", False)
+            self.worker.submit("uncollect")
+            self.set_notice("已取消收藏")
+        else:
+            self.state.set_local("collect", True)
+            self.worker.submit("collect")
+            self.set_notice("已收藏")
+
+    def act_scroll(self, delta: int) -> None:
+        if self.lyrics_only:
+            # 桌面歌词模式：滚动单位是「歌词行」，聚焦行为当前行 + scroll
+            count = len(self.view.lines)
+            if count == 0:
+                return
+            self.scroll = max(-count, min(count, self.scroll + delta))
+            if self.scroll:
+                self.set_notice("手动滚动 · a 恢复跟随", duration=2.0)
+            return
+        rows = len(self.view.row_text)
+        if rows == 0:
+            return
+        self.scroll = max(-rows, min(rows, self.scroll + delta))
+
+    def act_scroll_edge(self, end: bool) -> None:
+        count = len(self.view.lines) if self.lyrics_only else len(self.view.row_text)
+        if count == 0:
+            return
+        self.scroll = count if end else -count
+        if self.lyrics_only:
+            self.set_notice("已跳到歌词结尾" if end else "已跳到歌词开头", duration=2.0)
+
+    # ---- 搜索 / 歌单 ----------------------------------------------------- #
+
+    def open_scheme(self, url: str) -> None:
+        """通过系统协议处理器打开 lxmusic:// 链接（后台线程执行）。"""
+        custom = os.environ.get("LX_SCHEME_CMD", "").strip()
+        command = None
+        if custom:
+            if "{url}" not in custom:
+                self.set_notice("LX_SCHEME_CMD 需要包含 {url} 占位符", error=True)
+                return
+            try:
+                command = shlex.split(custom.replace("{url}", url))
+            except ValueError as exc:
+                self.set_notice(f"LX_SCHEME_CMD 解析失败：{exc}", error=True)
+                return
+            if not command:
+                self.set_notice("LX_SCHEME_CMD 为空", error=True)
+                return
+        threading.Thread(
+            target=self._scheme_task,
+            args=(url, command),
+            name="lx-scheme",
+            daemon=True,
+        ).start()
+
+    def _scheme_task(self, url: str, command: list[str] | None) -> None:
+        try:
+            if command is None:
+                if os.name == "nt":
+                    getattr(os, "startfile")(url)  # noqa: B009 - Windows 专用
+                    return
+                command = ["open", url] if sys.platform == "darwin" else ["xdg-open", url]
+            proc = subprocess.run(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=15,
+                text=True,
+            )
+            if proc.returncode != 0:
+                lines = (proc.stderr or "").strip().splitlines()
+                detail = lines[-1] if lines else f"退出码 {proc.returncode}"
+                raise RuntimeError(detail)
+        except Exception as exc:  # noqa: BLE001 - 需要在界面上提示失败原因
+            self.events.put(
+                (
+                    "error",
+                    f"打开 lxmusic:// 链接失败：{exc}（可用 LX_SCHEME_CMD 指定打开命令）",
+                )
+            )
+
+    def submit_prompt(self) -> bool:
+        """提交输入框内容，返回 True 表示可以关闭输入框。"""
+        prompt = self.prompt
+        if prompt is None:
+            return False
+        text = prompt.text.strip()
+        if not text:
+            return False
+        if prompt.kind == InputPrompt.SEARCH:
+            if prompt.mode == "play":
+                name, singer = split_query(text)
+                payload = {"name": name}
+                if singer:
+                    payload["singer"] = singer
+                data = urllib.parse.quote(
+                    json.dumps(payload, ensure_ascii=False), safe=""
+                )
+                self.open_scheme(f"lxmusic://music/searchPlay?data={data}")
+                self.set_notice(
+                    f"搜索并播放：{name}" + (f" - {singer}" if singer else "")
+                )
+            else:
+                self.open_scheme(
+                    "lxmusic://music/search/"
+                    + urllib.parse.quote(text, safe="")
+                )
+                self.set_notice("已在 LX Music 中打开搜索结果")
+            return True
+
+        payload = songlist_payload(text)
+        if payload is None:
+            self.set_notice(
+                "无法识别的歌单，请用 kw/歌单ID 或常见歌单链接", error=True
+            )
+            return False
+        data = urllib.parse.quote(json.dumps(payload, ensure_ascii=False), safe="")
+        self.open_scheme(f"lxmusic://songlist/open?data={data}")
+        self.set_notice("已在 LX Music 中打开歌单")
+        return True
+
+    # ---- 输入 ------------------------------------------------------------ #
+
+    def handle_key(self, ch: int) -> None:
+        if self.prompt is not None:
+            result = self.prompt.feed(ch)
+            if result == "cancel":
+                self.prompt = None
+            elif result == "submit" and self.submit_prompt():
+                self.prompt = None
+            return
+
+        if self.help_open:
+            self.handle_help_key(ch)
+            return
+
+        if ch in (ord("q"), ord("Q"), 27, 3):
+            self.running = False
+        elif ch == ord(" "):
+            self.act_play_pause()
+        elif ch in (ord("j"), ord("n"), ord("N")):
+            self.act_skip("skip-next")
+        elif ch in (ord("k"), ord("p"), ord("P")):
+            self.act_skip("skip-prev")
+        elif ch == ord("h"):
+            self.act_seek(-self.seek_step)
+        elif ch == ord("l"):
+            self.act_seek(self.seek_step)
+        elif ch == ord("H"):
+            self.act_seek(-30.0)
+        elif ch == ord("L"):
+            self.act_seek(30.0)
+        elif ch == curses.KEY_LEFT:
+            self.act_seek(-self.seek_step)
+        elif ch == curses.KEY_RIGHT:
+            self.act_seek(self.seek_step)
+        elif ch == curses.KEY_UP or ch in (ord("+"), ord("=")):
+            self.act_volume(self.volume_step)
+        elif ch == curses.KEY_DOWN or ch in (ord("-"), ord("_")):
+            self.act_volume(-self.volume_step)
+        elif ch in (ord("m"), ord("M")):
+            self.act_mute()
+        elif ch in (ord("c"), ord("C")):
+            self.act_collect()
+        elif ch in (ord("J"), ord("]")):
+            self.act_scroll(1)
+        elif ch in (ord("K"), ord("[")):
+            self.act_scroll(-1)
+        elif ch == ord("d") or ch == curses.KEY_NPAGE:
+            self.act_scroll(5)
+        elif ch == ord("u") or ch == curses.KEY_PPAGE:
+            self.act_scroll(-5)
+        elif ch == ord("g"):
+            self.act_scroll_edge(end=False)
+        elif ch == ord("G"):
+            self.act_scroll_edge(end=True)
+        elif ch in (ord("a"), ord("A")):
+            self.scroll = 0
+        elif ch in (ord("r"), ord("R")):
+            self.sse.reconnect()
+            self.set_notice("正在重新连接…")
+        elif ch == ord("/"):
+            self.notice = ""
+            self.prompt = InputPrompt(InputPrompt.SEARCH)
+        elif ch in (ord("o"), ord("O")):
+            self.notice = ""
+            self.prompt = InputPrompt(InputPrompt.SONGLIST)
+        elif ch == ord("?") or ch == curses.KEY_F1:
+            self.help_open = True
+            self.help_scroll = 0
+
+    def handle_help_key(self, ch: int) -> None:
+        if ch in (ord("?"), curses.KEY_F1, 27, ord("q"), ord("Q"), 3):
+            self.help_open = False
+            return
+        rows, _, _ = help_layout(self.screen_width)
+        total = len(rows)
+        view_height = max(1, self.screen_height - 2)
+        max_offset = max(0, total - view_height)
+        if ch in (ord("j"), curses.KEY_DOWN):
+            self.help_scroll = min(self.help_scroll + 1, max_offset)
+        elif ch in (ord("k"), curses.KEY_UP):
+            self.help_scroll = max(0, self.help_scroll - 1)
+        elif ch in (ord("d"), curses.KEY_NPAGE):
+            self.help_scroll = min(self.help_scroll + 5, max_offset)
+        elif ch in (ord("u"), curses.KEY_PPAGE):
+            self.help_scroll = max(0, self.help_scroll - 5)
+        elif ch == ord("g"):
+            self.help_scroll = 0
+        elif ch == ord("G"):
+            self.help_scroll = max_offset
+
+    # ---- 主循环 ---------------------------------------------------------- #
+
+    def run(self, stdscr) -> None:
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass
+        stdscr.keypad(True)
+        stdscr.timeout(120)
+        try:
+            curses.set_escdelay(25)  # Python >= 3.9 / ncurses
+        except (AttributeError, curses.error):
+            pass
+
+        theme = Theme(disabled=self.no_color)
+        renderer = Renderer(theme, lyrics_only=self.lyrics_only)
+        scr = CursesScreen(stdscr)
+        self.running = True
+
+        while self.running:
+            self.drain_events()
+            self.screen_width, self.screen_height = scr.width, scr.height
+            frame, _revision = self.build_frame()
+            renderer.draw(scr, frame, self.view)
+            try:
+                stdscr.refresh()
+            except curses.error:
+                pass
+            ch = stdscr.getch()
+            if ch != -1:
+                self.handle_key(ch)
+
+
+# --------------------------------------------------------------------------- #
+# 命令行入口
+# --------------------------------------------------------------------------- #
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="lxtui",
+        description="LX Music 桌面版终端界面：播放控制 + 歌词显示",
+    )
+    parser.add_argument(
+        "--server",
+        default=DEFAULT_SERVER,
+        help=f"开放 API 服务地址（默认 {DEFAULT_SERVER}，也可用环境变量 LX_API_URL）",
+    )
+    parser.add_argument("--no-color", action="store_true", help="禁用颜色")
+    parser.add_argument(
+        "--seek-step", type=float, default=5.0, help="左右键跳转秒数（默认 5）"
+    )
+    parser.add_argument(
+        "--volume-step", type=int, default=5, help="音量调节步长（默认 5）"
+    )
+    parser.add_argument(
+        "--lyrics-only",
+        "--mini",
+        dest="lyrics_only",
+        action="store_true",
+        help="桌面歌词模式：只显示顶部一行和 3 行歌词",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> int:
+    args = parse_args(argv)
+    app = App(
+        server=args.server,
+        no_color=args.no_color,
+        seek_step=args.seek_step,
+        volume_step=args.volume_step,
+        lyrics_only=args.lyrics_only,
+    )
+    app.start()
+    try:
+        curses.wrapper(app.run)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        app.stop()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

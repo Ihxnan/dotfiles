@@ -1,0 +1,23 @@
+// LX Music 桌面歌词浮窗（配合 lx-lyrics-toggle）
+//
+// 使用前把脚本放到 ~/.local/bin/lx-lyrics-toggle，并在 config.kdl 里加入：
+//   include optional=true "lx-lyrics.kdl"
+//
+// 尺寸和位置是固定的（由 lx-lyrics-capture 采集）。调整窗口后运行
+// lx-lyrics-capture 重新生成这一段即可。
+
+window-rule {
+    match app-id="lx-lyrics"
+    open-floating true
+    open-focused true
+    default-column-width { fixed 926; }
+    default-window-height { fixed 123; }
+    default-floating-position x=523 y=1105 relative-to="bottom-right"
+    opacity 0.96
+}
+
+binds {
+    Mod+M hotkey-overlay-title="歌词 Lyrics" {
+        spawn "/home/ihxnan/.local/bin/lx-lyrics-toggle"
+    }
+}

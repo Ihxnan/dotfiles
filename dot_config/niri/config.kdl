@@ -191,3 +191,5 @@ include "blur.kdl"
 
 include "dms/layout.kdl"
 include "dms/input.kdl"
+
+include optional=true "lx-lyrics.kdl"

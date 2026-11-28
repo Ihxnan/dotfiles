@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Print a niri window-rule for the current lx-lyrics window geometry.
+
+Open the lyrics window, resize/move it as desired, then run this script to get
+a rule that always opens the window with that exact size and position. The
+position is expressed from the bottom-right corner so that a top bar's
+exclusive zone does not shift it.
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+
+APP_ID = "lx-lyrics"
+
+
+def niri_json(*args: str):
+    result = subprocess.run(
+        ["niri", "msg", "--json", *args], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "niri msg failed")
+    output = result.stdout.strip()
+    return json.loads(output) if output else None
+
+
+def main() -> int:
+    try:
+        windows = niri_json("windows") or []
+        window = next((w for w in windows if w.get("app_id") == APP_ID), None)
+        if window is None:
+            print(
+                f"{APP_ID} 窗口未运行，请先按 Mod+M 打开", file=sys.stderr
+            )
+            return 1
+        workspaces = niri_json("workspaces") or []
+        workspace = next(
+            (w for w in workspaces if w["id"] == window["workspace_id"]), None
+        )
+        outputs = niri_json("outputs") or {}
+        output = None
+        if workspace is not None:
+            if isinstance(outputs, dict):
+                output = outputs.get(workspace.get("output"))
+            else:
+                output = next(
+                    (o for o in outputs if o.get("name") == workspace.get("output")),
+                    None,
+                )
+    except Exception as exc:  # noqa: BLE001
+        print(f"lx-lyrics-capture: {exc}", file=sys.stderr)
+        return 1
+
+    width, height = window["layout"]["window_size"]
+    x, y = window["layout"]["tile_pos_in_workspace_view"]
+    print(f"// captured from window {window['id']} on workspace {window['workspace_id']}")
+    print("window-rule {")
+    print(f'    match app-id="{APP_ID}"')
+    print("    open-floating true")
+    print("    open-focused true")
+    print(f"    default-column-width {{ fixed {round(width)}; }}")
+    print(f"    default-window-height {{ fixed {round(height)}; }}")
+    if output is not None:
+        logical = output["logical"]
+        right = logical["width"] - (x + width)
+        bottom = logical["height"] - (y + height)
+        print(
+            f'    default-floating-position x={round(right)} y={round(bottom)} '
+            'relative-to="bottom-right"'
+        )
+    else:
+        print(
+            f'    default-floating-position x={round(x)} y={round(y)} '
+            'relative-to="top-left"'
+        )
+    print("    opacity 0.96")
+    print("}")
+    if output is not None:
+        logical = output["logical"]
+        print(
+            f"// {logical['width']}x{logical['height']} output; "
+            f"proportions {width / logical['width']:.4f} x "
+            f"{height / logical['height']:.4f}"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
